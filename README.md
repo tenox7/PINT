@@ -68,9 +68,10 @@ mouse (click the window to give it to NT, Ctrl+Alt+G releases it) and a DS1307-t
 where the HAL keeps the time. Without an RTC the clock starts each boot at the firmware build date. The boot settings
 (System > Startup/Shutdown) are kept on the SD card, as an ARC machine keeps them in NVRAM.
 
-The first run is NT's developer setup (three boots). In the second, OK the boxes (Detected Display, Display Properties)
-and press a key at the console's pause; then Ctrl+Alt+Del (QEMU monitor: Ctrl-A C, `sendkey ctrl-alt-delete`, Ctrl-A
-C) and Enter log on as Administrator.
+The first run is NT's developer setup (three boots). The first ends with the box "Windows NT will now restart" (OK, or
+it closes after 30 s). In the second, OK the boxes (Detected Display, Display Properties) and press a key at the
+console's pause; then Ctrl+Alt+Del (QEMU monitor: Ctrl-A C, `sendkey ctrl-alt-delete`, Ctrl-A C) and Enter log on as
+Administrator.
 
 The resolution is `framebuffer_width` and `framebuffer_height` of the SD card's `config.txt` (1920x1080; without them the
 display's mode), in QEMU `RES=1280x1024 build/run.sh`.

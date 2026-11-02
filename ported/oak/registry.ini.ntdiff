@@ -29,9 +29,9 @@
 =1 191 3
 =1 229 6
 =1 251 4
-+ProductType
-+    WinNt
-+
++;
++;  No ProductType: the SYSTEM hive holds it, and NT 4.0 takes any later write of it for
++;  tampering with the product type (a License Violation box).
 +;
 +;  The workgroup of the machine (a domain with a DomainId would make it a member).
 +;

@@ -216,6 +216,7 @@ ported/unimodem/inc/rovcomm.h
 ported/windows/shell/accesory/hypertrm/tdll/propterm.c
 ported/ntos/w32/ntgdi/direct/ddraw/ddsover.c
 ported/ntos/w32/ntgdi/gre/dibapi.cxx
+ported/windows/gina/winlogon/regini.c
 ported/windows/setup/legacy/dll/diamond.c
 ported/windows/setup/legacy/dll/spfile.c
 ported/windows/setup/legacy/dll/detect1.c

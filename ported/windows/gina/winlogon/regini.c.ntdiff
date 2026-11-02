@@ -1,0 +1,17 @@
+#ntdiff private/windows/gina/winlogon/regini.c
+=1 1 2139
++
++    //
++    // Say that the restart is part of setting up: one that comes with nothing
++    // on the screen looks like a crash
++    //
++
++    TimeoutMessageBoxlpstr( pGlobals,
++                            NULL,
++                            TEXT("Windows NT will now restart to finish setting up.  Please do not turn off the computer."),
++                            TEXT("Windows NT Setup"),
++                            MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND,
++                            30
++                          );
++
+=1 2140 388
