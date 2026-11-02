@@ -198,16 +198,20 @@ nmk_guidlib() {
 # table, and the user mode stubs of w32umode.lib), by the ARM templates table.stb and
 # services.stb of the port's version of the stub directory (-s), among the generated files
 # of the component (arm\systable.asm, arm\usrstubs.asm); the services.tab is the one a
-# recipe of the component made, else that of the directory named. GENSRV takes its options
-# in one order: -d -e -g -B -a -s.
+# recipe of the component made, else that of the directory named. With -stubs FILE -sstb
+# TEMPLATE, the user mode stubs by a template of the component, of no machine, as FILE (the
+# names of the services of pstat: syssvc.h, w32svc.h). GENSRV takes its options in one
+# order: -d -e -g -stubs -sstb -B -a -s.
 nmk_gensrv() {
-    local d=arm e=asm g=. b= s=. t= w=/tmp/nmkgensrv f p
+    local d=arm e=asm g=. b= s=. t= o= h= w=/tmp/nmkgensrv f p
     while [ $# -gt 0 ]; do
         case $1 in
         -d) d=$2; shift 2 ;;
         -e) e=$2; shift 2 ;;
         -g) g=$2; shift 2 ;;
         -s) s=$2; shift 2 ;;
+        -stubs) o=$2; shift 2 ;;
+        -sstb) h=$2; shift 2 ;;
         -B) b=-B; shift ;;
         -*) echo "nttarget: gensrv $1 not supported" >&2; return 1 ;;
         *) t=$1; shift ;;
@@ -216,6 +220,14 @@ nmk_gensrv() {
     rm -rf $w && mkdir -p $w/tab $w/stb/$d $w/$d
     f=$(out services.tab); [ -f $f ] || f=$(locate "${t:-$g}/services.tab") || { echo "nttarget: no services.tab" >&2; return 1; }
     tr -d '\032\r' < $f > $w/tab/services.tab
+    if [ -n "$o" ]; then
+        f=$(locate "$h") || { echo "nttarget: no $h" >&2; return 1; }
+        tr -d '\032\r' < $f > $w/stubs.stb
+        (cd $w && bash /work/RASPI/tools/host.sh gensrv -d $d -e $e -g . -stubs stubs.out -sstb stubs.stb $b tab) > /tmp/gensrv.log 2>&1 ||
+            { cat /tmp/gensrv.log >&2; return 1; }
+        f=$(out "$o"); mkdir -p "$(dirname "$f")" && tr -d '\r' < $w/stubs.out > "$f"
+        return
+    fi
     p=$(bash $B/portdir.sh $(resolve "$s"))/$d
     for f in table.stb services.stb; do
         [ -f $p/$f ] || { echo "nttarget: no $p/$f" >&2; return 1; }
@@ -397,6 +409,22 @@ nmk_new() { local o=$(out $1); mkdir -p "$(dirname "$o")" && cat > "$o"; }
 nmk_add() { local o=$(out $1); mkdir -p "$(dirname "$o")" && cat >> "$o"; }
 nmk_cat() { local s; s=$(locate "$1") || { echo "nttarget: no $1" >&2; return 1; }; cat "$s" >> "$(out $2)"; }
 nmk_wcshdr() { local s; s=$(locate "$1") || { echo "nttarget: no $1" >&2; return 1; }; bash /work/RASPI/tools/host.sh wcshdr < "$s" > "$(out $2)"; }
+# mkmsg [-OPTION FILE]... [-386] [-hex] TEXT: the headers and message files of a message text,
+# files of the component (nmake: nmmsg.h, obj\*\nmake.err), by MKMSG (vctools\msg, obj/host),
+# which vctools' common.mak runs as $(MKMSG_DIR)\mkmsg
+nmk_mkmsg() {
+    local a=() f
+    while [ $# -gt 1 ]; do
+        case $1 in
+        -386|-hex|-min|-max) a+=("$1"); shift ;;
+        -def) a+=("$1" "$2"); shift 2 ;;
+        -*) f=$(out "$2"); mkdir -p "$(dirname "$f")" || return 1; a+=("$1" "$f"); shift 2 ;;
+        *) echo "nttarget: mkmsg $1 not supported" >&2; return 1 ;;
+        esac
+    done
+    f=$(locate "$1") || { echo "nttarget: no $1" >&2; return 1; }
+    bash /work/RASPI/tools/host.sh mkmsg "${a[@]}" "$f" > /tmp/mkmsg.log 2>&1 || { cat /tmp/mkmsg.log >&2; return 1; }
+}
 # the build tools of the recipes (tools/host.sh), on files of the tree or generated ones
 nmk_solidpp() {
     local i f a=()

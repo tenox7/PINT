@@ -12,13 +12,14 @@
 # Usage:  cd RASPI/build && ROOT=/work/private ./make-exe.sh SM/SERVER smss
 #         INSTALL=1 ...                                           # also install
 #         INSTALL=1 DEST=SDKTOOLS ...                             # install into \SDKTOOLS
+#         NTTARGET_SKIP="obj/arm/x.exe ..." ...                   # targets the caller makes (nttarget.sh)
 set -uo pipefail
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NT40="$(cd ../.. && pwd)"
 COMP=${1:?usage: make-exe.sh COMPONENT PROGRAM}
 PROG=${2:?usage: make-exe.sh COMPONENT PROGRAM}
 
-docker run --rm -e CJ="${CJ:-4}" -e COMP="$COMP" -e PROG="$PROG" -e ROOT="${ROOT:-/work/private/ntos}" -e INSTALL="${INSTALL:-0}" -e DEST="${DEST:-WINNT/System32}" \
+docker run --rm -e CJ="${CJ:-4}" -e COMP="$COMP" -e PROG="$PROG" -e ROOT="${ROOT:-/work/private/ntos}" -e INSTALL="${INSTALL:-0}" -e DEST="${DEST:-WINNT/System32}" -e NTTARGET_SKIP="${NTTARGET_SKIP:-}" \
     -v "$NT40/../nt35/msvc":/opt/msvc -v "$NT40/../nt35":/nt35:ro -v "$NT40/../XPSP1":/XPSP1:ro -v "$NT40":/work -v "$NT40/private":/work/private:ro -v "$NT40/public":/work/public:ro -w /work/RASPI/build --entrypoint bash tenox7/msvc-arm32 -c '
 set -u
 . ./msvc.sh
@@ -45,7 +46,8 @@ CRT=libc
 CRT="$(macro MFC_LIBS) $CRT"
 # (a \" of the C_DEFINES is a quote, as the command line of NT gave it to cl: -DX=\"0\"); RC
 # gets the defines alone, as makefile.def gives it the CDEFINES: not the MFC_FLAGS of the compiler
-CDEFS="$(macro C_DEFINES | sed "s/\$([A-Za-z_0-9]*)//g; s/\\\\\"/\"/g") $(macro NET_C_DEFINES)"
+# (and the NTCPPFLAGS, which the RISC machines took after them: mipsmk.inc ENV_DEFINES)
+CDEFS="$(macro C_DEFINES | sed "s/\$([A-Za-z_0-9]*)//g; s/\\\\\"/\"/g") $(macro NET_C_DEFINES) $(macro NTCPPFLAGS | sed "s/\$([A-Za-z_0-9]*)//g")"
 DEFS="$(ntdefines $D) $CDEFS"
 RCDEFS="$(ntdefines $D rc) $CDEFS"
 CXXC=$(ntcxx $D)
@@ -69,14 +71,18 @@ posix) ENTRY=__PosixProcessStartup; SUB=posix; TYPELIBS="ntdll libcpsx psxdll ps
 esac
 
 echo ">> compiling $COMP $PROG.exe (${UMTYPE:-nt})"
-# A PROGRAM is its SOURCES (and the source of its UMAPPL that they do not name: pch.c);
-# another program is its source (C or C++): the version of the port, else the one in the
-# component directory or its parent, and the objects of an UMAPPL_NOLIB are the SOURCES its
-# UMLIBS names (obj\*\name.obj).
+# The program TARGETNAME of a PROGRAM of SOURCES (MAIN) is its SOURCES, linked in their order
+# (makefile.def links its $(OBJECTS): timtp.exe, whose SOURCES are its three programs, is
+# that of timtp.c); another program, an UMAPPL (of a LIBRARY, UMAPPL_NOLIB, DLL or PROGRAM: the
+# iobnch of killer, a PROGRAM of mtbnch.c, or pch, a PROGRAM of no SOURCES), is its source (C or
+# C++): the version of the port, else the one in the component directory or its parent, and
+# the objects of the SOURCES its UMOBJS and UMLIBS name (obj\*\name.obj).
 TTYPE=$(macro TARGETTYPE | tr -d " ")
+MAIN=
+[ "$TTYPE" = PROGRAM ] && [ "$(macro TARGETNAME | tr -d " " | tr A-Z a-z)" = "$(echo $PROG | tr A-Z a-z)" ] &&
+  [ -n "$(macro SOURCES | tr -d " ")" ] && MAIN=1
 prog=; srcs=
-umappl() { case " $(macro UMAPPL | tr "*" " ") " in *" $PROG "*) ! macro SOURCES | tr " " "\n" | tr "\\\\" / | grep -qiE "(^|/)$PROG\.(c|cxx|cpp)$" ;; *) false ;; esac; }
-if [ "$TTYPE" != PROGRAM ] || umappl; then
+if [ -z "$MAIN" ]; then
   p=$(bash portdir.sh $D)
   for x in c cxx cpp; do
     [ -f $p/$PROG.$x ] && { prog=$p/$PROG.$x; break; }
@@ -87,10 +93,10 @@ fi
 case $TTYPE in PROGRAM|UMAPPL_NOLIB) srcs=$(bash srclist.sh $COMP $ROOT "(c|cxx|cpp)" 2> $DIR/srclist.err) ;; esac
 # (a source not found stops the build: a program without it is not that program)
 [ ! -s $DIR/srclist.err ] || { cat $DIR/srclist.err; exit 1; }
-# and of a PROGRAM the ARM sources of its list, kernel/<component>.arm or the sources.arm of its port
+# and of a MAIN the ARM sources of its list, kernel/<component>.arm or the sources.arm of its port
 # directory (the <machine>_SOURCES of NT: sdff.c of winhelp)
 arm=$K/$(echo $COMP | tr / _ | tr A-Z a-z).arm; [ -f $arm ] || arm=$(bash portdir.sh $D)/sources.arm
-[ "$TTYPE" != PROGRAM ] || [ ! -f $arm ] || srcs="$srcs $(grep -v "^#" $arm | grep -v "^ *$" | sed "s|^[^/]|$(dirname $arm)/&|")"
+[ -z "$MAIN" ] || [ ! -f $arm ] || srcs="$srcs $(grep -v "^#" $arm | grep -v "^ *$" | sed "s|^[^/]|$(dirname $arm)/&|")"
 # the subdirectories of include directories the sources name in angle brackets, after the include
 # directories of the SOURCES (relinc.sh -a), and the directories of their relative includes, last
 # (RELINC: both, which rc.sh can leave out)
@@ -101,38 +107,44 @@ INCS="$INCS $(ntpch $D /tmp/f/pch)"
 # the farmed directory of a source of the tree (..\x.c, or the port version of one), where
 # its quoted includes are found first (make-lib.sh): ss3dfo.h beside ..\ss3dfo.c
 srcinc() { local s=$(realpath $(dirname $1)); case $s in /work/RASPI/ported/*) s=/work/private/${s#/work/RASPI/ported/} ;; /work/RASPI/apps/*) s=/work/private/${s#/work/RASPI/apps/} ;; esac; case $s in /work/private/*) bash incdirs.sh $s "" | cut -d" " -f2 ;; esac; }
+# (an armasm source of its list as make-lib.sh assembles it: the sequenced list of timtp)
 comp() {
   local b=$(basename "${2%.*}" | tr A-Z a-z) x=$(echo ${2##*.} | tr A-Z a-z)
+  [ $x != asm ] || { ntas $(obj $1 $2) $2 $DEFS -I$O/gen $INCS; return; }
   ntsrc $2 $DIR/src/$b.$x && ntyu $D $x $DIR/src/$b.$x && ntcc $1/$b.obj $DIR/src/$b.$x $([ $x != c ] || echo $CXXC) $DEFS $(srcinc $2) $INCS
 }
-o=$DIR/lobj; [ "$TTYPE" = PROGRAM ] && o=$DIR/obj
-# (and the object of the precompiled include, ntpchobj, which the program links)
-for f in $prog $(ntpchobj $D /tmp/f/pchobj); do par comp $DIR/obj $f; done
-# (the source of the program among the SOURCES of an UMAPPL_NOLIB once, as NT made its obj\*\<program>.obj
+obj() { local b=$(basename "${2%.*}" | tr A-Z a-z); case $2 in *.asm) echo $1/${b}_asm.obj ;; *) echo $1/$b.obj ;; esac; }
+o=$DIR/lobj; [ -n "$MAIN" ] && o=$DIR/obj
+# The objects the program links, in the order of makefile.def: that of the precompiled include
+# (ntpchobj, its HEADEROBJNAME), then its source or SOURCES.
+OBJS=
+for f in $(ntpchobj $D /tmp/f/pchobj) $prog; do par comp $DIR/obj $f; OBJS="$OBJS $(obj $DIR/obj $f)"; done
+# (the source of the program among the SOURCES once, as NT made its obj\*\<program>.obj
 # once: ssflwbox.c of the flower box)
 dup=
 for f in $srcs; do
   [ -n "$prog" ] && [ "$(basename "${f%.*}" | tr A-Z a-z)" = "$(echo $PROG | tr A-Z a-z)" ] && { dup=1; continue; }
   par comp $o $f
+  [ -z "$MAIN" ] || OBJS="$OBJS $(obj $o $f)"
 done
 pwait; [ $PARFAIL -eq 0 ] || exit 1
 [ -z "$dup" ] || [ $o = $DIR/obj ] || cp $DIR/obj/$(echo $PROG | tr A-Z a-z).obj $o/
-# the objects of a PROGRAM as those of its directory, which another image links (sfmapi.dll:
+# the objects of a MAIN as those of its directory, which another image links (sfmapi.dll:
 # ..\server\obj\*\validate.obj of the AFP service, make-dll.sh)
-[ "$TTYPE" != PROGRAM ] || { mkdir -p $U/dir/${D#/work/} && cp $DIR/obj/*.obj $U/dir/${D#/work/}/; }
+[ -z "$MAIN" ] || { mkdir -p $U/dir/${D#/work/} && cp $DIR/obj/*.obj $U/dir/${D#/work/}/; }
 
-# The objects of UMRES and UMOBJS, the UMLIBS, the libraries of the UMTYPE, the TARGETLIBS
-# of a PROGRAM and the LINKLIBS, in the order of makefile.def (srvmgr links crtdll.lib after
-# libc.lib). A library or object is the one make-lib.sh made for the directory named, else
-# an object of the program, else that of its name: a library, an import library or an
-# object of the C run-time. The library of a component whose SOURCES are resources only
-# (cntfs.lib) has nothing in it.
+# The objects of UMRES and the UMOBJS (of an UMAPPL: a MAIN links its SOURCES in their place),
+# the UMLIBS, the libraries of the UMTYPE, the TARGETLIBS of a MAIN and the LINKLIBS, in the
+# order of makefile.def (srvmgr links crtdll.lib after libc.lib). A library or object is the
+# one make-lib.sh made for the directory named, else an object of the program, else that of
+# its name: a library, an import library or an object of the C run-time. The library of a
+# component whose SOURCES are resources only (cntfs.lib) has nothing in it.
 OWN=$(macro TARGETNAME | tr -d " " | tr A-Z a-z).lib
 NSRC=$(macro SOURCES | tr " " "\n" | grep -ciE "\.(c|cxx|cpp)$")
 LIBS=""; seen=""
 set -f
-for l in $(echo "$(macro UMRES) $(macro UMOBJS)" | tr " " "\n" | grep -iE "\.obj$") $(macro UMLIBS | tr " " "\n" | grep -iE "\.(lib|obj)$") $TYPELIBS \
-         $([ "$TTYPE" != PROGRAM ] || macro TARGETLIBS | tr " " "\n" | grep -iE "\.(lib|obj)$") $(macro LINKLIBS | tr " " "\n" | grep -iE "\.(lib|obj)$"); do
+for l in $(echo "$(macro UMRES) $([ -n "$MAIN" ] || macro UMOBJS)" | tr " " "\n" | grep -iE "\.obj$") $(macro UMLIBS | tr " " "\n" | grep -iE "\.(lib|obj)$") $TYPELIBS \
+         $([ -z "$MAIN" ] || macro TARGETLIBS | tr " " "\n" | grep -iE "\.(lib|obj)$") $(macro LINKLIBS | tr " " "\n" | grep -iE "\.(lib|obj)$"); do
   b=$(basename "$(echo "$l" | tr "\\\\" /)" | tr A-Z a-z); case $b in *.obj) ;; *) b=${b%.lib}.lib ;; esac
   a=$(bash libpath.sh $D "$l"); [ -n "$a" ] || { [ -f $DIR/lobj/$b ] && a=$DIR/lobj/$b; } || a=$U/$b
   case " $seen " in *" $a "*) continue ;; esac; seen="$seen $a"
@@ -151,22 +163,29 @@ if [ -n "$STUB" ]; then
   s=$(bash portdir.sh $D)/$(echo $STUB | tr A-Z a-z)
   [ -f $s ] && STUB=$s || STUB=$D/$(ls $D | grep -ix "$STUB")
 fi
-# the resource scripts of the SOURCES and those of the resource files UMRES (that
-# of the program, $(@R).res: bind.res) and the libraries name (obj\*\name.res; the
-# TARGETLIBS of a PROGRAM, those of another program are of its DLL: imagehlp.res), in the
-# component directory; a resource file another component made (..\xlate\obj\*\eventvwr.res,
-# make-lib.sh) is linked as it is
-RCS=$(bash srclist.sh $COMP $ROOT rc 2>/dev/null | tr "\n" " ")
+# the resource scripts of the SOURCES of a MAIN (its OBJECTS: an UMAPPL links the resources
+# its UMRES and UMLIBS name, sadmin.exe its sadmin.res, not the slm.res of the SOURCES) and
+# those of the resource files UMRES (that of the program, $(@R).res: bind.res) and the
+# libraries name (obj\*\name.res; the TARGETLIBS of a MAIN, those of another program are of
+# its DLL: imagehlp.res): the script of that name of the SOURCES (..\cabinet.rc of explorer),
+# else the one in the component directory; a resource file another component made
+# (..\xlate\obj\*\eventvwr.res, make-lib.sh) is linked as it is
+SRCRC=$(bash srclist.sh $COMP $ROOT rc 2>/dev/null | tr "\n" " ")
+RCS=; [ -z "$MAIN" ] || RCS=$SRCRC
 RES=""
 set -f
-for l in $(echo "$(macro UMRES | sed "s/\$(@R)/$PROG/g") $(macro UMLIBS) $([ "$TTYPE" != PROGRAM ] || macro TARGETLIBS)" | tr " " "\n" | grep -iE "\.res$"); do
-  r=$(basename "$(echo "$l" | tr "\\\\" /)")
+for l in $(echo "$(macro UMRES | sed "s/\$(@R)/$PROG/g") $(macro UMLIBS) $([ -z "$MAIN" ] || macro TARGETLIBS)" | tr " " "\n" | grep -iE "\.res$"); do
+  r=$(basename "$(echo "$l" | tr "\\\\" /)" | tr A-Z a-z)
   a=$(bash libpath.sh $D "$l")
   case $a in "") ;; */dir/${D#/work/}/*) ;; *) RES="$RES $a"; continue ;; esac
-  n=$(ls $D | grep -ix "${r%.*}.rc") || continue
+  s=$(for q in $SRCRC; do [ "$(basename $q | tr A-Z a-z)" != "${r%.*}.rc" ] || { echo $q; break; }; done)
+  if [ -z "$s" ]; then
+    n=$(ls $D | grep -ix "${r%.*}.rc") || continue
+    s=$(bash portdir.sh $D)/$(echo $n | tr A-Z a-z); [ -f $s ] || s=$D/$n
+  fi
   # (once: the port version of a script of the SOURCES, winmsd.rc, is that of WINMSD.RC)
-  case " $(echo $RCS | tr A-Z a-z) " in *"/$(echo $n | tr A-Z a-z) "*) continue ;; esac
-  p=$(bash portdir.sh $D)/$(echo $n | tr A-Z a-z); [ -f $p ] && RCS="$RCS $p" || RCS="$RCS $D/$n"
+  case " $(echo $RCS | tr A-Z a-z) " in *"/${r%.*}.rc "*) continue ;; esac
+  RCS="$RCS $s"
 done
 set +f
 # A script another one includes goes in with that one only (the linker of 1994 kept
@@ -188,7 +207,7 @@ bash nttarget.sh $D file1 $U || exit 1
 X=$(macro UMAPPLEXT | tr -d " "); [ -n "$X" ] || [ -z "$(macro _DOT_COM_FILE)" ] || X=.com
 F=$(echo $PROG${X:-.exe} | tr a-z A-Z)
 link -nologo -machine:arm -release -opt:ref,noicf -force:multiple -subsystem:$SUB -entry:$ENTRY -base:$BASE ${STACK:+-stack:$STACK} ${STUB:+-stub:$STUB} -nodefaultlib $LINKVER $(ntlinkflags $D) \
-     -debug -pdb:$DIR/$PROG.pdb -pdbaltpath:"Z:$(echo $O/$PROG.pdb | tr / "\\\\")" -map:$DIR/$PROG.map -out:$DIR/$F $DIR/obj/*.obj $LIBS $RES > $DIR/link.err 2>&1 \
+     -debug -pdb:$DIR/$PROG.pdb -pdbaltpath:"Z:$(echo $O/$PROG.pdb | tr / "\\\\")" -map:$DIR/$PROG.map -out:$DIR/$F $OBJS $LIBS $RES > $DIR/link.err 2>&1 \
   || { echo ">> LINK FAILED"; grep -E "error|unresolved" $DIR/link.err | sort | uniq -c | sort -rn | head -40; exit 1; }
 cp $DIR/$PROG.pdb $DIR/$PROG.map $O/
 ntver $DIR/$F $(macro SUBSYSTEM_VERSION | tr -d " ") || exit 1

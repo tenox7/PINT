@@ -31,6 +31,8 @@ SOURCES=                \
 UMTYPE=windows
 UMAPPL=iexplore
 UMENTRY=winmain
+# (the resources of emosaic.rc: an UMAPPL links those its UMRES names)
+UMRES=obj\*\emosaic.res
 
 UMLIBS=                                         \
 	obj\*\iexplore.lib                      \

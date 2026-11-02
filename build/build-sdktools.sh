@@ -12,12 +12,8 @@
 # napdump (the NAP profiling build of ntdll), uipers and winmeter (the LUID and the object counts of
 # NT 3.1), ntfsdump (the untfs of NT 3.5), wap\user and wap\gdi (the user and the gdi32 exports of
 # NT 3.5), symref (svcctrl.lib, which NT 4.0 does not build), and monitors (its monitors.h is not in
-# the tree), cvdump (mspdb41.dll, of the build of Visual C++).
-# Not yet: pstat and wcall (the gensrv -stubs of nttarget.sh), nmake (the copy /v of nmk.awk), timtp
-# (a PROGRAM with assembler sources and other UMAPPL programs, make-exe.sh), sadmin, slmck, execslm
-# and the commands of SLM (the resources of the UMAPPL programs of a LIBRARY, make-exe.sh) and the
-# driver, viewer, event and control DLLs of mstest (NTCPPFLAGS), changes of the build that rebuild
-# everything. Each step
+# the tree), cvdump (mspdb41.dll, of the build of Visual C++). The messages of nmake (NMAKE.ERR)
+# go beside it, as binplace placed its MISCFILES (placefil.txt: mstools). Each step
 # runs when its inputs changed (build/stamp.sh). The libraries and DLLs build first, then the
 # programs, which link them; each component is a job (stamp.sh), J at once.
 #
@@ -41,10 +37,13 @@ exesteps() {
     for p; do INSTALL=1 ROOT=$P step sdk/$S/$c/$p $(perl $R/build/inputs.pl $R $P $S/$c exe) -- $B/make-exe.sh $S/$c $p || rc=1; done
     return $rc
 }
-# The commands of SLM: copies of execslm.exe, which runs slm.exe with its name (slm\makefile.inc).
+# The commands of SLM: copies of execslm.exe, which runs slm.exe with its name (the NTTARGETFILES
+# of slm\makefile.inc, which its library and programs skip: the step slmcmds copies EXECSLM.EXE,
+# once linked).
+SLMCMDS="addfile addproj catsrc defect delfile delproj enlist in log out scomp ssync status"
 slmcmds() {
     local d=$R/sdcard/root/SDKTOOLS n
-    for n in addfile addproj catsrc defect delfile delproj enlist in log out scomp ssync status; do
+    for n in $SLMCMDS; do
         cp $d/EXECSLM.EXE $d/$(echo $n | tr a-z A-Z).EXE
     done
 }
@@ -82,8 +81,9 @@ exe strings strings; exe structo structo; exe suck suck; exe switcher switcher; 
 exe tee tee; exe timer timer; lib tlist tlist kill empty emptyq; dll topdesk/dll; exe topdesk/app topdesk
 exe topdesk/mrshadow mrshadow; exe touch touch; exe trans trans; exe tz tz; exe uixport uixport; exe undel undel; exe units units
 exe upd upd; exe updrn updrn; exe vadump vadump
-# of vctools the message compiler, the resource compiler and its DLL and the help contents converter
-exe vctools/mc mc; dll vctools/rcdll; exe vctools/rc rc; exe vctools/contents/hdxcvt hdxcvt
+# of vctools the message compiler, the resource compiler and its DLL, the help contents converter
+# and nmake
+exe vctools/mc mc; dll vctools/rcdll; exe vctools/rc rc; exe vctools/contents/hdxcvt hdxcvt; exe vctools/nmake nmake
 exe vdesk vdesk; exe vdmperf vdmperf; exe walk walk; exe wc wc; exe wcache wcache; exe wcshdr wcshdr; exe where where
 exe winobj winobj; exe wintools/winmsdp winmsdp; lib wperf wperf; exe ws ws; exe ws2hdr ws2hdr; exe yapt yapt; exe ync ync
 lib z/extens/exthdr; barrier; dll z/extens/zextens; exe z/src z; exe zwapi zwapi
@@ -93,11 +93,12 @@ exe pch pch; exe a2coff a2coff; exe bintrack bintrack; lib bugboard htmboard bug
 exe clearmem clearmem; exe compdir compdir; exe dlgedit dlgedit; lib doctor doctor c2rtf; exe dosdev dosdev
 exe dphhogs dphhogs; exe dskimage dskimage; lib editreg editreg; lib fontedit fontedit; dll gutils
 exe imagedit imagedit; exe masm masm386; lib mip2coff mip2coff
-for c in ntedit/src ntdlgs/dll ntscrn ntidle ntabout; do dll mstest/$c; done
-exe mstest/ntdlgs/app testdlgs; exe mstest/ntsnap testscrn
+for c in ntview ntedit/src ntevnt/src ntctrl/src ntdlgs/dll ntscrn ntidle ntabout; do dll mstest/$c; done
+exe mstest/ntdlgs/app testdlgs; exe mstest/ntsnap testscrn; exe mstest/ntdrvr/src testdrvr
 exe newinvtp winvtp; exe ntslm ntslm; exe objdir objdir; exe pdc pdc; lib pviewer pviewer; exe random random
 exe rcdump rcdump; exe readline readline; exe roshare roshare; exe seclist seclist; exe setlink setlink; exe simbad simbad
-lib slmnew/slm slm; lib slmnew/util merge unmerge slmdiff cookie; exe slmnew/fixdiff fixdiff
+NTTARGET_SKIP="$(printf "obj/arm/%s.exe " $SLMCMDS)" lib slmnew/slm slm sadmin slmck execslm
+lib slmnew/util merge unmerge slmdiff cookie; exe slmnew/fixdiff fixdiff
 exe slmnew/slmed/daytona slmed; exe slmnew/fixlog logfix; exe slmnew/fixstat slmfix
 exe solidpp solidpp; dll spy/dll; lib spy/app spy; exe takeown takeown; exe tile tile; lib tlibs/nb3lib/src
 exe vi vi
@@ -113,16 +114,19 @@ lib lztest lztest; exe mepsetup mepsetup; exe mhlsrv/client mhlcli; exe mhlsrv/s
 lib mptest mptest; exe mrgscomp mrgscomp mrgdiff; exe nbsim nbsim; exe netshare netshare
 exe newer newer; exe olebnch oledoc; exe owntree owntree; lib perflog/pdlcnfig pdlcnfig
 lib perflog/pdlsvc pdlsvc; dll perftool/timer; lib perftool/wait wait; lib physdisk physdisk
+lib pstat pstat pcall ntimer timeit
 exe qfetool qfetool; exe rshell/ntclient rcmd; lib rshell/server rcmdsrv; lib rslm rslm
 exe rwtest rwtest; lib secmgr secmgr; lib setedit setedit; lib sfs sfs-gate sfs-page; lib shellfix shellfix
-lib srvnsp srvnsp; exe swappath swappath
+lib srvnsp srvnsp; exe swappath swappath; exe timtp timtp chclient chserver
 exe vmtests poolkill vmperf32 vmtest vmstress tfork pageit color vmread
-exe wsacl wsacl; lib wzmail/dh.new/lib; lib wzmail/mail1.0 wzmail; exe xmas xmas; exe yacc yacc; lib zd zdsim
+lib wcall wcall; exe wsacl wsacl; lib wzmail/dh.new/lib; lib wzmail/mail1.0 wzmail; exe xmas xmas; exe yacc yacc
+lib zd zdsim
 }
 
 PHASE=libs; tools; barrier
 PHASE=exes; tools; barrier
-# (not yet, with execslm: step slmcmds $R/sdcard/root/SDKTOOLS/EXECSLM.EXE -- slmcmds)
+step slmcmds $R/sdcard/root/SDKTOOLS/EXECSLM.EXE -- slmcmds
+step nmakeerr $R/obj/gen/tree/sdktools/vctools/nmake/nmake.err -- install -m 644 $R/obj/gen/tree/sdktools/vctools/nmake/nmake.err $R/sdcard/root/SDKTOOLS/NMAKE.ERR
 # the templates of the scanners flex and the parsers yacc write (flex -Sc:\sdktools\skeleton.flx, yacc
 # finds yypars.c on the INCLUDE path)
 T="$R/../private/sdktools/flex/skeleton.flx $R/../private/sdktools/yacc/yypars.c"

@@ -62,8 +62,9 @@ EXT=$(macro TARGETEXT | tr -d " " | tr A-Z a-z); EXT=${EXT:-dll}
 [ "$(macro TARGETTYPE | tr -d " ")" = DYNLINK ] || { echo "$COMP: not a DYNLINK"; exit 1; }
 # (a \" of the C_DEFINES is a quote, as the command line of NT gave it to cl: the
 # -D__GLS_RELEASE=\"0\" of glmf32); RC gets the defines alone, as makefile.def gives it the
-# CDEFINES: not the MFC_FLAGS and USER_C_FLAGS of the compiler
-CDEFS="$(macro C_DEFINES | sed "s/\$([A-Za-z_0-9]*)//g; s/\\\\\"/\"/g") $(macro NET_C_DEFINES)"
+# CDEFINES: not the MFC_FLAGS and USER_C_FLAGS of the compiler (and the NTCPPFLAGS, which the RISC
+# machines took after them: mipsmk.inc ENV_DEFINES)
+CDEFS="$(macro C_DEFINES | sed "s/\$([A-Za-z_0-9]*)//g; s/\\\\\"/\"/g") $(macro NET_C_DEFINES) $(macro NTCPPFLAGS | sed "s/\$([A-Za-z_0-9]*)//g")"
 DEFS="$(ntdefines $D) $CDEFS"
 RCDEFS="$(ntdefines $D rc) $CDEFS"
 CXXC=$(ntcxx $D)

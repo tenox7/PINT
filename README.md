@@ -123,8 +123,8 @@ system at a glance, in one window in the style of WinMSD; `ntfetch --text > FILE
 ## SDK tools
 
 `\SDKTOOLS` has the tools of the NT source's `private\sdktools` that build for ARM, as in PINT 3.5
-(`build/build-sdktools.sh`): 290 programs and 24 DLLs, such as build, rc, mc, pview, pmon, tlist, kill, qgrep,
-windiff, regini, remote, the z editor and vi. They are not on the PATH. The header of `build/build-sdktools.sh` lists
+(`build/build-sdktools.sh`): 303 programs, SLM's 13 commands and 27 DLLs, such as build, nmake, rc, mc, pstat,
+pview, pmon, tlist, kill, qgrep, windiff, regini, remote, slm, the z editor and vi. They are not on the PATH. The header of `build/build-sdktools.sh` lists
 the tools left out and why.
 
 The games, TenoxVNC, Internet Explorer, ntfetch and the SDK tools are on the SD image; the setup card does not

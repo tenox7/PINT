@@ -10,12 +10,13 @@
 # Usage:  cd RASPI/build && ./make-lib.sh rtl/boot               # -> obj/bldrrtl.lib
 #         ROOT=/work/private ./make-lib.sh urtl         # a component outside private/ntos
 #         INSTALL=1 ROOT=/work/private ./make-lib.sh net/snmp/mibs   # also install what it binplaces as retail (mib.bin)
+#         NTTARGET_SKIP="obj/arm/x.exe ..." ...                    # targets the caller makes (nttarget.sh)
 set -uo pipefail
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NT40="$(cd ../.. && pwd)"
 COMP=${1:?usage: make-lib.sh COMPONENT}
 
-docker run --rm -e CJ="${CJ:-4}" -e COMP="$COMP" -e ROOT="${ROOT:-/work/private/ntos}" -e INSTALL="${INSTALL:-0}" -v "$NT40/../nt35/msvc":/opt/msvc -v "$NT40/../nt35":/nt35:ro -v "$NT40/../XPSP1":/XPSP1:ro -v "$NT40":/work -v "$NT40/private":/work/private:ro -v "$NT40/public":/work/public:ro \
+docker run --rm -e CJ="${CJ:-4}" -e COMP="$COMP" -e ROOT="${ROOT:-/work/private/ntos}" -e INSTALL="${INSTALL:-0}" -e NTTARGET_SKIP="${NTTARGET_SKIP:-}" -v "$NT40/../nt35/msvc":/opt/msvc -v "$NT40/../nt35":/nt35:ro -v "$NT40/../XPSP1":/XPSP1:ro -v "$NT40":/work -v "$NT40/private":/work/private:ro -v "$NT40/public":/work/public:ro \
     -w /work/RASPI/build --entrypoint bash tenox7/msvc-arm32 -c '
 set -u
 . ./msvc.sh
@@ -54,7 +55,8 @@ bash nttarget.sh $D pre $OUT || exit 1
 [ -z "$(macro PASS0ONLY)" ] || { echo ">> $COMP: pass 0 done"; exit 0; }
 # (a \" of the C_DEFINES is a quote, as the command line of NT gave it to cl: -DX=\"0\"); RC
 # gets the defines alone, as makefile.def gives it the CDEFINES: not the MFC_FLAGS of the compiler
-CDEFS="$(macro C_DEFINES | sed "s/\$([A-Za-z_0-9]*)//g; s/\\\\\"/\"/g") $(macro NET_C_DEFINES)"
+# (and the NTCPPFLAGS, which the RISC machines took after them: mipsmk.inc ENV_DEFINES)
+CDEFS="$(macro C_DEFINES | sed "s/\$([A-Za-z_0-9]*)//g; s/\\\\\"/\"/g") $(macro NET_C_DEFINES) $(macro NTCPPFLAGS | sed "s/\$([A-Za-z_0-9]*)//g")"
 DEFS="$(ntdefines $D) $CDEFS"
 RCDEFS="$(ntdefines $D rc) $CDEFS"
 CXXC=$(ntcxx $D)

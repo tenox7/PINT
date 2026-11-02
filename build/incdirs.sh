@@ -62,17 +62,26 @@ own() {
     M="$m" perl -pe 'BEGIN { for (split /\n/, $ENV{M}) { my ($k, $v) = split /=/, $_, 2; $m{$k} = $v; } } s/^(\s*#\s*include\s*)["<]([^">]*)[">]/exists $m{$2} ? "$1\"$m{$2}\"" : $&/e' "$1"
 }
 farm() {
-    local s
+    local s l
     # A directory the farm of its parent linked (below) gets a farm of its own in place of
     # the link: a farm is never written through a link into the NT tree, which it would
     # empty (its names are those of the farm). So does a parent the farm of its own parent
-    # linked (W32 then W32\NTUSER\INC of winsrv).
+    # linked (W32 then W32\NTUSER\INC of winsrv); one another job farms is its own once that
+    # job has taken it (below).
     case $(realpath -m "$(dirname "$2")") in /tmp/*) ;; *) farm "$(dirname "$1")" "$(dirname "$2")" ;; esac
-    [ -L "$2" ] && rm "$2"
+    while case $(realpath -m "$(dirname "$2")") in /tmp/*) false ;; *) [ -d "$(farmlock "$(dirname "$2")")" ] ;; esac; do sleep 0.1; done
     [ -e "$2/.farmed" ] && return
-    mkdir -p "$2" || exit 1
-    case $(realpath "$2") in /tmp/*) ;; *) echo "incdirs: the farm $2 is not under /tmp" >&2; exit 1 ;; esac
-    : > "$2/.farmed"
+    # The compiles of a component run at once (msvc.sh par): one job fills a farm, and .farmed
+    # marks it full. A job that finds it taken takes its name now (the includes it rewrites
+    # name it) and waits for it at its end (farmwait), as does this one for a farm it is filling
+    # itself (a file of the farm that includes another of it by its path).
+    l=$(farmlock "$2")
+    mkdir -p /tmp/f/lock
+    mkdir "$l" 2>/dev/null || { printf '%s\t%s\n' "$1" "$2" >> /tmp/f/wait.$$; return; }
+    [ ! -e "$2/.farmed" ] || { rmdir "$l"; return; }
+    [ -L "$2" ] && rm "$2"
+    mkdir -p "$2" || { rmdir "$l"; exit 1; }
+    case $(realpath "$2") in /tmp/*) ;; *) echo "incdirs: the farm $2 is not under /tmp" >&2; rmdir "$l"; exit 1 ;; esac
     # the message headers its makefile.inc makes, as the NT build made them first
     bash $B/mcinc.sh "$1" >&2
     # and the port's versions of its files (portdir.sh), which a quoted
@@ -82,16 +91,35 @@ farm() {
     for f in "$1"/* "/tmp/f/gen/${1#/work/private/}"/* $(bash $B/portdir.sh "$1")/*; do
         n="$2/$(basename "$f" | tr A-Z a-z)"
         case $f in *.ntdiff|*/[Ss][Yy][Ss]) continue ;; esac
+        # (each file in place at once, whole to a compile that reads the farm as it is filled again:
+        # nttarget.sh farms a directory again for the files its recipes made; a directory not over
+        # the farm of its own another job makes there)
         if [ -d "$f" ]; then
-            [ -e "$n" ] || ln -s "$f" "$n"
+            [ -e "$n" ] || [ -d "$(farmlock "$n")" ] || ln -sT "$f" "$n" 2>/dev/null
         elif grep -Iq . "$f" 2>/dev/null; then
-            rm -f "$n"; filt "$f" "$1" > "$n"
+            filt "$f" "$1" > "$n.$$"; mv -fT "$n.$$" "$n"
         elif [ -f "$f" ]; then
-            rm -f "$n"; ln -s "$f" "$n"
+            ln -sf "$f" "$n.$$" && mv -fT "$n.$$" "$n"
         fi
     done
     # the sys\ headers, in their directory (incfix.sed)
     s=$(ls -d "$1"/[Ss][Yy][Ss] 2>/dev/null) && farm "$s" "$2/sys"
+    : > "$2/.farmed"
+    rmdir "$l"
+}
+farmlock() { echo "/tmp/f/lock/$(echo "$1" | tr / :)"; }
+# farmwait: the farms other jobs were filling when this one took them (farm), full; one whose
+# job let it go unfilled (a failed farm, or one nttarget.sh farms again) this one farms
+farmwait() {
+    local w=/tmp/f/wait.$$ s t
+    while [ -s $w ]; do
+        mv $w $w.0
+        while IFS=$'\t' read -r s t <&3; do
+            while [ -d "$(farmlock "$t")" ]; do sleep 0.1; done
+            farm "$s" "$t"
+        done 3< $w.0
+    done
+    rm -f $w.0
 }
 resolve() {
     local p=$1 c n
@@ -164,6 +192,7 @@ if [ "$1" = --gen ]; then
         farm "$t" "/tmp/f/dirs$t"
         m="$m$i=/tmp/f/dirs$t/$b"$'\n'
     done
+    farmwait
     [ -n "$m" ] || exec cat "$2"
     M="$m" exec perl -pe 'BEGIN { for (split /\n/, $ENV{M}) { my ($k, $v) = split /=/, $_, 2; $m{$k} = $v; } } s/^(\s*#\s*include\s*)"([^"]*)"/exists $m{$2} ? "$1\"$m{$2}\"" : $&/e' "$2"
 fi
@@ -177,3 +206,4 @@ for p in "$1" $(for i in $(echo "$2" | tr ';' ' '); do include "$1" "$i"; done);
     *) farm "$p" "/tmp/f/dirs$p"; echo -n " -I/tmp/f/dirs$p" ;;
     esac
 done
+farmwait

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Build NT's build tools into obj/host; they run on the 32-bit ARM Wine of the build
 # image (tools/host.sh). The tools that make NT's headers (HEXTRACT, HSPLIT, WCSHDR,
-# WS2HDR, ZWAPI, LISTMUNG, MC), KBDTOOL, pe2img, midlcpp and msvcexe (CL.EXE and LINK.EXE, which
+# WS2HDR, ZWAPI, LISTMUNG, MC, and MKMSG of the message files of vctools: nmake's),
+# KBDTOOL, pe2img, midlcpp and msvcexe (CL.EXE and LINK.EXE, which
 # GUIDLIB runs) come first, with the C run-time and
 # headers of the SDK of Microsoft C, as NT took them from the SDK of the machine it
 # was built on. Then the header pass (build/mkgen.sh), ksarm.h, NT's C run-time (each
@@ -54,6 +55,7 @@ tool ws2hdr $S/ws2hdr
 tool zwapi $S/zwapi
 tool listmung $S/listmung
 tool mc $S/vctools/mc
+tool mkmsg $S/vctools/msg
 # (the keyboard layouts, ntuser\kbd: the sources of each from its kbd*.txt)
 tool kbdtool $S/kbdtool
 # (the alias objects of oldnames.lib of the C run-time, crt/make-crt.sh OLDNAMES)

@@ -7,7 +7,7 @@
 # "type << > f" and "type << >> f" inline files (ended by <<, <<KEEP or <<NOKEEP),
 # "type a > b", "type a >> b", hextract, hsplit, "wcshdr < a > b" and "ws2hdr < a" (also in a
 # pipe, without the redirection), midl, mc, copy and cp (also "copy a + b c"),
-# del/erase, md/mkdir, delnode, attrib (nothing), lib (also link -lib), rcpp, solidpp, binplace, link32 -dump, uixport, guidlib, kbdtool, prodfilt, xdosnet and mibcc, piped with "|", "mapmsg ... > f", "listmung list template > f", "riscdef ... > f",
+# del/erase, md/mkdir, delnode, attrib (nothing), lib (also link -lib), rcpp, solidpp, binplace, link32 -dump, uixport, guidlib, kbdtool, prodfilt, xdosnet, mibcc and mkmsg, piped with "|", "mapmsg ... > f", "listmung list template > f", "riscdef ... > f",
 # the generators (set, "nmake obj\x.obj", link with an inline response file, "obj\machine\x.exe args")
 # ($@ and $** or $(**) as the target and its dependents, $? too, $(@D) $(@B) $(@F) $(@R) the parts of
 # the target's name, also in inline files and as $$(@D) in a dependency line), echo ignored but into a file, inference rules
@@ -119,9 +119,15 @@ function endinl(l) {
     return toupper(l) ~ /^<<[ \t]*((NO)?KEEP)?[ \t]*$/
 }
 
-# The commands out of recipe line l, whose exit status nmake ignores if l has the - prefix (-del x, @-x).
+# The commands out of recipe line l, which end the recipe when they fail, as nmake stops at a command
+# that fails (set -e would not where the recipe runs in a test: the target of nttarget.sh), but
+# with the - prefix, whose exit status nmake ignores (-del x, @-x); fails(l) for a command of an
+# inline file.
 function ign(l, out) {
-    return l ~ /^@?-/ ? "{ " out "; } || true" : out
+    return l ~ /^@?-/ ? "{ " out "; } || true" : out fails(l)
+}
+function fails(l) {
+    return l ~ /^@?-/ ? " || true" : " || exit 1"
 }
 
 # One command of a recipe, of those that "&" joins; a pipeline, each of its commands.
@@ -142,9 +148,9 @@ function command(cmd,    a, n, f, i) {
         if (match(cmd, />[ \t]*[^ \t<>|]+/)) { a[3] = substr(cmd, RSTART + 1, RLENGTH - 1); sub(/^[ \t]+/, "", a[3]) }
         return "nmk_" a[1] " " a[2] " " a[3]
     }
-    # copy: its /a and /b switches dropped, and "a+b" spaced as "a + b"
+    # copy: its /a, /b and /v (verify) switches dropped, and "a+b" spaced as "a + b"
     if (tolower(cmd) ~ /^copy[ \t]/) {
-        gsub(/[ \t]+\/[AaBb]([ \t]|$)/, " ", cmd)
+        gsub(/[ \t]+\/[AaBbVv]([ \t]|$)/, " ", cmd)
         gsub(/[ \t]*\+[ \t]*/, " + ", cmd)
         sub(/[ \t]+$/, "", cmd)
     }
@@ -213,6 +219,9 @@ function command(cmd,    a, n, f, i) {
     }
     if (a[1] == "rcpp" || a[1] == "solidpp" || a[1] == "binplace" || a[1] == "link32" || a[1] == "uixport" || a[1] == "gensrv" || a[1] == "guidlib" || a[1] == "kbdtool" || a[1] == "prodfilt" || a[1] == "xdosnet" || a[1] == "mibcc")
         return "nmk_" cmd
+    # mkmsg, by the directory of its build (vctools' $(MKMSG_DIR)\mkmsg)
+    if (tolower(a[1]) ~ /(^|\/)mkmsg(\.exe)?$/)
+        return "nmk_mkmsg " substr(cmd, length(a[1]) + 2)
     # a generator: the environment of nmake (set NAME=), the object nmake makes, its link and
     # the program the recipe made, run
     if (tolower(a[1]) == "set")
@@ -268,7 +277,7 @@ function infer(    r, s, fe, te, fd, td, paths, ext, dir, base, src, i, l) {
             l = expand(l); sub(/^[ \t]+/, "", l)
             split(l, a, /[ \t]+/)
             if (a[1] == "type" && a[2] == "<<") {
-                print (a[3] == ">" ? "nmk_new " : "nmk_add ") a[4] " <<'NMK_EOF'"
+                print (a[3] == ">" ? "nmk_new " : "nmk_add ") a[4] " <<'NMK_EOF'" fails(l)
                 continue
             }
             print ign(l, command(l))
@@ -417,7 +426,7 @@ inrecipe && /^[ \t]+[^ \t]/ {
         next
     n = split(line, a, /[ \t]+/)
     if (a[1] == "type" && a[2] == "<<") {
-        print (a[3] == ">" ? "nmk_new " : "nmk_add ") a[4] " <<'NMK_EOF'"
+        print (a[3] == ">" ? "nmk_new " : "nmk_add ") a[4] " <<'NMK_EOF'" fails(line)
         ncmds++
         inline = 1
         next
@@ -430,7 +439,7 @@ inrecipe && /^[ \t]+[^ \t]/ {
             eop = efile ~ /^>>/ ? "nmk_echo -a " : "nmk_echo -n "
             sub(/^>>?[ \t]*/, "", efile); sub(/[ \t]+$/, "", efile)
             sub(/^@?ech(o)?[ \t]?/, "", etext); gsub(/\x27/, "\x27\\\x27\x27", etext)
-            print eop efile " \x27" etext "\x27"
+            print eop efile " \x27" etext "\x27" fails(line)
             ncmds++
         }
         next
@@ -440,7 +449,7 @@ inrecipe && /^[ \t]+[^ \t]/ {
     if (line ~ /@<<[ \t]*$/) {
         sub(/[ \t]*@<<[ \t]*$/, "", line)
         out = command(line)
-        print out (out ~ /^nmk_lib / ? " @-" : "") " <<'NMK_EOF'"
+        print out (out ~ /^nmk_lib / ? " @-" : "") " <<'NMK_EOF'" fails(line)
         ncmds++
         inline = 1
         next
