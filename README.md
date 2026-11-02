@@ -4,6 +4,8 @@ Windows NT 4.0 (build 1381) ported to 32-bit ARM (ARMv7-A) on the Raspberry Pi 2
 
 PINT 4.0 is work in progress. PINT 3.5, Windows NT 3.5 (build 782), is on the branch `782`.
 
+![PINT 4.0 in QEMU raspi2b: ntfetch, Task Manager, Control Panel, System Properties and Windows NT Diagnostics](screenshot.png)
+
 ## Status
 
 - Runs in QEMU `raspi2b`, `raspi3b` and `raspi4b` on four CPUs: NT's developer first run or NT 4.0's own setup, logon,
