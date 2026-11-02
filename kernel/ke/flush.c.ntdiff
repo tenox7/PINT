@@ -1,0 +1,24 @@
+#ntdiff private/ntos/ke/mips/flush.c
+=1 1 13
++    ARM port of KE\MIPS\FLUSH.C: a range of the instruction cache is swept
++    by virtual address on the current processor only, as on the PowerPC
++    (KE\PPC\FLUSH.C). The multiprocessing extensions broadcast cache
++    maintenance by address to every processor of the inner shareable domain,
++    where all memory is, while a target of an interprocessor request would
++    reach the address in the address space it runs, in which a user address
++    is not mapped. The whole caches are swept by set and way, which is not
++    broadcast, on every processor as on MIPS.
+=1 13 45
+=1 66 443
+=1 511 5
++    // instruction cache, then sweep the entire instruction cache on every
++    // processor.
+=1 521 3
++        KeSweepIcache(AllProcessors);
+=1 710 4
++    // Write the range back from the data cache to the point of unification
++    // and invalidate it in the instruction cache, at the caller's IRQL: the
++    // operations reach every processor, and a fault on the range is taken
++    // where the caller expects it (NtFlushInstructionCache).
+=1 555 6
+=1 643 178

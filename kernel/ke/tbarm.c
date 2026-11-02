@@ -553,7 +553,13 @@ Return Value:
 
 {
     ULONG Status = (FaultStatus & 0xF) | ((FaultStatus >> 6) & 0x10);
-    BOOLEAN Write = (FaultStatus & (1 << 11)) != 0;
+
+    //
+    // A cache maintenance operation (CM) faults as a write (WnR), but it
+    // needs only a translation of its address.
+    //
+
+    BOOLEAN Write = (FaultStatus & ((1 << 13) | (1 << 11))) == (1 << 11);
     BOOLEAN Filled = FALSE;
     BOOLEAN Held;
     PHARDWARE_PTE PageDirectory;
