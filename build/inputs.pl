@@ -52,8 +52,7 @@ exit 0 unless $link;
 my $pd = $root =~ m{^/work/RASPI/} ? "" : port(lc "$root/$comp" =~ s{^/work/private/}{}r);
 my ($s) = grep { -f } map { ($pd ? "$pd/$_" : ()), "$dir/$_" } qw(up/sources sources);
 exit 0 unless $s;
-open(my $h, '<', $s) or exit 0;
-my $t = do { local $/; <$h> } =~ s/\r//gr =~ s/\\\n/ /gr;
+my $t = sources($s, $dir);
 my $km = $t =~ /^\s*TARGETTYPE\s*=\s*(DRIVER|EXPORT_DRIVER|MINIPORT|HAL)\b/mi;
 my $o = $km ? "$r/obj" : "$r/obj/um";
 my @lib = map { "$o/$_.lib" } $km ? qw(ntoskrnl hal libcntpr) : qw(libc libcmt crtdll kernel32 user32 gdi32 advapi32 ntdll);
@@ -82,4 +81,27 @@ sub dirlib {
     }
     $p =~ s{^/work/}{};
     return (grep { -f } map { "$r/obj$_/dir/$p/" . lc $b } ("/um", ""))[0] // ();
+}
+
+# a SOURCES with the files it includes (!include, win32k's ..\sources.inc), each found as srcmacro.sh finds it: from
+# the directory of the file including it (the tree's for the port's version of a SOURCES), $(BASEDIR) the tree's root
+sub sources {
+    my ($f, $d) = @_;
+    open(my $h, '<', $f) or return "";
+    my $t = do { local $/; <$h> } =~ s/\r//gr =~ s/\\\n/ /gr;
+    return $t =~ s{^[ \t]*![ \t]*include[ \t]+(.*?)[ \t]*$}{ my $i = locate($d, $1); $i ? sources($i, $i =~ s{/[^/]+$}{}r) : "" }gmier;
+}
+sub locate {
+    my ($p, $i) = @_;
+    $i =~ s/["<>]//g; $i =~ tr{\\}{/};
+    $p = host("/work/") =~ s{/$}{}r if $i =~ s{^\$\((?:BASEDIR|_NTROOT|_NTBINDIR)\)}{};
+    return if $i =~ /\$/;
+    for my $c (grep { length && $_ ne "." } split m{/}, $i) {
+        if ($c eq "..") { $p =~ s{/[^/]+$}{}; next; }
+        opendir(my $h, $p) or return;
+        my ($n) = grep { lc eq lc $c } readdir $h;
+        return unless defined $n;
+        $p .= "/$n";
+    }
+    return -f $p ? $p : undef;
 }

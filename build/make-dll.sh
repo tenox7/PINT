@@ -247,9 +247,13 @@ done
 set +f
 # The import library, then NTTARGETFILE1, which makefile.def makes between it and the image
 # (the public shell32.lib of windows\shell\shelldll\base: the import library, shguid.obj and
-# shellprv.obj); NTTARGETFILES after the image.
+# shellprv.obj); NTTARGETFILES after the image. Not the private import library privlib made, which
+# a makefile.inc makes too (user32p.lib of NTTARGETFILE1, gdi32p.lib of NTTARGETFILES): nmake made
+# it again only from a changed .def, and one made on every link relinks all the images that import
+# from it (and user32 and gdi32 each other, on every build)
 implib $OBJS $LL
-NTTARGET_SKIP=$DEF1 bash nttarget.sh $D file1 $U || exit 1
+PRIV=; [ ! -f $DIR/${NAME}p.def ] || PRIV=$({ macro NTTARGETFILE1; macro NTTARGETFILES; } | tr " " "\n" | tr "\\\\" / | sed "s/\*/arm/g" | tr A-Z a-z | grep -ix ".*/${NAME}p\.lib")
+NTTARGET_SKIP="$DEF1 $PRIV" bash nttarget.sh $D file1 $U || exit 1
 F=$(echo $NAME.$EXT | tr a-z A-Z)
 # (the .pdb and .map are made beside the image, which names the obj/<name>.pdb they then are:
 # two images of a name, msacm32.dll and msacm32.drv, may link at once; -opt:ref as makefile.def
@@ -269,7 +273,7 @@ echo "   wrote $OUT/$F"
 G=/tmp/f/gen/${D#/work/private/}; g=$G/$(echo $F | tr A-Z a-z)
 mkdir -p $G && cp $DIR/$F $g && { [ ! -f /tmp/f/.genbase ] || touch -r /tmp/f/.genbase $g; }
 rm -f /tmp/nttarget.placed
-NTTARGET_PLACE=$([ "$INSTALL" = 1 ] && echo $OUT) SRCMACROS="${SRCMACROS:+$SRCMACROS }MAKEDLL=1" bash nttarget.sh $D files $U || exit 1
+NTTARGET_SKIP="$PRIV" NTTARGET_PLACE=$([ "$INSTALL" = 1 ] && echo $OUT) SRCMACROS="${SRCMACROS:+$SRCMACROS }MAKEDLL=1" bash nttarget.sh $D files $U || exit 1
 for p in $(cat /tmp/nttarget.placed 2>/dev/null); do echo "   wrote $OUT/$(echo $p | tr a-z A-Z) (binplace)"; done
 if [ -s /tmp/nttarget.placed ] && ! tr -d "\r" < /work/public/sdk/lib/placefil.txt | awk -v n=$(echo $F | tr A-Z a-z) "tolower(\$1) == n {f = 1} END {exit !f}"; then
   rm -f $OUT/$F; echo "   removed $OUT/$F (not in placefil.txt: binplace put it in dump)"

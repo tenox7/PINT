@@ -1,0 +1,8 @@
+#ntdiff private/ntos/w32/ntgdi/gre/dibapi.cxx
+=1 1 1787
++     // BMF_32BPP: a BI_RGB pixel is 0x00RRGGBB (blue in the low byte), so
++     // a surface with red in the low byte must be translated
+=1 1789 4
++         flRedDst = 0x00FF0000;
++         flBluDst = 0x000000FF;
+=1 1795 2149
