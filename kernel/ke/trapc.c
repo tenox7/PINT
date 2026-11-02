@@ -27,6 +27,7 @@ Environment:
 //
 
 #define FSR_WRITE                   (1 << 11)
+#define FSR_CACHE_MAINTENANCE       (1 << 13)
 #define FSR_STATUS(Fsr)             (((Fsr) & 0xF) | (((Fsr) >> 6) & 0x10))
 
 #define FS_ALIGNMENT                0x01
@@ -144,7 +145,13 @@ Routine Description:
 --*/
 
 {
-    BOOLEAN StoreInstruction = (TrapFrame->FaultStatus & FSR_WRITE) != 0;
+    //
+    // A cache maintenance operation faults as a write, but it reads: memory
+    // management resolves its fault as a read.
+    //
+
+    BOOLEAN StoreInstruction =
+        (TrapFrame->FaultStatus & (FSR_CACHE_MAINTENANCE | FSR_WRITE)) == FSR_WRITE;
 
     KiInitializeExceptionRecord(TrapFrame, ExceptionRecord);
     switch (FSR_STATUS(TrapFrame->FaultStatus)) {

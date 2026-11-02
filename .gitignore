@@ -72,6 +72,7 @@ kernel/ke/apcuser.c
 kernel/ke/buserror.c
 kernel/ke/dmpstate.c
 kernel/ke/exceptn.c
+kernel/ke/flush.c
 kernel/ke/initkr.c
 kernel/ke/intobj.c
 kernel/ke/miscs.asm

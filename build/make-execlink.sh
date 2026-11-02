@@ -67,7 +67,7 @@ for e in EX:/work/PRIVATE/NTOS/EX/MIPS/SPLOCKS.C EX:/work/PRIVATE/NTOS/EX/MIPS/P
          MM:mm/initarm.c MM:mm/dataarm.c MM:/work/PRIVATE/NTOS/MM/ALPHA/HYPERMAP.C \
          MM:/work/PRIVATE/NTOS/MM/MIPS/SETDIRTY.C MM:/work/PRIVATE/NTOS/MM/MIPS/DEBUGSUP.C LPC:lpc/lpcmove.c \
          KD:/work/PRIVATE/NTOS/KD/MIPS/KDCMSUP.C KD:/work/PRIVATE/NTOS/KD/MIPS/KDREBOOT.C \
-         KD:kd/kdtrap.c KD:kd/kdcpuapi.c RTL:/work/PRIVATE/NTOS/RTL/MIPS/DEBUG.C KE:/work/PRIVATE/NTOS/KE/MIPS/FLUSH.C \
+         KD:kd/kdtrap.c KD:kd/kdcpuapi.c RTL:/work/PRIVATE/NTOS/RTL/MIPS/DEBUG.C KE:ke/flush.c \
          KE:ke/intobj.c PS:ps/psctxarm.c \
          RTL:rtl/context.c RTL:rtl/largeint.c RTL:rtl/exdsptch.c RTL:rtl/vunwind.c RTL:rtl/chandler.c RTL:rtl/getcalr.c $FLUSHTB; do
   par archc $e
