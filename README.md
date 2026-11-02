@@ -2,6 +2,8 @@
 
 Windows NT 3.5 ported to 32-bit ARM (ARMv7-A) on the Raspberry Pi 2, 3 and 4, with own ARC firmware.
 
+![PINT 3.5 on a Raspberry Pi 3 Model B+: Program Manager, NT Performance and Windows NT Diagnostics](screenshot.png)
+
 ## Raspberry Pi models
 
 - Tested: Pi 2 Model B v1.1 (BCM2836, Cortex-A7), Pi 2 Model B v1.2, Pi 3 Model B v1.2, v1.3 and B+ v1.3 (BCM2837,
