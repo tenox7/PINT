@@ -112,5 +112,5 @@ the PATH.
 
 - This repository contains no Microsoft or Windows copyrighted material. 
 - It is just a build toolchain plus own ARM ARC firmware code. 
-- Written from scratch by Dave Clunker based on U-Boot.
+- Written from scratch by Dave Clanker based on U-Boot.
 - Public domain.
