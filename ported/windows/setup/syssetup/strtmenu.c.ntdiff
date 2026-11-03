@@ -1,0 +1,25 @@
+#ntdiff private/windows/setup/syssetup/strtmenu.c
+=1 1 183
++    IN BOOL   CommonGroup,
++    IN BOOL   Desktop
+=1 185 51
++                    b = b && (Desktop
++                           ? AddDesktopItem( CommonGroup,
++                                             Description,
+=1 238 3
++                                             NULL,
++                                             0,
++                                             SW_SHOWNORMAL )
++                           : CreateMenuItem( Description,
+=1 237 4
++                                             CommonGroup ));
+=1 242 57
++            b = b && AddItemsToGroup(InfHandle,GroupDescription,GroupId,CommonGroup,FALSE);
+=1 300 6
++    b = b && AddItemsToGroup(InfHandle,NULL,L"StartMenuItems",FALSE,FALSE);
++
++    //
++    //  and the items (if any) for the desktop, whatever became of the menu
++    //
++    AddItemsToGroup(InfHandle,NULL,L"DesktopItems",FALSE,TRUE);
+=1 307 57

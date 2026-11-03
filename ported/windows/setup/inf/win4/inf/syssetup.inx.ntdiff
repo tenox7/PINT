@@ -3,6 +3,7 @@
 =1 1 376
 +Games = %games%,0
 +Apps = %apps%,0
++Accessories_Games = %accessories_games%,0
 =1 377 35
 +[Games]
 +%game2048% = %24%\games\2048.exe,%24%\games\2048.exe,,0
@@ -18,10 +19,20 @@
 +%riscoban% = %24%\games\riscoban.exe,%24%\games\riscoban.exe,,0
 +%wintown% = %24%\games\wintown.exe,%24%\games\wintown.exe,,0
 +
++[Accessories_Games]
++%freecell% = freecell.exe,freecell.exe,,0
++%winmine% = winmine.exe,winmine.exe,,0
++%sol% = sol.exe,sol.exe,,0
++
 +[Apps]
 +%iexplore% = %24%\apps\iexplore.exe,%24%\apps\iexplore.exe,,0
 +%tenoxvnc% = %24%\apps\tenoxvnc.exe,%24%\apps\tenoxvnc.exe,,0
 +%ntfetch% = %24%\apps\ntfetch.exe,%24%\apps\ntfetch.exe,,0
++
++[DesktopItems]
++%iexplore% = %24%\apps\iexplore.exe,%24%\apps\iexplore.exe,,0
++%ntfetch% = %24%\apps\ntfetch.exe,%24%\apps\ntfetch.exe,,0
++%tenoxvnc% = %24%\apps\tenoxvnc.exe,%24%\apps\tenoxvnc.exe,,0
 =1 411 77
 =1 488 1 0 @@:@a:
 =1 488 1 0 @@:@i:

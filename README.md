@@ -12,14 +12,15 @@ PINT 4.0 is work in progress. PINT 3.5, Windows NT 3.5 (build 782), is on the br
   the Explorer desktop and Start menu, Control Panel, Task Manager, the accessories and games, WordPad and Paint (OLE),
   TCP/IP networking, Internet Explorer, WinHelp 4, POSIX and OpenGL.
 - No printing: no spooler and no printer drivers.
-- Not yet: a real Pi.
+- Runs on a real Pi 2, 3, 4 and Zero 2 W.
 
 ## Raspberry Pi models
 
+- Tested with PINT 4.0: Pi 2, Pi 3, Pi 4 and Zero 2 W (no network on it: it has only Wi-Fi).
 - Tested with PINT 3.5: Pi 2 Model B v1.1 (BCM2836, Cortex-A7), Pi 2 Model B v1.2, Pi 3 Model B v1.2, v1.3 and B+
   v1.3 (BCM2837, Cortex-A53), Pi 4 Model B v1.4 and Pi 400 (BCM2711, Cortex-A72: USB-A ports and Ethernet; NT uses the
   first GB of memory) and QEMU `raspi2b`, `raspi3b`, `raspi3ap`, `raspi4b`.
-- Untested, should work: 3A+, Zero 2 W (BCM2837), CM4 (BCM2711).
+- Untested, should work: 3A+ (BCM2837), CM4 (BCM2711).
 - NT runs its multiprocessor kernel on all four cores of every model.
 - Not planned:
   - Pi 1, Zero, Zero W: ARMv6 (ARM1176), no Thumb-2.
@@ -103,11 +104,12 @@ TCP/IP tools are in no source tree, so ARM setup leaves them out). It uses the o
 Start > Programs > Games has the games of PINT 3.5 (`apps/games`, in `\GAMES`): 2048, Breakout, Bubble
 Breaker, Moon Lander, Missile Command, Snake, Tankz, NT Rigue, RISCque, Sokoban, RISCoban and WiNTown, a port of
 Micropolis. WiNTown and the Micropolis simulator are under the GPL 3.0 with Electronic Arts' additional terms
-(`apps/games/wintown/LICENSE`); the other games are public domain.
+(`apps/games/wintown/LICENSE`); the other games are public domain. NT 4.0's own Solitaire, Minesweeper and FreeCell are
+in Start > Programs > Accessories > Games.
 
 ## VNC viewer
 
-`\APPS\TENOXVNC.EXE` (Start > Programs > Apps) is the Win32 build of TenoxVNC (`apps/tenoxvnc`, from
+`\APPS\TENOXVNC.EXE` (Start > Programs > Apps, and the desktop) is the Win32 build of TenoxVNC (`apps/tenoxvnc`, from
 github.com/tenox7/tenoxvnc), a VNC viewer. Run without a server, it asks for one (`host`, `host:display` or
 `host::port`), with the password, encoding and colors; F8 opens its menu (full screen, Ctrl+Alt+Del, clipboard,
 settings). It is under the GPL 2.0 (`apps/tenoxvnc/LICENCE.TXT`), its zlib and IJG JPEG decoders under their own terms
@@ -115,13 +117,13 @@ settings). It is under the GPL 2.0 (`apps/tenoxvnc/LICENCE.TXT`), its zlib and I
 
 ## Internet Explorer
 
-`\APPS\IEXPLORE.EXE` (Start > Programs > Apps) is the Internet Explorer 1.5 of PINT 3.5: NT's Mosaic (edit scripts in
+`\APPS\IEXPLORE.EXE` (Start > Programs > Apps, and the desktop) is the Internet Explorer 1.5 of PINT 3.5: NT's Mosaic (edit scripts in
 `apps/ie`) with PNG images (stb_image, public domain), UTF-8 pages and HTTPS with TLS 1.2 (BearSSL, MIT license:
 `apps/ie/bearssl/LICENSE.txt`). HTTPS does not check server certificates.
 
 ## ntfetch
 
-`\APPS\NTFETCH.EXE` (Start > Programs > Apps) is ntfetch (`apps/ntfetch`, from github.com/tenox7/ntfetch): the
+`\APPS\NTFETCH.EXE` (Start > Programs > Apps, and the desktop) is ntfetch (`apps/ntfetch`, from github.com/tenox7/ntfetch): the
 system at a glance, in one window in the style of WinMSD; `ntfetch --text > FILE` writes it as text.
 
 ## SDK tools
@@ -136,7 +138,6 @@ install them.
 
 ## Roadmap
 
-- A real Pi 2, 3 and 4.
 - Pi 4: memory above the first GB, the USB-C port, USB Ethernet adapters.
 
 ## Legal

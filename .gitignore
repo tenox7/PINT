@@ -383,6 +383,7 @@ ported/windows/setup/setupapi/inf.h
 ported/windows/setup/setupapi/infflist.c
 ported/windows/setup/syssetup/applyacl.c
 ported/windows/setup/syssetup/cmdline.c
+ported/windows/setup/syssetup/strtmenu.c
 ported/windows/setup/syssetup/syssetup.c
 ported/windows/shell/cpls/appwiz/setup.c
 ported/windows/shell/shelldll/bitbuck.c
