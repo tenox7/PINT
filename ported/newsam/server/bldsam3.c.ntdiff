@@ -1,0 +1,33 @@
+#ntdiff private/newsam/server/bldsam3.c
+=1 1 151
+=1 155 485
++    // In a copy of the process token that only this thread uses until
++    // SampRestoreDefaultDacl(): the other threads keep the process's own
++    // default owner and DACL. A thread created with the DACL below (an RPC
++    // server thread, while a client calls) could not set its own
++    // impersonation token, so it could not revert to self after a call.
++    //
++
++    Status = RtlImpersonateSelf( SecurityImpersonation );
++    SUCCESS_ASSERT(Status, "  Couldn't impersonate self.\n");
++
++    Status = NtOpenThreadToken(
++                 NtCurrentThread(),
++                 TOKEN_ADJUST_DEFAULT,
++                 TRUE,
++                 &Token
++                 );
++    SUCCESS_ASSERT(Status, "  Couldn't open thread token.\n");
+=1 673 4261
++    Restores the default owner and DACL: the thread stops using the copy
++    of the process token that Initialize() made.
+=1 4935 14
++    HANDLE Token = NULL;
++
++    Status = NtSetInformationThread(
++                 NtCurrentThread(),
++                 ThreadImpersonationToken,
++                 &Token,
++                 (ULONG)sizeof(HANDLE)
+=1 4965 4
+=1 4971 290

@@ -19,6 +19,12 @@
 +UserName
 +    Administrator
 =1 29 3
++;  Its password. winlogon.cmd then turns on AutoAdminLogon: from the third boot on, NT
++;  logs this account on by itself (Shift held down while it starts shows the Logon box).
++;
++Password
++    password
+=1 29 3
 +; The environment variables established at the beginning of each logon.
 +;
 +Environment
@@ -40,8 +46,15 @@
 =1 255 3
 +;  Commands for the start of winlogon.cmd, after its first line, which makes Program
 +;  Manager the shell: the shell of NT 4.0 is Explorer. With ! for its end: GUI setup ends
-+;  with RUNONCE -r, which runs the commands of RunOnce before the first logon.
++;  with RUNONCE -r, which runs the commands of RunOnce before the first logon; NET USER
++;  gives the account the password above (with a network, winlogon.cmd only stores it for
++;  the logon).
++;  With a password, winlogon.cmd restarts at once, while the display boxes of this logon
++;  may still be open: so it says so and waits for a key, as it does without one.
 +;
 +InsertScript
 +    ini winlogon.Shell = "Explorer.exe"
 +    !runonce -r
++    !net user Administrator password
++    !@echo Windows NT will now restart and log on as Administrator.
++    !@pause
