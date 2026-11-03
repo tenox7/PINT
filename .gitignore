@@ -188,6 +188,7 @@ ported/ntos/tdi/tcpip/ip/igmp.c
 ported/net/svcdlls/logonsrv/server/ssiapi.c
 ported/ntos/srv/network.c
 ported/lsa/server/dbinstal.c
+ported/newsam/server/bldsam3.c
 ported/inc/sockets/netinet/in.h
 apps/sdktools/imagehlp/walk.h
 apps/sdktools/imagehlp/walk.c

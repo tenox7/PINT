@@ -53,8 +53,9 @@ The firmware puts the console on HDMI when a USB keyboard is present, otherwise 
 mouse (click the window to give it to NT, Ctrl+Alt+G releases it) and a DS1307-type RTC at 0x68 on I2C1 (GPIO 2/3),
 where the HAL keeps the time. Without an RTC the clock starts each boot at the firmware build date.
 
-The first run is NT's developer setup (three boots, on its own); then Ctrl+Alt+Del (QEMU monitor: Ctrl-A C,
-`sendkey ctrl-alt-delete`, Ctrl-A C) and Enter log on as Administrator.
+The first run is NT's developer setup (three boots, on its own). From the third boot on, NT logs on as Administrator
+by itself (password `password`). Hold Shift while it logs on to get the Logon box; Ctrl+Alt+Del (QEMU monitor:
+Ctrl-A C, `sendkey ctrl-alt-delete`, Ctrl-A C) opens Windows NT Security.
 
 The resolution is `framebuffer_width` and `framebuffer_height` of the SD card's `config.txt` (1920x1080; without them the
 display's mode), in QEMU `RES=1280x1024 build/run.sh`.

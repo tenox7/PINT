@@ -18,9 +18,15 @@
 =1 1545 115
 +        if ( NetFound && DomainMember ) {
 =1 1661 42
-+            fprintf( fh, "@echo The system will restart in 5 seconds.\r\n" );
-+            fprintf( fh, "@sleep 5\r\n" );
-=1 1705 391
+=1 1705 6
++        //
++        // The system restarts with a password too (REGISTRY.INI's Password, then it logs
++        // on by itself): say so, and give the lines of the console time to be read
++        //
++
++        fprintf( fh, "@echo The system will restart in 5 seconds.\r\n" );
++        fprintf( fh, "@sleep 5\r\n" );
+=1 1710 386
 +    TimeoutMessageBoxlpstr( NULL,
 +                            TEXT("Windows NT has configured the registry from REGISTRY.INI. ")
 +                            TEXT("This is done once, on the first start of a new installation.\n\n")

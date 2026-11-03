@@ -18,6 +18,12 @@
 +UserName
 +    Administrator
 =1 29 3
++;  Its password. winlogon.cmd then turns on AutoAdminLogon: from the third boot on, NT
++;  logs this account on by itself (Shift held down while it starts shows the Logon box).
++;
++Password
++    password
+=1 29 3
 +; The environment variables established at the beginning of each logon.
 +;
 +Environment
@@ -38,7 +44,10 @@
 +    WORKGROUP
 =1 255 3
 +;  Commands for the start of winlogon.cmd: the network control panel stores the
-+;  bindings of the network in the hives, with the Route values REGINI cannot write.
++;  bindings of the network in the hives, with the Route values REGINI cannot write. With !
++;  for its end: NET USER gives the account the password above (ADDUSER, which winlogon.cmd
++;  runs in a workgroup, only makes new accounts).
 +;
 +InsertScript
 +    setup /f /i ncpabind.inf
++    !net user Administrator password
