@@ -1,0 +1,24 @@
+#ntdiff private/sdktools/jetadmin/inc/win32.mak
+#crlf
+=1 1 56
++!IF "$(CPU)" != "ARM"
+=1 57 9
+=1 65 101
++!ELSE
++!IF "$(CPU)" == "ARM"
++cflags = $(ccommon) -D_ARM_=1
+=1 62 4
+=1 169 87
++# The compiler for ARM defines _MT itself, its run-time being multithreaded only:
++# a compile for LIBC, the single-threaded run-time, undefines it (stcrt.h). The
++# POSIX headers of the PINT SDK come ahead of those of the C run-time.
++!IF "$(CPU)" == "ARM"
++cvars      = -DWIN32 $(noansi) -D_WIN32 -FIstcrt.h
++cvarsmt    = -DWIN32 $(noansi) -D_WIN32 -D_MT -MT
++cvarsdll   = -DWIN32 $(noansi) -D_WIN32 -D_MT -D_DLL -MD
++psxvars    = -D_POSIX_ -FIstcrt.h -I"$(PINTSDK)\include\posix"
++!ENDIF
+=1 255 58
++# declarations for use on ARM (Thumb-2) systems
++!IF "$(CPU)" == "ARM"
+=1 310 153

@@ -508,3 +508,4 @@ apps/net/tcpcmd/tcpinfo/tcpinfo.c
 apps/net/tcpcmd/tcpinfo/tcpinfo.h
 apps/net/tcpcmd/arp/newarp.c
 apps/net/tcpcmd/route/newroute.c
+sdk/win32.mak

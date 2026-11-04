@@ -1,0 +1,12 @@
+#!/bin/sh
+# The README without a command; otherwise, with ACCEPT_MSVC_LICENSE=yes, Microsoft C for ARM
+# installed on first use (msvc-arm32's msvc-setup), then the command in the environment of
+# the PINT 4.0 SDK (pint-env).
+[ $# -gt 0 ] || set -- help
+case $1 in
+help|-h|--help) exec tr -d '\r' < /opt/pint40sdk/README.txt ;;
+msvc-setup|msvc-backup) exec "$@" ;;
+esac
+[ -f "${MSVC:-/opt/msvc}/.installed" ] || [ "${ACCEPT_MSVC_LICENSE:-}" != yes ] || msvc-setup || exit
+. /usr/local/bin/pint-env
+exec "$@"

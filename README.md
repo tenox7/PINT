@@ -136,6 +136,15 @@ the tools left out and why.
 The games, TenoxVNC, Internet Explorer, ntfetch and the SDK tools are on the SD image; the setup card does not
 install them.
 
+## SDK
+
+The PINT 4.0 SDK builds programs and DLLs for PINT outside this tree with Microsoft C for ARM (MSVC 14.44 of Visual
+Studio 2022; Visual Studio 2026 has no ARM32 compiler). It has the NT 4.0 headers, PINT's libraries, the Win32 SDK's
+win32.mak with ARM, and its own cl and link, which mark each image for NT 4.0 (the ARM linker marks it 6.02, which
+NT 4.0 does not start). No MFC. `build/make-sdk.sh` makes `obj/pint40sdk.zip` for Windows (`setenv.cmd`, then nmake
+or cl) and, in `obj/sdk/docker`, the Docker image tenox7/pint40sdk on tenox7/msvc-arm32
+(`docker build -t tenox7/pint40sdk obj/sdk/docker`). `sdk/README.txt` has the details.
+
 ## Roadmap
 
 - Pi 4: memory above the first GB, the USB-C port, USB Ethernet adapters.

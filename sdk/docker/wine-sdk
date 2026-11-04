@@ -1,0 +1,22 @@
+#!/bin/sh
+# wine-sdk cl|link ARGS...: the cl or link of the PINT 4.0 SDK (sdk/pintwrap.c) under Wine, in
+# its environment (pint-env); they run those of Microsoft C for ARM. An absolute Unix path,
+# alone or after an option, becomes a Z: path, as msvc-arm32's wine-msvc makes it.
+. /usr/local/bin/pint-env
+t=$1; shift
+if [ -z "$(ls -d ${MSVC:-/opt/msvc}/VC/Tools/MSVC/*/bin/Host$PINTHOST/arm 2>/dev/null)" ]; then
+  echo "pint40sdk: Microsoft C for ARM is not installed in ${MSVC:-/opt/msvc}; run msvc-setup with ACCEPT_MSVC_LICENSE=yes (see help)" >&2
+  exit 2
+fi
+abs() { d=$(dirname "$1"); [ "$d" != / ] && [ -d "$d" ]; }
+for a; do
+  shift
+  case $a in
+  /*) if abs "$a"; then a="Z:$a"
+      else p=$(printf '%s' "$a" | sed -nE 's#^/[A-Za-z]+:?(/.*)$#\1#p'); [ -n "$p" ] && abs "$p" && a="${a%"$p"}Z:$p"; fi ;;
+  -*) p=$(printf '%s' "$a" | sed -nE 's#^-[A-Za-z]+:?(/.*)$#\1#p'); [ -n "$p" ] && abs "$p" && a="${a%"$p"}Z:$p" ;;
+  esac
+  set -- "$@" "$a"
+done
+export WINEDEBUG=${WINEDEBUG:--all} WINEDLLOVERRIDES="vcruntime140=n;vcruntime140_1=n;msvcp140=n"
+exec wine /opt/pint40sdk/bin/$PINTHOST/$t.exe "$@"

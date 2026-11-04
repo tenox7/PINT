@@ -1,6 +1,10 @@
 #ntdiff private/sdktools/vctools/langapi/include/ehdata.h
 =1 1 99
 +#if defined(_M_ARM)
++#define EH_MAGIC_NUMBER2	0x19930521		// The later versions the compiler for ARM writes:
++#define EH_MAGIC_NUMBER3	0x19930522		// an exception specification, then flags (FI_)
++#endif
++#if defined(_M_ARM)
 +#define EH_EXCEPTION_PARAMETERS 4			// Number of parameters in exception record
 +#else
 =1 100 1
@@ -143,7 +147,7 @@
 +	ptrdiff_t			dispUnwindHelp;		// Displacement of the state of the frame
 +											// from its establisher frame
 +	int					dispESTypeList;		// Image offset of the exception specification (reserved)
-+	int					EHFlags;			// Flags of the function (reserved)
++	int					EHFlags;			// Flags of the function (FI_, EH_MAGIC_NUMBER3)
 =1 430 11
 +#if defined(_M_ARM)
 +#define FUNC_PUNWINDMAP(fi)		((UnwindMapEntry *)_RVA_TO_PTR(_GetImageBase(), (fi).pUnwindMap))
@@ -168,6 +172,9 @@
 +#elif defined(_M_ARM)
 +#define FUNC_IPTOSTATE(fi,n)	(FUNC_IPMAP(fi)[n])
 =1 453 2
++#define FUNC_FLAGS(fi)			((fi).EHFlags)
++#define FI_EHS_FLAG				0x00000001		// Compiled -EHs: exceptions of C++ only
++#define FI_EHNOEXCEPT_FLAG		0x00000004		// noexcept: no exception may leave it
 =1 457 261
 +#elif defined(_M_ARM)
 +//
