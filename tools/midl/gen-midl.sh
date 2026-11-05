@@ -65,7 +65,7 @@ path() {
 }
 arg() {
     case $1 in
-    -I*) echo "-I$(path "${1#-I}")" ;;
+    -I*) local i; for i in $(printf "%s" "${1#-I}" | tr ";" " "); do echo "-I$(path "$i")"; done ;;
     -*) echo "$1" ;;
     *) path "$1" ;;
     esac
@@ -104,10 +104,14 @@ recipe() {
     sleep 1
     for t in "$@"; do
         NMK_MACROS="MIDL_CPP=/work/RASPI/obj/host/MIDLCPP.EXE
-MIDL_FLAGS=-D_ARM_ -D_WCHAR_T_DEFINED" NMK_KEEP=BASEDIR NMK_TARGET="$t" awk -f $B/nmk.awk $P/$mk > /tmp/nmk.sh
+MIDL_FLAGS=-D_ARM_ -D_WCHAR_T_DEFINED
+${MACROS:-}" NMK_KEEP=BASEDIR NMK_TARGET="$t" awk -f $B/nmk.awk $P/$mk > /tmp/nmk.sh
         (cd $W/$(lower "${CUR#$P/}") && . /tmp/nmk.sh)
     done
-    # what the recipes made, in the directories of the tree
+    keep
+}
+# what the recipes made, in the directories of the tree
+keep() {
     find $W -type f -newer /tmp/mw.stamp ! -name .mirrored | while read -r f; do
         d=$(dirname "$f"); r=$P
         for c in $(echo "${d#$W/}" | tr "/" " "); do r=$r/$(ls $r | grep -ix "$c" | head -1); done
@@ -115,6 +119,53 @@ MIDL_FLAGS=-D_ARM_ -D_WCHAR_T_DEFINED" NMK_KEEP=BASEDIR NMK_TARGET="$t" awk -f $
         tr -d "\r" < "$f" > $G/${r#$P/}/$(basename "$f")
         echo "   ${r#$P/}/$(basename "$f")"
     done
+}
+# (MACROS: more macros of a recipe.) A makefile.inc recipe with the macros of the SOURCES
+# beside it, as makefile.def has them when it reads the makefile.inc (INCLUDES, C_DEFINES:
+# the ARM MIDL_FLAGS last), TARGET_CPP and MIDL.
+srcrecipe() {
+    want $1 || return 0
+    local m; m=$(bash $B/srcmacro.sh $P/$(dirname $1)/SOURCES "*" | sed -e "s/\$(BASEDIR)/BASEDIR/g" -e "s/\$([A-Za-z_0-9]*)//g")
+    MACROS="$m
+C_DEFINES=$(printf "%s\n" "$m" | sed -n "s/^C_DEFINES=//p") -D_ARM_ -D_WCHAR_T_DEFINED
+TARGET_CPP=/work/RASPI/obj/host/MIDLCPP.EXE
+MIDL=midl" recipe "$@"
+}
+# The moves of allidl after its MIDL (mv, which nmk.awk has not): the stubs to the components
+# that compile them (com\class\daytona, scm\daytona).
+allidl() {
+    want $1 || return 0
+    local d=$(dirname $1) t f to r
+    t=$(tr -d "\032\r" < $P/$1 | sed -n "s/^DEST_TREE=//p")
+    tr -d "\032\r" < $P/$1 | awk "/^allidl:/ { on = 1; next } /^[^ \t#]/ { on = 0 } on && \$1 == \"mv\" { print \$2, \$3 }" |
+        while read -r f to; do
+            to=$(printf "%s" "$to" | sed "s/\$(DEST_TREE)/$t/" | tr "\\\\" /)
+            r=$(CUR=$P/$d real "${to%/.}") || { echo "gen-midl: allidl: no $to"; exit 1; }
+            mkdir -p $G/${r#$P/} && mv $G/$d/$f $G/${r#$P/}/ && echo "   ${r#$P/}/$f (allidl)"
+        done
+}
+# The interfaces of OLE by the .idl rule of TYPES\makefile.inc, as the pass1.mk of COMPOBJ,
+# NEW_OLE and OLEAUTO run it (OPSYS NT1X): MIDL with IDLMIDLFLAGS (-import defined_single -Zp8 -Oi)
+# and CINC (., OLEPRX32\DAYTONA, CINC, COMPOBJ, the SDK), its preprocessor with CPLATFORM, that
+# of ARM; the proxies, GUIDs and aux routines to OLEPRX32\DAYTONA (MIDL_OUT_DIR), for oleprx32
+# and uuid.lib. A header of the SDK (MIDL_HDR_OUT_DIR public\sdk\inc) is the one of the tree,
+# which NT made: the one made here is not kept, nor the dlldata.c MIDL writes beside each
+# interface (OLEPRX32\DAYTONA has its own).
+types() {
+    want TYPES || return 0
+    local f d n inc="-I. -I../oleprx32/daytona -IBASEDIR/private/cinc -IBASEDIR/private/types/compobj -IBASEDIR/public/sdk/inc/crt -IBASEDIR/public/sdk/inc"
+    CUR=$P/TYPES; mirror $CUR; mkdir -p /tmp/mwh
+    : > /tmp/mw.stamp
+    sleep 1
+    for f in COMPOBJ/COM COMPOBJ/WTYPES COMPOBJ/UNKNWN NEW_OLE/OLE2X OLEAUTO/OLEAUT; do
+        d=$(lower ${f%/*}); n=$(lower ${f#*/}); CUR=$P/TYPES/${f%/*}
+        (cd $W/types/$d && nmk_midl -import defined_single -Zp8 -Oi $inc -no_warn -char unsigned -mode c_port \
+            -proxy ../oleprx32/daytona/${n}_p.c -iid ../oleprx32/daytona/${n}_i.c -header /tmp/mwh/$n.h \
+            -caux ../oleprx32/daytona/${n}_x.c -saux ../oleprx32/daytona/${n}_y.c -cpp_cmd /work/RASPI/obj/host/MIDLCPP.EXE \
+            -cpp_opt "-nologo -DMIDL_PASS -D_ARM_ -D_WCHAR_T_DEFINED -DFLAT -DWIN32=100 -D_NT1X_=100 $inc -E -Tc" $n.idl)
+        rm -f $W/types/$d/dlldata.c
+    done
+    keep
 }
 
 # the recipes named (by the start of their makefile path), else all of them afresh
@@ -133,4 +184,11 @@ NOMIRROR=1 recipe NET/MAKEFIL0 "inc\\dosprint.h" "inc\\rxprint.h"
 for s in SRVSVC WKSSVC BROWSER REPL MSGSVC AT; do recipe NET/SVCDLLS/$s/MAKEFIL0 "\$(TARGETS)"; done
 for s in LOGONSRV RPL; do recipe NET/SVCDLLS/$s/MAKEFIL0 "\$(CLIENT_TARGETS)" "\$(SERVER_TARGETS)"; done
 recipe NET/SOCKETS/TCPCMD/FTPSVC/MAKEFIL0 "\$(TARGETS)"
+# (the name service interfaces: the client stubs of rpcns4, the server stubs of the locator)
+recipe RPC/LOCATOR/MAKEFIL0 nsicom.h nsisvr.h nsiclt.h nsimgm.h loctoloc.h
+# (OLE: the interfaces of compobj and its service control manager, the NTTARGETFILE0 allidl of
+# its makefile.inc; the interfaces of OLE, the proxies of oleprx32 and the GUIDs of uuid.lib)
+srcrecipe CAIROLE/COM/IDL/DAYTONA/MAKEFILE.INC drot.h getif.h ichnl.h iface.h objsrv.h osrot.h scm.h
+allidl CAIROLE/COM/IDL/DAYTONA/MAKEFILE.INC
+types
 '

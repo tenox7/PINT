@@ -1,0 +1,13 @@
+#ntdiff PRIVATE/CAIROLE/COM/DEBUG/VALID.CXX
+=1 1 48
++	if (IsBadReadPtr(pv,4)) goto invalid;
+=1 50 3
++	if (IsBadCodePtr(*(FARPROC FAR*)pv)) goto invalid;
+=1 54 2
++	if (IsBadReadPtr(pb, 4)) goto invalid;
++	if (IsBadCodePtr(*(FARPROC FAR*)pb)) goto invalid;
+=1 58 1
++	if (IsBadReadPtr(pb, 9)) goto invalid;
+=1 60 4
++invalid:
+=1 65 20

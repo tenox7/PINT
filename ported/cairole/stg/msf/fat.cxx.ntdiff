@@ -1,0 +1,7 @@
+#ntdiff PRIVATE/CAIROLE/STG/MSF/FAT.CXX
+=1 1 159
++:   _fv(pfatOld->_sid),
+=1 162 6
++    // (assigned: MSVC 14 initializes a based member with the flat address)
+=1 199 1
+=1 168 2001

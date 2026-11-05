@@ -66,6 +66,13 @@ function cond(s,    n, i, j, m, a, b, v) {
     return 0
 }
 function dirof(f) { sub(/\/[^\/]*$/, "", f); return f }
+# The C run-time of WIN32_LIBS, as makefile.def takes it: crtdll with USE_CRTDLL, libcmt with
+# USE_LIBCMT, else libc.
+function final(v,    i, c) {
+    c = "$(BASEDIR)\\public\\sdk\\lib\\*\\" (("USE_CRTDLL" in mac) ? "crtdll" : (("USE_LIBCMT" in mac) ? "libcmt" : "libc")) ".lib"
+    while ((i = index(v, "\001")) > 0) v = substr(v, 1, i - 1) c substr(v, i + 1)
+    return v
+}
 # An included file: from the directory of the including file, then from those of the
 # files including it.
 function locate(p,    i, cmd, r) {
@@ -129,10 +136,15 @@ function take(line,    d, w, rest, c, more, n, v, f) {
 BEGIN {
     depth = 0; on[0] = 1; nest = 0; sources = 0
     mac["NTMAKEENV"] = "\\nt\\public\\oak\\bin"
+    # The library lists of makefile.def a SOURCES names (LINKLIBS= $(WIN32_LIBS) $(GUI32_LIBS)).
+    # WIN32_LIBS begins with the C run-time, LIBC_LIB, which makefile.def sets after the SOURCES
+    # (final): its place is kept until then.
+    mac["WIN32_LIBS"] = "\001 $(BASEDIR)\\public\\sdk\\lib\\*\\advapi32.lib $(BASEDIR)\\public\\sdk\\lib\\*\\kernel32.lib"
+    mac["GUI32_LIBS"] = "$(BASEDIR)\\public\\sdk\\lib\\*\\gdi32.lib $(BASEDIR)\\public\\sdk\\lib\\*\\user32.lib"
     n = split(ENVIRON["SRCMACROS"], pre, " ")
     for (i = 1; i <= n; i++) if ((j = index(pre[i], "=")) > 1) mac[substr(pre[i], 1, j - 1)] = substr(pre[i], j + 1)
     if (mk != "") include(mk)
     if (!sources) { depth = 0; include(src) }
-    if (k == "*") for (n in mac) print n "=" mac[n]
-    else print (k in mac) ? mac[k] : ""
+    if (k == "*") for (n in mac) print n "=" final(mac[n])
+    else print (k in mac) ? final(mac[k]) : ""
 }' | tr -s ' \t' ' '

@@ -9,13 +9,14 @@
 # of its makefile.inc (mcinc.sh).
 # Usage: incdirs.sh componentdir "INCLUDES value"
 B=$(cd "$(dirname "$0")" && pwd)
-# Microsoft C takes the sources as they are but for the ARM gates. RC (on Wine, which
-# finds names as NT does) takes the include names of resource scripts as they are
-# (NET UI's <string\lmobj.str>).
+# Microsoft C takes the sources as they are but for the ARM gates and the C and C++ of
+# Microsoft C 2.0 it rejects (msc2.sed, as for the farm: the VARIANT of the oleauto variant.h).
+# RC (on Wine, which finds names as NT does) takes the include names of resource scripts
+# as they are (NET UI's <string\lmobj.str>).
 filt() {
     local f=-f$B/incfix.sed
     case $1 in *.[Rr][Cc]|*.[Rr][Cc]2|*.[Dd][Ll][Gg]|*.[Ss][Tt][Rr]) f= ;; esac
-    tr -d '\032\r' < "$1" | sed -E -f $B/riscgate.sed -f $B/msvcgate.sed $f | sed -f $B/armport.sed
+    tr -d '\032\r' < "$1" | sed -E -f $B/riscgate.sed -f $B/msvcgate.sed $f | sed -f $B/armport.sed -f $B/msc2.sed
 }
 farm() {
     local s

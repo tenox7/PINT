@@ -48,7 +48,14 @@
 +                //
 =1 1227 1
 +#elif defined(_RETAIL_SETUP_)
-=1 1210 39
+=1 1210 18
++#elif defined(RASPI)
++                //
++                // Started with the system, as setup (initial.inf) sets it for the WinNt
++                // product: on a workstation the first OLE client does not start it.
++                //
+=1 1212 1
+=1 1228 21
 +#if defined(RASPINET)
 +            //
 +            // The network of the Raspberry Pi as the network setup of NT 3.5 installs

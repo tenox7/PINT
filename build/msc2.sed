@@ -31,3 +31,13 @@ s/"\(FC_FIELD_PAD_MACRO\|LENGTH_VAR_NAME\|NOTIFY_SUFFIX\|PSTUB_MESSAGE_PAR_NAME\
 # A member function named without a call as a condition (regedit/regdata.cxx, the
 # share disposition of a resource): the 1994 compiler took its address, never zero.
 s/if( \([A-Za-z]*\)->\(IsResourceShare[A-Za-z]*\) )/if( \&IO_DESCRIPTOR::\2 )/
+
+# A member function named alone as a pointer to member (oleauto typelib\nammgr.cxx): the
+# 1994 compiler took it as one, as & with the class names it.
+s/ForEachName(\(CleanHlnam\|SwapHlnamBytes\),/ForEachName(\&NAMMGR::\1,/
+
+# A member named bool (the VARIANT of oleauto.h, and of oleaut.h that MIDL made of
+# oleaut.idl), a keyword of C++ since Visual C++ 5.0: in C++ boolVal, as the SDK named
+# it after, with V_BOOL; C keeps bool.
+s/^\([[:space:]]*\(\/\* \[case\] \*\/ \)\{0,1\}VARIANT_BOOL[[:space:]]\{1,\}\)bool;\(.*\)$/#ifdef __cplusplus\n\1boolVal;\3\n#else\n&\n#endif/
+s/^#define V_BOOL(X)\([[:space:]]*\)V_UNION(X, bool)$/#ifdef __cplusplus\n#define V_BOOL(X)\1V_UNION(X, boolVal)\n#else\n&\n#endif/

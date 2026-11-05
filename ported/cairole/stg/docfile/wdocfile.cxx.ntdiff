@@ -1,0 +1,7 @@
+#ntdiff PRIVATE/CAIROLE/STG/DOCFILE/WDOCFILE.CXX
+=1 1 51
++          PDocFile(dl)
++{
++    // (assigned: MSVC 14 initializes a based member with the flat address)
++    _pdfb = P_TO_BP(CDFBasis DFBASED *, pdfb);
+=1 55 746

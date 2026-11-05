@@ -1,0 +1,12 @@
+#ntdiff PRIVATE/CAIROLE/STG/H/DFFUNCS.HXX
+=1 1 145
++        : PDocFile(dl)
++{
++    // (assigned: MSVC 14 initializes a based member with the flat address)
++    _pdfb = P_TO_BP(CDFBasis DFBASED *, pdfb);
+=1 148 33
++        : PDocFile(dl)
++{
++    // (assigned: MSVC 14 initializes a based member with the flat address)
++    _pdfb = P_TO_BP(CDFBasis DFBASED *, pdfb);
+=1 183 146

@@ -1,0 +1,4 @@
+#ntdiff PRIVATE/CAIROLE/STG/H/WDOCFILE.HXX
+=1 1 213
++    CDFBasis DFBASED *_pdfb;    // (not const: set by assignment, wdocfile.cxx)
+=1 215 305

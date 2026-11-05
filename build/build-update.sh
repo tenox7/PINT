@@ -26,6 +26,9 @@ INSTALL=1 step osloader $R/obj/bldr.lib $R/obj/boot.lib $R/obj/bconfig.lib $R/ob
     -- $B/make-osloader.sh
 $R/build/build-drivers.sh
 $R/build/build-user.sh
+# the type library of OLE Automation: NT 4.0's mktyplib, run on the Wine of the build with ole32 and
+# oleaut32 (the stamps of their steps)
+INSTALL=1 job stdole step stdole $R/apps/mktyplib $ST/dll_CAIROLE_DLL_DAYTONA $ST/oleaut32 -- $B/make-stdole.sh
 $R/build/build-sdktools.sh
 GEN=$HOSTGEN job infs step infs $R/tools/inf $R/ported/windows/setup/bom $R/ported/windows/setup/inf $R/ported/windows/setup/localinf \
     $R/apps/net/ncpabind -- $R/tools/inf/make-infs.sh

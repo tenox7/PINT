@@ -122,14 +122,15 @@ ntcc $DIR/newarray.obj /work/RASPI/crt/cxx/newarray.cxx && ntlib $DIR/newarray.l
 
 # In the order of makefile.def: LINKLIBS, the TARGETLIB of a DLL (crtdll.lib with
 # USE_CRTDLL, ntdll.lib), TARGETLIBS. A library is the one make-lib.sh made for the
-# directory named, else that of its name: a library or an import library.
+# directory named, else that of its name: a library or an import library. Two of a name
+# are two libraries (the util.lib of COM and of OLE232 in ole32.dll).
 LIBS=""; seen=""; RESLIBS=""
 set -f
 for l in $(macro LINKLIBS) $([ -z "$(macro USE_CRTDLL)" ] || echo crtdll.lib) $([ $NAME = ntdll ] || echo ntdll.lib) $(macro TARGETLIBS); do
   case $l in *.[Rr][Ee][Ss]) RESLIBS="$RESLIBS $l"; continue ;; esac
   b=$(basename "$(echo "$l" | tr "\\\\" /)" | tr A-Z a-z); b=${b%.lib}
-  case " $seen " in *" $b "*) continue ;; esac; seen="$seen $b"
   a=$(bash libpath.sh $D "$l"); [ -n "$a" ] || a=$U/$b.lib
+  case " $seen " in *" $a "*) continue ;; esac; seen="$seen $a"
   [ -f $a ] || { echo "   missing library $b (build it first)"; exit 1; }
   LIBS="$LIBS $a"
 done

@@ -1,0 +1,13 @@
+#ntdiff PRIVATE/CAIROLE/STG/MSF/MSTREAM.CXX
+=1 1 259
+=1 261 8
++    // (assigned: MSVC 14 initializes a based member with the flat address)
++    _pplstParent = P_TO_BP(ILockBytes * DFBASED *, pplstParent);
+=1 269 40
+=1 310 6
+=1 318 8
++    // (assigned: MSVC 14 initializes a based member with the flat address)
++    _pplstParent = pms->_pplstParent;
++    _pdsministream = pms->_pdsministream;
++    _pmpt = pms->_pmpt;
+=1 326 1525

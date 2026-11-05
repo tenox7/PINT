@@ -8,7 +8,11 @@
 ;
 ;    The bounds of the C initializer and terminator tables (CRT32\STARTUP\
 ;    I386\CRT0INIT.ASM for ARM). The linker orders the .CRT$X sections by
-;    name, so the entries of a table lie between its A and Z words.
+;    name, so the entries of a table lie between its A and Z words, when
+;    they have the same attributes: the link keeps sections of other
+;    attributes apart. The compiler makes the C++ initializers (.CRT$XCU)
+;    read-only, so their bounds are read-only too; the C initializers
+;    (#pragma data_seg) are writable.
 ;
 ;--
 
@@ -20,11 +24,11 @@ __xi_a  DCD     0
         EXPORT  __xi_z
 __xi_z  DCD     0
 
-        AREA    |.CRT$XCA|, DATA, READWRITE, ALIGN=2
+        AREA    |.CRT$XCA|, DATA, READONLY, ALIGN=2
         EXPORT  __xc_a
 __xc_a  DCD     0
 
-        AREA    |.CRT$XCZ|, DATA, READWRITE, ALIGN=2
+        AREA    |.CRT$XCZ|, DATA, READONLY, ALIGN=2
         EXPORT  __xc_z
 __xc_z  DCD     0
 

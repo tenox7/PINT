@@ -8,6 +8,7 @@ sdcard/root/WINNT/System32/*.DLL
 sdcard/root/WINNT/System32/*.DRV
 sdcard/root/WINNT/System32/*.CPL
 sdcard/root/WINNT/System32/*.INF
+sdcard/root/WINNT/System32/*.TLB
 sdcard/root/WINNT/System32/WINPERMS.TXT
 sdcard/root/WINNT/System32/Drivers/*.SYS
 sdcard/root/SDKTOOLS/
@@ -239,3 +240,15 @@ apps/sdktools/slmnew/slm/diff.c
 apps/sdktools/slmnew/slm/delproj.c
 ported/windows/base/client/daytona/datetime.c
 ported/windows/media/winmm/time.c
+ported/cairole/com/debug/valid.cxx
+ported/cairole/scm/cls.hxx
+ported/cairole/oleauto/inc/typelib/switches.hxx
+ported/cairole/oleauto/inc/typelib/sheapmgr.hxx
+ported/cairole/oleauto/inc/typelib/blkmgr32.hxx
+ported/cairole/oleauto/inc/typelib/dbm1632.hxx
+ported/cairole/stg/msf/mstream.cxx
+ported/cairole/stg/msf/fat.cxx
+ported/cairole/stg/docfile/wdocfile.cxx
+ported/cairole/stg/h/dffuncs.hxx
+ported/cairole/stg/h/cdocfile.hxx
+ported/cairole/stg/h/wdocfile.hxx

@@ -1,0 +1,23 @@
+#ntdiff PRIVATE/CAIROLE/OLEAUTO/INC/TYPELIB/SWITCHES.HXX
+=1 1 314
++//  HP_ARM           = ARM
+=1 315 20
++#else
++#ifdef _M_ARM
+=1 343 3
++#define HP_ARM               1
++#else
+=1 336 3
++#endif  // _M_ARM
++#endif
++#endif
++
++#else
+=1 343 3
++#endif
++#ifndef HP_ARM
++#define HP_ARM               0
++#endif
+=1 347 74
++#if HP_R4000 || HP_POWERPC || HP_ALPHA || HP_ARM
+=1 422 62

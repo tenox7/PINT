@@ -1,0 +1,4 @@
+#ntdiff PRIVATE/CAIROLE/SCM/CLS.HXX
+=1 1 206
++    if (&CSrvRegList::InUse)
+=1 208 263

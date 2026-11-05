@@ -75,7 +75,8 @@ for f in $prog; do par comp $DIR/obj $f; done
 for f in $srcs; do par comp $o $f; done
 pwait; [ $PARFAIL -eq 0 ] || exit 1
 
-# The objects of UMRES and UMOBJS, the UMLIBS, the libraries of the UMTYPE, the TARGETLIBS
+# The objects of UMRES and UMOBJS (not for a PROGRAM: those of its UMAPPL and UMTEST, the
+# tclient.obj of the locator), the UMLIBS, the libraries of the UMTYPE, the TARGETLIBS
 # of a PROGRAM and the LINKLIBS, in the order of makefile.def (srvmgr links crtdll.lib after
 # libc.lib). A library or object is the one make-lib.sh made for the directory named, else
 # an object of the program, else that of its name: a library, an import library or an
@@ -85,9 +86,12 @@ OWN=$(macro TARGETNAME | tr -d " " | tr A-Z a-z).lib
 NSRC=$(macro SOURCES | tr " " "\n" | grep -ciE "\.(c|cxx|cpp)$")
 LIBS=""; seen=""
 set -f
-for l in $(echo "$(macro UMRES) $(macro UMOBJS)" | tr " " "\n" | grep -iE "\.obj$") $(macro UMLIBS | tr " " "\n" | grep -iE "\.(lib|obj)$") $TYPELIBS \
+for l in $(echo "$(macro UMRES) $([ "$TTYPE" = PROGRAM ] || macro UMOBJS)" | tr " " "\n" | grep -iE "\.obj$") $(macro UMLIBS | tr " " "\n" | grep -iE "\.(lib|obj)$") $TYPELIBS \
          $([ "$TTYPE" != PROGRAM ] || macro TARGETLIBS | tr " " "\n" | grep -iE "\.(lib|obj)$") $(macro LINKLIBS | tr " " "\n" | grep -iE "\.(lib|obj)$"); do
   b=$(basename "$(echo "$l" | tr "\\\\" /)" | tr A-Z a-z); case $b in *.obj) ;; *) b=${b%.lib}.lib ;; esac
+  # (libcx32.lib, the C++ support of the 1991 MIPS compiler, __nw, __vec_new and _ctors, a
+  # MIPS and x86 binary in the tree: that of Microsoft C is in its C run-time)
+  [ $b = libcx32.lib ] && continue
   a=$(bash libpath.sh $D "$l"); [ -n "$a" ] || { [ -f $DIR/lobj/$b ] && a=$DIR/lobj/$b; } || a=$U/$b
   case " $seen " in *" $a "*) continue ;; esac; seen="$seen $a"
   [ -f $a ] || { [ $b = $OWN ] && [ $NSRC = 0 ] && continue; echo "   missing $b (build it first)"; exit 1; }

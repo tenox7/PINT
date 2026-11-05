@@ -52,6 +52,12 @@ srcs=$(macro SOURCES | tr " " "\n" | grep -iE "\.(c|cxx|cpp)$" | tr "\\\\" / | w
 srcinc() { local s=$(realpath $(dirname $1)); [ "$s" = "$(realpath $D)" ] && return; case $s in /work/PRIVATE/*) bash incdirs.sh $s "" | cut -d" " -f2 ;; esac; }
 # and the directories of the relative includes of the sources, last
 INCS="$INCS $(bash relinc.sh $INCS $srcs)"
+# The precompiled header of another directory (PRECOMPILED_TARGET ..\..\inc\daytona\obj\*\com2int.pch
+# of CAIROLE): Microsoft C took that header and its includes from the .pch, made with the
+# include path of that directory; that path, after all.
+pch=$(macro PRECOMPILED_TARGET | tr -d " " | tr "\\\\" / | sed -E "s,(^|/)obj/[^/]*/[^/]*$,,")
+[ -z "$pch" ] || { pch=$(bash srcmacro.sh --resolve $D "$pch") && [ "$pch" != "$D" ] && [ -f $pch/SOURCES ] &&
+  INCS="$INCS $(bash incdirs.sh $pch "$(bash srcmacro.sh $pch/SOURCES USER_INCLUDES);$(bash srcmacro.sh $pch/SOURCES INCLUDES)")"; }
 arm=$K/$(echo $COMP | tr / _ | tr A-Z a-z).arm; [ -f $arm ] || arm=$(bash portdir.sh $D)/sources.arm
 n=0; nr=0; fail=0
 # one source, compiled by the pool of msvc.sh (par, pwait)

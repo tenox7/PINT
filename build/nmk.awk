@@ -65,7 +65,7 @@ function names(h, t,    w, n, i) {
 }
 
 # One command of a recipe, of those that "&" joins; a pipeline, each of its commands.
-function command(cmd,    a, n, f, i) {
+function command(cmd,    a, n, f, i, q, c) {
     sub(/^[ \t@-]+/, "", cmd)
     sub(/[ \t]+$/, "", cmd)
     gsub(/[ \t]*[12]?>[ \t]*[Nn][Uu][Ll]( 2>&1)?/, "", cmd)
@@ -104,8 +104,16 @@ function command(cmd,    a, n, f, i) {
         return "nmk_lib " substr(cmd, 5)
     if (tolower(a[1]) == "mc")
         return "nmk_mc " substr(cmd, 4)
-    if (a[1] == "midl")
-        return "nmk_midl " substr(cmd, 6)
+    # (an include list -I.;..\inc is one argument: ; is no command separator for nmake;
+    # within quotes, -cpp_opt "-I.;..\inc", the shell takes it as it is)
+    if (a[1] == "midl" || tolower(a[1]) == "midl.exe") {
+        cmd = substr(cmd, length(a[1]) + 2); f = ""; q = 0
+        for (i = 1; i <= length(cmd); i++) {
+            c = substr(cmd, i, 1); if (c == "\"") q = !q
+            f = f (c == ";" && !q ? "\\;" : c)
+        }
+        return "nmk_midl " f
+    }
     if (a[1] == "hextract")
         return "nmk_hextract " substr(cmd, 10)
     if (a[1] == "hsplit")

@@ -25,6 +25,12 @@ exestep() { INSTALL=1 ROOT=$1 cstep exe $1 $2 link -- $B/make-exe.sh $2 $3; }
 # pair ROOT COMPONENT:PROGRAM: the library of a program and the program
 pair() { lib $1 ${2%%:*}; exe $1 ${2%%:*} ${2#*:}; }
 umcrt() ( cd $R/crt && UM=1 ./make-crt.sh && ./make-crt32.sh ST && ./make-crt32.sh MT && ./make-crt32.sh DLL && INSTALL=1 ./make-crtdll.sh )
+# types, oleaut: steps of their own, the types of OLE (make-types.sh: uuid.lib in the compile pass,
+# oleprx32 in the link pass, after the import library of ole32) and OLE Automation (make-oleaut.sh)
+types() { if [ $PASS = compile ]; then job types/uuid step types/uuid -- $B/make-types.sh uuid; else job types/oleprx32 typesstep; fi; }
+typesstep() { INSTALL=1 step types/oleprx32 $(for l in uuid ole32 gdi32p rpcrt4 ntdll gdi32 kernel32 user32 advapi32; do echo $R/obj/um/$l.lib; done) -- $B/make-types.sh oleprx32; }
+oleaut() { [ $PASS = compile ] || job oleaut32 oleautstep; }
+oleautstep() { INSTALL=1 step oleaut32 $R/ported/cairole/oleauto $R/crt/cxx/newarray.cxx $(for l in ole32 uuid gdi32 user32 libcmt kernel32 advapi32 mpr; do echo $R/obj/um/$l.lib; done) -- $B/make-oleaut.sh; }
 
 [ -f $R/obj/um/kernel32.lib ] || IMPLIB=1 ROOT=$W $B/make-dll.sh BASE/CLIENT/DAYTONA
 step crt-um $CRT $R/obj/um/kernel32.lib -- umcrt
@@ -120,8 +126,23 @@ dll $W SHELL/ACCESORY/ACCESS/SKDLL; dll $W SHELL/ACCESORY/RECORDER/REC_DLL
 for a in PAINTBRS:pbrush CLIPBOOK/DATASRV:clipsrv CLIPBOOK/CLIPVIEW:clipbrd PACKAGER:packgr32 TERMINAL:terminal \
          CALENDAR:calendar ACCESS/ACCESS:access RECORDER/REC_EXE:recorder; do pair $W SHELL/ACCESORY/$a; done
 
+# OLE 2 (CAIROLE: COM, OLE 2 and the structured storage of ole32): the RPC name service (rpcns4 and
+# the locator) and the endpoint mapper (rpcss); the libraries of ole32 in the order of the DIRS of
+# CAIROLE, ole32 and its service control manager (scm); the types of OLE (TYPES): the GUIDs of
+# uuid.lib, the proxies and stubs of the interfaces (oleprx32); the picture converter (olecnv32) and
+# OLE Automation (oleaut32)
+dll $P RPC/LOCATOR/CLIENT; exe $P RPC/LOCATOR/SERVER locator; exe $P RPC/RUNTIME/RPCEPMPR/SERVER rpcss
+for c in COMMON ILIB COM/INC COM/PORT COM/COLL COM/DEBUG COM/MONIKER2 COM/UTIL COM/REMOTE/DDE/CLIENT COM/REMOTE/DDE/SERVER \
+         COM/REMOTE COM/OBJACT COM/ROT COM/CLASS OLE232/INC OLE232/ADVISE OLE232/BASE OLE232/CACHE OLE232/CLIPBRD \
+         OLE232/DEBUG OLE232/DRAG OLE232/INPLACE OLE232/STDIMPL OLE232/OLE1 OLE232/UTIL STG/DOCFILE STG/EXP STG/MSF; do
+    lib $P CAIROLE/$c/DAYTONA
+done
+types; dll $P CAIROLE/DLL/DAYTONA; exe $P CAIROLE/SCM/DAYTONA scm
+dll $P CAIROLE/OLECNV32/DAYTONA; oleaut
+
 # multimedia: winmm and its drivers (MCI, the MME driver of the kernel sound drivers, the
-# synthesizer), the audio compression manager and its codecs, video for Windows and the players
+# synthesizer), the audio compression manager and its codecs, video for Windows, the players and
+# Sound Recorder (an OLE 2 server: its class library o2base32.lib, SNDREC32\DIRS)
 lib $W MEDIA/MMCNTRLS; dll $W MEDIA/WINMM
 for c in MMDRV MCIWAVE MCISEQ MCICDA SYNTH MSACM/MSACM MSACM/MSACMMAP MSACM/IMAADPCM MSACM/MSADPCM MSACM/GSM610 MCIOLE; do
     dll $W MEDIA/$c
@@ -129,6 +150,7 @@ done
 for c in DRAWDIB COMPMAN MCIWND; do lib $W MEDIA/AVI/$c; done
 for c in VIDEO MSVIDC MSRLE MCIAVI32; do dll $W MEDIA/AVI/$c; done
 for a in SNDVOL:sndvol32 CDPLAYER:cdplayer MPLAYER2:mplay32; do exe $W MEDIA/${a%%:*} ${a#*:}; done
+lib $W MEDIA/SNDREC32/O2BASE; exe $W MEDIA/SNDREC32/SOUNDREC sndrec32
 
 # Windows NT Diagnostics: winmsd, its 3D controls (winmsd.dll) and column list box (clb.dll); the
 # header the library makes, wintools.h, before winmsd compiles
