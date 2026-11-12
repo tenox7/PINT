@@ -7,7 +7,9 @@
 =1 377 15
 +; A sixth field, <workdir>, is the directory the item starts in (default:
 +; the user's home directory).
-=1 391 21
+=1 391 7
++%inetmgr% = %11%\inetsrv\inetmgr.exe,%11%\inetsrv\inetmgr.exe,,0
+=1 398 14
 +[Games]
 +%game2048% = %24%\games\2048.exe,%24%\games\2048.exe,,0
 +%breakout% = %24%\games\breakout.exe,%24%\games\breakout.exe,,0

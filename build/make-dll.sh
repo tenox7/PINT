@@ -197,7 +197,8 @@ set -f
 for l in $(macro MFC_STATIC_LIB) $(libs LINKLIBS); do
   case $l in *.[Rr][Ee][Ss]) continue ;; esac
   a=$(bash libpath.sh $D "$l"); [ -n "$a" ] || a=$U/$(basename "$(echo "$l" | tr "\\\\" /)" | tr A-Z a-z)
-  [ -f $a ] && LL="$LL $a"
+  # (the objects of a directory, of a wildcard: libpath.sh gives them all)
+  [ -f ${a%% *} ] && LL="$LL $a"
 done
 [ "$IMPLIB" = 1 ] && { implib $OBJS $LL; echo "   wrote ${I#/work/RASPI/}/$NAME.lib (the import library of its objects)"; exit 0; }
 for l in $(libs LINKLIBS) $TL $(libs TARGETLIBS); do
@@ -205,8 +206,8 @@ for l in $(libs LINKLIBS) $TL $(libs TARGETLIBS); do
   b=$(basename "$(echo "$l" | tr "\\\\" /)" | tr A-Z a-z); b=${b%.lib}
   a=$(bash libpath.sh $D "$l"); [ -n "$a" ] || a=$U/$b.lib
   # (else one of kernel mode, which the client links too: efloat.lib of gdi32 and win32k.sys)
-  [ -f $a ] || [ ! -f $O/$b.lib ] || a=$O/$b.lib
-  [ -f $a ] || { echo "   missing library $b (build it first)"; exit 1; }
+  [ -f ${a%% *} ] || [ ! -f $O/$b.lib ] || a=$O/$b.lib
+  [ -f ${a%% *} ] || { echo "   missing library $b (build it first)"; exit 1; }
   # (each once: two of one name are two libraries, the util.lib of OLE com and of ole232)
   case " $seen " in *" $a "*) continue ;; esac; seen="$seen $a"
   LIBS="$LIBS $a"

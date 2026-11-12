@@ -46,7 +46,7 @@ for c in rtl/boot boot/lib config/boot boot/bldr; do CJ=4 job lib/$c cstep lib /
 barrier
 INSTALL=1 CJ=4 job osloader step osloader $R/obj/bldr.lib $R/obj/boot.lib $R/obj/bconfig.lib $R/obj/bldrrtl.lib $R/obj/libcntpr.lib \
     -- $B/make-osloader.sh
-CJ=4 job firmware step firmware $R/arcfw/arm $R/drivers/bcmusb/usbhost.c $R/drivers/bcmusb/usbhost.h $R/drivers/bcmusb/xhci.c $R/drivers/bcmusb/xhci.h $R/drivers/bcmeth/bcmethhw.h $R/arcfw/arcdos $R/tools/fon2fw.pl $R/obj/boot.lib \
+CJ=4 job firmware step firmware $R/arcfw/arm $R/drivers/bcmusb/usbhost.c $R/drivers/bcmusb/usbhost.h $R/drivers/bcmusb/xhci.c $R/drivers/bcmusb/xhci.h $R/drivers/bcmeth/bcmethhw.h $R/drivers/bcmwlan/bcmwlanhw.h $R/drivers/bcmsound/bcmsoundhw.h $R/arcfw/arcdos $R/tools/fon2fw.pl $R/obj/boot.lib \
     $R/obj/bldrrtl.lib $R/obj/libcntpr.lib -- $R/build/build.sh
 barrier
 

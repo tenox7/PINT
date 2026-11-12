@@ -9,8 +9,9 @@ PINT 4.0 is work in progress. PINT 3.5, Windows NT 3.5 (build 782), is on the br
 ## Status
 
 - Runs on a real Pi 2, 3, 4 and Zero 2 W & QEMU.
-- Supported: Wired Ethernet, PI display, USB mouse / keyboard, wired ethernet, SMP (multiprocessor)
-- Not supported: sound/audio, printing, wireless, Pi 1, Pi 5
+- Supported: Wired Ethernet, wireless (WPA2), sound/audio (HDMI and the 3.5 mm jack, with a mixer and MIDI),
+  PI display, USB mouse / keyboard, SMP (multiprocessor), FTP server, crash dumps
+- Not supported: printing, WPA3-only wireless networks, Pi 1, Pi 5
 
 ## Why not Pi 1 or Pi 5
 
@@ -77,6 +78,49 @@ entry yet: in the firmware's menu choose "Run a program" and type `arm\setupldr`
 In QEMU: `IMG=copy-of-nt-setup-sd.img build/run.sh -device usb-kbd`. For the network pick the adapter from the list
 (Raspberry Pi Ethernet Adapter); TCP/IP (with DHCP) and NetBEUI install.
 
+## Wireless
+
+The onboard Wi-Fi of the Pi 3, 3B+, 3A+, 4, 400 and Zero 2 W is a second network adapter, Raspberry Pi Wireless
+Adapter (`drivers/bcmwlan`), with TCP/IP and DHCP. Set the network in `config.txt` on the card before booting:
+
+    wifi_ssid=MyNetwork
+    wifi_password=my passphrase
+    wifi_security=WPA2      (WPA2, WPA2/WPA3 (joined with WPA2) or OPEN)
+    wifi_country=US         (the regulatory domain; XX by default)
+    debug_wifi=1            (log to C:\WLAN.LOG)
+
+The chip's firmware files are Raspberry Pi OS's, licensed for Raspberry Pi hardware only: the image build fetches
+them, and the repository does not hold them. On the Pi 2, 3 and Zero 2 W the SD card runs on the SD host controller
+(SDHOST), which leaves the EMMC controller to the wireless chip.
+
+## Sound
+
+The sound driver (`drivers/bcmsound`, with `bcmsnd32.dll`) is a sound card as NT's Windows Sound System driver is: a
+wave output, a mixer (the volume icon and Volume Control) and an FM synthesizer for MIDI. It plays through HDMI or the
+3.5 mm jack; in QEMU it is silent. In `config.txt`:
+
+    sound_output=AUTO       (AUTO (HDMI if the display takes sound, else the jack), HDMI, JACK or NONE)
+    debug_sound=1           (log to C:\SOUND.LOG)
+
+NT 4.0's logon and logoff sounds are not in the source tree: copy `Windows NT Logon Sound.wav` and `Windows NT Logoff
+Sound.wav` from `\WINNT\Media` of an NT 4.0 install into `private/windows/media/sounds` before building.
+
+## FTP server
+
+The FTP Publishing Service of Peer Web Services is installed with Internet Service Manager (Start > Programs >
+Administrative Tools) and does not start by itself: `net start msftpsvc`. `anonymous` logs on with any password (the
+account `IUSR_RASPI`), and so do the accounts of the machine; the root is `C:\`, read and write, so start it only on a
+network you trust.
+
+## Crash dumps
+
+Off by default. With both settings in `config.txt`, NT writes its memory at a STOP screen and saves it as
+`C:\WINNT\MEMORY.DMP` at the next start; C: needs about twice the limit free. `tools/dumpinfo.py MEMORY.DMP` prints the
+STOP code, the registers and the loaded drivers.
+
+    crash_dump=1
+    total_mem=256           (the Pi firmware's memory limit, in MB: required)
+
 ## SDK
 
 The PINT 4.0 SDK builds programs and DLLs for PINT outside this tree with Microsoft C for ARM (MSVC 14.44 of Visual
@@ -98,8 +142,7 @@ extra leaves the disk when it is made anew (`sdcard/make-sd-image.sh` without `-
 
 ## Roadmap
 
-- Wireless
-- Sound/audio
+- Wireless: WPA3, setup from Control Panel
 - Pi 4: memory above the first GB, the USB-C port, USB Ethernet adapters.
 
 ## Legal

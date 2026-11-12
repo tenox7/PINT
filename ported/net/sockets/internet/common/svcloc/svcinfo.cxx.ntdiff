@@ -1,0 +1,4 @@
+#ntdiff private/net/sockets/internet/common/svcloc/svcinfo.cxx
+=1 1 315
++            sizeof(ULONGLONG) +     // (the + the source lacks)
+=1 317 1183

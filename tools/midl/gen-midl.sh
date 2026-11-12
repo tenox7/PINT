@@ -216,6 +216,10 @@ recipe nw/svcdlls/nwwks/makefil0 "\$(TARGETS)"
 # (Services for Macintosh: the interface between sfmapi and the AFP service, sfmsvc)
 recipe net/sfm/afp/service/makefil0 "\$(TARGETS)"
 recipe net/sockets/tcpcmd/ftpsvc/makefil0 "\$(CLIENT_TARGETS)" "\$(SERVER_TARGETS)"
+# (Peer Web Services: the administration interface of inetinfo.exe, infoadmn and infocomm, and
+# that of its FTP service, ftpsapi2 and ftpsvc2)
+recipe net/sockets/internet/svcs/dll/info/makefil0 "\$(CLIENT_TARGETS)" "\$(SERVER_TARGETS)"
+recipe net/sockets/internet/svcs/ftp/makefil0 "\$(CLIENT_TARGETS)" "\$(SERVER_TARGETS)"
 # (TAPI: the interface between tapi32 and tapisrv, and the one of the remote service
 # provider; the makefile of the NT build: OS Windows_NT, as on NT)
 MACROS="OS=Windows_NT" recipe tapi/dev/makefil0 "\$(CLIENT_TARGETS)" "\$(SERVER_TARGETS)" "\$(CLIENT_TARGETS2)" "\$(SERVER_TARGETS2)"

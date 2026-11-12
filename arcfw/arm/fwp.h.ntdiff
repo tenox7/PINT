@@ -147,10 +147,21 @@
 +
 +VOID
 +FwSocInitialize (
-=1 471 4
+=1 165 4
++// The controller of the SD card, which the boot driver (sdcard.c) finds and
++// the configuration tree describes (config.c).
++//
++
++typedef enum _SD_CONTROLLER {
++    SdControllerEmmc,
++    SdControllerEmmc2,
++    SdControllerSdhost
++} SD_CONTROLLER, *PSD_CONTROLLER;
++
++VOID
 +FwSetScsiAdapter(
 +    IN ULONG PhysicalBase,
-+    IN BOOLEAN Emmc2
++    IN SD_CONTROLLER Controller
 =1 137 3
 +MailboxPropertyCall (
 +    IN OUT volatile ULONG *Buffer
@@ -182,6 +193,9 @@
 +MailboxGetClockRate (
 +    IN ULONG ClockId
 =1 137 3
++MailboxGetMaxClockRate (
++    IN ULONG ClockId
+=1 137 3
 +MailboxGetArmMemory (
 =1 116 3
 +ULONG
@@ -189,6 +203,9 @@
 +    OUT PULONG High
 =1 137 3
 +MailboxGetBoardRevision (
+=1 116 3
++ULONG
++MailboxGetDmaChannels (
 =1 116 3
 +ULONG
 +MailboxGetFirmwareRevision (
@@ -200,6 +217,13 @@
 +    IN PCHAR Identifier
 =1 132 3
 +FwAddPciBus (
+=1 471 4
++FwAddWlan (
++    IN ULONG BaseClock
+=1 132 3
++FwAddAudio (
+=1 476 4
++FwCrashDumpRequested (
 =1 116 3
 +ULONG
 +FwGetMicroseconds (

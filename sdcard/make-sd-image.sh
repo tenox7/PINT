@@ -36,6 +36,27 @@ for f in bootcode.bin start.elf fixup.dat bcm2709-rpi-2-b.dtb start4.elf fixup4.
   [[ -s "$FWCACHE/$f" ]] || { echo ">> fetching $f"; curl -fsSL -o "$FWCACHE/$f" "$base/$f"; }
 done
 
+# The firmware, NVRAM and regulatory (CLM) files of the on-board wireless chips, which the
+# wireless miniport (drivers/bcmwlan) loads from \WINNT\System32\Drivers\BCMWLAN: Raspberry
+# Pi OS's (RPi-Distro/firmware-nonfree, pinned), which may be used only with Raspberry Pi
+# hardware, so they are fetched here and never committed. 8.3 names: 43430 (BCM43430 A1, Pi
+# 3B), 43436 (CYW43436, a Zero 2 W), 43436S (the other Zero 2 W module), 43455 (CYW43455,
+# Pi 3B+, 3A+, 4: the "minimal" firmware, which has the in-chip WPA2 supplicant the "standard"
+# one lacks), 43456 (CYW43456, Pi 400, CM4).
+WL=root/WINNT/System32/Drivers/BCMWLAN
+WLREV=5d2295b633d94641253e16ba90fc847436fc9d4a
+wlbase="https://raw.githubusercontent.com/RPi-Distro/firmware-nonfree/$WLREV/debian/added-firmware"
+mkdir -p "$WL"
+for m in 43430.BIN:cypress/cyfmac43430-sdio.bin 43430.CLM:cypress/cyfmac43430-sdio.clm_blob \
+         43430.TXT:brcm/brcmfmac43430-sdio.txt 43436.BIN:brcm/brcmfmac43436-sdio.bin \
+         43436.CLM:brcm/brcmfmac43436-sdio.clm_blob 43436.TXT:brcm/brcmfmac43436-sdio.txt \
+         43436S.BIN:brcm/brcmfmac43436s-sdio.bin 43436S.TXT:brcm/brcmfmac43436s-sdio.txt \
+         43455.BIN:cypress/cyfmac43455-sdio-minimal.bin 43455.CLM:cypress/cyfmac43455-sdio.clm_blob \
+         43455.TXT:brcm/brcmfmac43455-sdio.txt 43456.BIN:brcm/brcmfmac43456-sdio.bin \
+         43456.CLM:brcm/brcmfmac43456-sdio.clm_blob 43456.TXT:brcm/brcmfmac43456-sdio.txt; do
+  [[ -s "$WL/${m%%:*}" ]] || { echo ">> fetching ${m#*:}"; curl -fsSL -o "$WL/${m%%:*}" "$wlbase/${m#*:}"; }
+done
+
 if [[ "${1:-}" = -u && -f "$IMG" && -f "$STAMP" && -z "$(find ../obj/gen/hives ../ported/oak make-sd-image.sh -newer "$STAMP" -print -quit)" ]]; then
   # a file a line: names may have spaces (the files of the extras)
   list=$(cd .. && find sdcard/root sdcard/config.txt sdcard/firmware obj/arcfw.bin -type f -newer obj/stamp/sd-image)
@@ -44,6 +65,8 @@ if [[ "${1:-}" = -u && -f "$IMG" && -f "$STAMP" && -z "$(find ../obj/gen/hives .
   (( ${#new[@]} == 0 )) || docker run --rm -v "$ROOT":/work -w /work --entrypoint bash tenox7/msvc-arm32 -c '
 set -e
 I=obj/nt-arcfw-sd.img@@1M
+mmd -D s -i $I "::/Program Files" 2>/dev/null || true
+mmd -D s -i $I "::/Program Files/Common Files" 2>/dev/null || true
 for f in "$@"; do
   case $f in sdcard/root/*) d=${f#sdcard/root/} ;; *) d=${f##*/} ;; esac
   p=; IFS=/ read -ra cs <<< "$(dirname "$d")"
@@ -64,6 +87,9 @@ cp firmware/bootcode.bin firmware/start.elf firmware/fixup.dat firmware/bcm2709-
 cp config.txt ../obj/arcfw.bin /tmp/sd/
 cp -r root/* /tmp/sd/
 mkdir -p /tmp/sd/WINNT/System32/config /tmp/sd/WINNT/Fonts /tmp/sd/TMP
+# \Program Files and its Common Files, which the setup of NT 4.0 makes (and names in the registry:
+# ProgramFilesDir, CommonFilesDir), where applications install and look for them
+mkdir -p "/tmp/sd/Program Files/Common Files"
 # the NLS tables of text setup ([nls] of TXTSETUP.SIF, USA) and of the base
 N=/nt/private/windows/winnls/data
 cp $N/c_1252.nls $N/c_437.nls $N/c_850.nls $N/c_10000.nls $N/l_intl.nls $N/ctype.nls $N/locale.nls $N/sortkey.nls \
@@ -101,6 +127,9 @@ cp ../obj/gen/hives/SYSTEM ../obj/gen/hives/SOFTWARE ../obj/gen/hives/DEFAULT ..
 cp /nt/private/sdktools/cntrtext/perfini/perfc009.dat /nt/private/sdktools/cntrtext/perfini/perfh009.dat /tmp/sd/WINNT/System32/
 # and the patches of the synthesizer (synth.dll) and the MIDI mapper configuration; the sounds
 # in \WINNT\Media and the clock video in \WINNT
+# (the logon and logoff sounds the default hive names, "Windows NT Logon Sound.wav" and "Windows NT
+# Logoff Sound.wav", are not in the source tree: copy them from \WINNT\Media of an NT 4.0 install
+# into media/sounds of the tree for them to play)
 M=/nt/private/windows/media
 cp $M/synth/synth.pat $M/midimap/midimap.cfg /tmp/sd/WINNT/System32/
 mkdir -p /tmp/sd/WINNT/Media
