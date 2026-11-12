@@ -8,23 +8,9 @@ PINT 4.0 is work in progress. PINT 3.5, Windows NT 3.5 (build 782), is on the br
 
 ## Status
 
-- Runs in QEMU `raspi2b`, `raspi3b` and `raspi4b` on four CPUs: NT's developer first run or NT 4.0's own setup, logon,
-  the Explorer desktop and Start menu, Control Panel, Task Manager, the accessories and games, WordPad and Paint (OLE),
-  TCP/IP networking, Internet Explorer, WinHelp 4, POSIX and OpenGL.
-- No printing: no spooler and no printer drivers.
-- Runs on a real Pi 2, 3, 4 and Zero 2 W.
-
-## Raspberry Pi models
-
-- Tested with PINT 4.0: Pi 2, Pi 3, Pi 4 and Zero 2 W (no network on it: it has only Wi-Fi).
-- Tested with PINT 3.5: Pi 2 Model B v1.1 (BCM2836, Cortex-A7), Pi 2 Model B v1.2, Pi 3 Model B v1.2, v1.3 and B+
-  v1.3 (BCM2837, Cortex-A53), Pi 4 Model B v1.4 and Pi 400 (BCM2711, Cortex-A72: USB-A ports and Ethernet; NT uses the
-  first GB of memory) and QEMU `raspi2b`, `raspi3b`, `raspi3ap`, `raspi4b`.
-- Untested, should work: 3A+ (BCM2837), CM4 (BCM2711).
-- NT runs its multiprocessor kernel on all four cores of every model.
-- Not planned:
-  - Pi 1, Zero, Zero W: ARMv6 (ARM1176), no Thumb-2.
-  - Pi 5, Pi 500: the Cortex-A76 runs 32-bit code only in user mode.
+- Runs on a real Pi 2, 3, 4 and Zero 2 W & QEMU.
+- Supported: Wired Ethernet, PI display, USB mouse / keyboard, wired ethernet, SMP (multiprocessor)
+- Not supported: sound/audio, printing, wireless, Pi 1, Pi 5
 
 ## Why not Pi 1 or Pi 5
 
@@ -91,51 +77,6 @@ entry yet: in the firmware's menu choose "Run a program" and type `arm\setupldr`
 In QEMU: `IMG=copy-of-nt-setup-sd.img build/run.sh -device usb-kbd`. For the network pick the adapter from the list
 (Raspberry Pi Ethernet Adapter); TCP/IP (with DHCP) and NetBEUI install.
 
-## Networking
-
-TCP/IP with DHCP and NetBIOS over TCP/IP, also to DNS names (`net use \\host.example.com\share`), the server and
-workstation services, ping, tracert, netstat, nbtstat, arp, route, ipconfig and hostname (ftp, telnet and the other
-TCP/IP tools are in no source tree, so ARM setup leaves them out). It uses the onboard Ethernet
-(LAN9514 on the Pi 2/3B, LAN7800 on the 3B+, the BCM2711's GENET on the Pi 4), in QEMU a USB Ethernet adapter
-(`NONET=1 build/run.sh`: none).
-
-## Games
-
-Start > Programs > Games has the games of PINT 3.5 (`apps/games`, in `\GAMES`): 2048, Breakout, Bubble
-Breaker, Moon Lander, Missile Command, Snake, Tankz, NT Rigue, RISCque, Sokoban, RISCoban and WiNTown, a port of
-Micropolis. WiNTown and the Micropolis simulator are under the GPL 3.0 with Electronic Arts' additional terms
-(`apps/games/wintown/LICENSE`); the other games are public domain. NT 4.0's own Solitaire, Minesweeper and FreeCell are
-in Start > Programs > Accessories > Games.
-
-## VNC viewer
-
-`\APPS\TENOXVNC.EXE` (Start > Programs > Apps, and the desktop) is the Win32 build of TenoxVNC (`apps/tenoxvnc`, from
-github.com/tenox7/tenoxvnc), a VNC viewer. Run without a server, it asks for one (`host`, `host:display` or
-`host::port`), with the password, encoding and colors; F8 opens its menu (full screen, Ctrl+Alt+Del, clipboard,
-settings). It is under the GPL 2.0 (`apps/tenoxvnc/LICENCE.TXT`), its zlib and IJG JPEG decoders under their own terms
-(`LICENSE.zlib`, `README.jpeg`).
-
-## Internet Explorer
-
-`\APPS\IEXPLORE.EXE` (Start > Programs > Apps, and the desktop) is the Internet Explorer 1.5 of PINT 3.5: NT's Mosaic (edit scripts in
-`apps/ie`) with PNG images (stb_image, public domain), UTF-8 pages and HTTPS with TLS 1.2 (BearSSL, MIT license:
-`apps/ie/bearssl/LICENSE.txt`). HTTPS does not check server certificates.
-
-## ntfetch
-
-`\APPS\NTFETCH.EXE` (Start > Programs > Apps, and the desktop) is ntfetch (`apps/ntfetch`, from github.com/tenox7/ntfetch): the
-system at a glance, in one window in the style of WinMSD; `ntfetch --text > FILE` writes it as text.
-
-## SDK tools
-
-`\SDKTOOLS` has the tools of the NT source's `private\sdktools` that build for ARM, as in PINT 3.5
-(`build/build-sdktools.sh`): 303 programs, SLM's 13 commands and 27 DLLs, such as build, nmake, rc, mc, pstat,
-pview, pmon, tlist, kill, qgrep, windiff, regini, remote, slm, the z editor and vi. They are not on the PATH. The header of `build/build-sdktools.sh` lists
-the tools left out and why.
-
-The games, TenoxVNC, Internet Explorer, ntfetch and the SDK tools are on the SD image; the setup card does not
-install them.
-
 ## SDK
 
 The PINT 4.0 SDK builds programs and DLLs for PINT outside this tree with Microsoft C for ARM (MSVC 14.44 of Visual
@@ -147,11 +88,13 @@ or cl) and, in `obj/sdk/docker`, the Docker image tenox7/pint40sdk on tenox7/msv
 
 ## Roadmap
 
+- Wireless
+- Sound/audio
 - Pi 4: memory above the first GB, the USB-C port, USB Ethernet adapters.
 
 ## Legal
 
 - This repository contains no Microsoft or Windows copyrighted material. 
-- It is just a build toolchain plus own ARM ARC firmware code. 
+- It is just a build toolchain plus own ARM ARC firmware emulator code. 
 - Written from scratch by Dave Clanker based on U-Boot.
 - Public domain.
