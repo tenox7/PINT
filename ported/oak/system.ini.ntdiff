@@ -17,6 +17,8 @@
 +#define BCMEMMC 1
 +#define BCMVIDEO 1
 +#define BCMUSB 1
++#define BCMSOUND 1
++#define PWSFTP 1
 +#endif // defined(_RASPI_)
 =1 85 343
 +#if defined(RASPI)
@@ -298,25 +300,6 @@
 +                        SubnetMask = REG_MULTI_SZ "0.0.0.0"
 +
 +            //
-+            // The sound driver (bcmsound: a wave output, a mixer and an FM synthesizer, which it
-+            // lists in Parameters\Device0\Devices for its multimedia driver bcmsnd32.dll, as
-+            // the Windows Sound System's does), playing through HDMI or the 3.5 mm jack as
-+            // sound_output of C:\CONFIG.TXT says. A board whose firmware describes no sound
-+            // hardware fails it quietly.
-+            // It starts with the system, as the sound drivers NT installs do: Winlogon loads
-+            // the multimedia drivers when it starts and registers the MIDI devices it then
-+            // has at each logon (the MIDI page of Multimedia), before the services start.
-+            //
-+            Bcmsound
-=1 2713 2
-=1 1643 1
-+                ImagePath = REG_EXPAND_SZ \SystemRoot\System32\drivers\bcmsound.sys
-+                DisplayName = Raspberry Pi Sound Driver
-+                Group = Base
-+                Parameters
-+                    Device0
-+
-+            //
 +            // The on-board wireless adapter (bcmwlan, adapter Bcmwlan1), bound like the
 +            // Ethernet adapter to TCP/IP with DHCP, NetBIOS over TCP/IP and the server and
 +            // workstation services. A board without the chip fails it quietly (ErrorControl
@@ -398,18 +381,6 @@
 +                        6
 +                            RegLocation = System\CurrentControlSet\Services\Tcpip\Parameters\DhcpNameServer
 +                            KeyType = REG_DWORD 0x00000001
-+
-+            //
-+            // The FTP service of Peer Web Services (ftpsvc2.dll, in inetinfo.exe) as its setup
-+            // (INETSTP) installs it, with these differences: it starts on demand (Services, or
-+            // Internet Service Manager), it takes the accounts of the machine as well as the
-+            // anonymous user, and its home directory is the root of drive C, read and written,
-+            // to bring files to the machine. The anonymous user is IUSR_RASPI, which the first
-+            // boot makes (REGISTRY.INI) with the secrets of its (empty) password.
-+            //
-+            InetInfo
-+                Parameters
-+                    ListenBackLog = REG_DWORD 0x00000019
 =2 1266 3
 =2 1255 2
 =2 3300 1
@@ -475,41 +446,6 @@
 +                Linkage
 +                    Disabled
 +                Parameters
-+
-+            //
-+            // The FTP service itself (see InetInfo).
-+            //
-+            MSFTPSVC
-=2 1268 2
-=1 1643 1
-+                ImagePath = REG_EXPAND_SZ %SystemRoot%\System32\inetsrv\inetinfo.exe
-+                DisplayName = FTP Publishing Service
-+                DependOnService = REG_MULTI_SZ "RPCSS"
-+                DependOnGroup = REG_MULTI_SZ
-+                ObjectName = LocalSystem
-+                Parameters
-=1 1261 2 4
-+                    SecurityOn = REG_DWORD 0x00000001
-+                    AllowAnonymous = REG_DWORD 0x00000001
-+                    AnonymousOnly = REG_DWORD 0x00000000
-+                    AllowGuestAccess = REG_DWORD 0x00000001
-+                    LogAnonymous = REG_DWORD 0x00000000
-+                    LogNonAnonymous = REG_DWORD 0x00000000
-+                    AnonymousUserName = IUSR_RASPI
-+                    AdminName = Administrator
-+                    ConnectionTimeOut = REG_DWORD 0x00000384
-+                    MaxConnections = REG_DWORD 0x000003e8
-+                    LogType = REG_DWORD 0x00000000
-+                    LogFileDirectory = REG_EXPAND_SZ %SystemRoot%\system32\LogFiles
-+                    LogFileTruncateSize = REG_DWORD 0x01388000
-+                    LogFilePeriod = REG_DWORD 0x00000001
-+                    LogFileFormat = REG_DWORD 0x00000000
-+                    DebugFlags = REG_DWORD 0x00000000
-+                    EnablePortAttack = REG_DWORD 0x00000000
-+                    InstallPath = REG_EXPAND_SZ %SystemRoot%\System32\inetsrv
-+                    MsdosDirOutput = REG_DWORD 0x00000000
-+                    Virtual Roots
-+                        / = C:\,,3
 +
 +            NetBIOS
 =1 1658 2
@@ -834,6 +770,77 @@
 +                                                    0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 \
 +                                                    0x00000000 0x00000000 0x00000000
 +#endif // defined(RASPI)
++
++#if defined(BCMSOUND)
++            //
++            // The sound driver (bcmsound: a wave output, a mixer and an FM synthesizer, which it
++            // lists in Parameters\Device0\Devices for its multimedia driver bcmsnd32.dll, as
++            // the Windows Sound System's does), playing through HDMI or the 3.5 mm jack as
++            // sound_output of C:\CONFIG.TXT says. A board whose firmware describes no sound
++            // hardware fails it quietly.
++            // It starts with the system, as the sound drivers NT installs do: Winlogon loads
++            // the multimedia drivers when it starts and registers the MIDI devices it then
++            // has at each logon (the MIDI page of Multimedia), before the services start.
++            //
++            Bcmsound
+=1 2713 2
+=1 1643 1
++                ImagePath = REG_EXPAND_SZ \SystemRoot\System32\drivers\bcmsound.sys
++                DisplayName = Raspberry Pi Sound Driver
++                Group = Base
++                Parameters
++                    Device0
++#endif // defined(BCMSOUND)
++
++#if defined(PWSFTP)
++            //
++            // The FTP service of Peer Web Services (ftpsvc2.dll, in inetinfo.exe) as its setup
++            // (INETSTP) installs it, with these differences: it starts on demand (Services, or
++            // Internet Service Manager), it takes the accounts of the machine as well as the
++            // anonymous user, and its home directory is the root of drive C, read and written,
++            // to bring files to the machine. The anonymous user is IUSR_RASPI, which the first
++            // boot makes (REGISTRY.INI; after NT's setup, the RunOnce of the SOFTWARE hive)
++            // with the secrets of its (empty) password.
++            //
++            InetInfo
++                Parameters
++                    ListenBackLog = REG_DWORD 0x00000019
++
++            //
++            // The FTP service itself (see InetInfo).
++            //
++            MSFTPSVC
+=2 1268 2
+=1 1643 1
++                ImagePath = REG_EXPAND_SZ %SystemRoot%\System32\inetsrv\inetinfo.exe
++                DisplayName = FTP Publishing Service
++                DependOnService = REG_MULTI_SZ "RPCSS"
++                DependOnGroup = REG_MULTI_SZ
++                ObjectName = LocalSystem
++                Parameters
+=1 1261 2 4
++                    SecurityOn = REG_DWORD 0x00000001
++                    AllowAnonymous = REG_DWORD 0x00000001
++                    AnonymousOnly = REG_DWORD 0x00000000
++                    AllowGuestAccess = REG_DWORD 0x00000001
++                    LogAnonymous = REG_DWORD 0x00000000
++                    LogNonAnonymous = REG_DWORD 0x00000000
++                    AnonymousUserName = IUSR_RASPI
++                    AdminName = Administrator
++                    ConnectionTimeOut = REG_DWORD 0x00000384
++                    MaxConnections = REG_DWORD 0x000003e8
++                    LogType = REG_DWORD 0x00000000
++                    LogFileDirectory = REG_EXPAND_SZ %SystemRoot%\system32\LogFiles
++                    LogFileTruncateSize = REG_DWORD 0x01388000
++                    LogFilePeriod = REG_DWORD 0x00000001
++                    LogFileFormat = REG_DWORD 0x00000000
++                    DebugFlags = REG_DWORD 0x00000000
++                    EnablePortAttack = REG_DWORD 0x00000000
++                    InstallPath = REG_EXPAND_SZ %SystemRoot%\System32\inetsrv
++                    MsdosDirOutput = REG_DWORD 0x00000000
++                    Virtual Roots
++                        / = C:\,,3
++#endif // defined(PWSFTP)
 =1 3640 16
 +#if defined(RASPI)
 =2 3597 3

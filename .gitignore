@@ -289,6 +289,7 @@ ported/windows/setup/inf/beta/arm/keyboard.inf
 ported/windows/setup/inf/beta/arm/pointer.inf
 ported/windows/setup/inf/beta/arm/scsi.inf
 ported/windows/setup/inf/beta/arm/oemnadbc.inf
+ported/windows/setup/inf/beta/arm/oemnadbw.inf
 ported/windows/setup/inf/beta/arm/netoemdh.inf
 ported/windows/setup/inf/arminf.mk
 ported/windows/setup/inf/beta/eng_dev.txt

@@ -117,12 +117,12 @@ dump() { host hivedmp -f $1 | tr -d "\r"; }
 # RETAIL: the hives of mkhives RETAIL; ARM: those of the Pi, from the .INI files of the
 # port where it has them (ported/oak, made from their edit scripts); SETUP: the retail hives
 # with the services of the Pi's drivers, those of its setup source (text setup turns on the
-# ones it detects)
+# ones it detects), the sound driver and the FTP service
 for V in $VARIANTS; do
     case $V in
     RETAIL) OPT="-D_GENERAL_PURPOSE_ -D_RETAIL_SETUP_";;
     ARM)    OPT="-D_GENERAL_PURPOSE_ -D_RETAIL_SETUP_ -D_RASPI_";;
-    SETUP)  OPT="-D_GENERAL_PURPOSE_ -D_RETAIL_SETUP_ -DBCMEMMC -DBCMUSB -DBCMVIDEO";;
+    SETUP)  OPT="-D_GENERAL_PURPOSE_ -D_RETAIL_SETUP_ -DBCMEMMC -DBCMUSB -DBCMVIDEO -DBCMSOUND -DPWSFTP";;
     VALIDATE) continue;;
     *) echo "unknown variant $V"; exit 1;;
     esac
