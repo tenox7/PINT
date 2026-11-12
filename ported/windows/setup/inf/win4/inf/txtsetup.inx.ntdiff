@@ -25,6 +25,7 @@
 +@r:bcmusb   = PCAT_ENHANCED
 =1 711 23
 +@r:bcmemmc  = *EMMC
++@r:bcmemmc  = *SDHOST
 =1 734 44
 =1 778 1 -3 @a:
 =1 778 1 -3 @i:

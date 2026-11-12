@@ -1,7 +1,7 @@
 #ntdiff public/oak/bin/software.ini ../nt35/PUBLIC/OAK/BIN/SOFTWARE.INI
 #crlf
 =1 1 1645
-+#if defined(_RASPI_)
++#if defined(_RASPI_) || defined(PWSFTP)
 +        //
 +        // The FTP pages of Internet Service Manager (INETSTP: the AddOnServices of INetMgr).
 +        //
@@ -9,7 +9,7 @@
 +            Parameters
 +                AddOnServices
 +                    FTP = fscfg.dll
-+#endif // defined(_RASPI_)
++#endif // defined(_RASPI_) || defined(PWSFTP)
 =1 1645 5
 +                //
 +                // \Program Files and its Common Files, which the setup of NT 4.0 names here.
@@ -17,7 +17,7 @@
 +                ProgramFilesDir = C:\Program Files
 +                CommonFilesDir = C:\Program Files\Common Files
 =1 1650 2
-+#if defined(_RASPI_)
++#if defined(_RASPI_) || defined(PWSFTP)
 +                    //
 +                    // Internet Service Manager of Peer Web Services (Start, Run: inetmgr), which
 +                    // manages the FTP service.
@@ -25,8 +25,18 @@
 +                    inetmgr.exe
 +                        = REG_EXPAND_SZ %SystemRoot%\System32\inetsrv\inetmgr.exe
 +                        Path = REG_EXPAND_SZ %SystemRoot%\System32\inetsrv
-+#endif // defined(_RASPI_)
-=1 1652 270
++#endif // defined(_RASPI_) || defined(PWSFTP)
+=1 1652 3
++#if defined(PWSFTP) && !defined(_RASPI_)
++                    //
++                    // After NT's setup, at the first logon: the account of the anonymous user
++                    // of the FTP service and the LSA secrets of its password, which the first
++                    // boot of the system disk makes from REGISTRY.INI.
++                    //
++                    FtpUser = cmd /c %SystemRoot%\System32\inetsrv\ftpuser IUSR_RASPI
++                    FtpSecrets = cmd /c %SystemRoot%\System32\inetsrv\svcsetup FtpSvc /add
++#endif // defined(PWSFTP) && !defined(_RASPI_)
+=1 1655 267
 +#if defined(_RASPI_)
 +                    //
 +                    // The adapter the network setup installs (NTLANMAN.INF, the INF of the
@@ -108,11 +118,11 @@
 +                    LogPixels = REG_DWORD 0x00000060
 +#endif // defined(_RASPI_)
 =1 2371 79
-+#if defined(_RASPI_)
++#if defined(_RASPI_) || defined(BCMSOUND)
 +                    bcmsnd32.dll = Raspberry Pi Sound
-+#endif // defined(_RASPI_)
++#endif // defined(_RASPI_) || defined(BCMSOUND)
 =1 2450 8
-+#if defined(_RASPI_)
++#if defined(_RASPI_) || defined(BCMSOUND)
 +                    //
 +                    // The Raspberry Pi's sound driver (bcmsound.sys) and its multimedia driver,
 +                    // as the Windows Sound System's sndsys32.dll is installed: wave, mixer, aux
@@ -125,7 +135,7 @@
 +                    mixer=bcmsnd32.dll
 +#else
 =1 2458 3
-+#endif // defined(_RASPI_)
++#endif // defined(_RASPI_) || defined(BCMSOUND)
 =1 2461 391
 +#if defined(_RASPI_)
 +        //

@@ -14,3 +14,16 @@
 =1 54 20
 +; No UI for bcmeth
 =1 75 5
++#####oemnadbw.inf arm
+=1 2 15
++    BCMWLAN     = "Raspberry Pi Wireless Adapter"
+=1 18 21
++FunctionTitle   = "Raspberry Pi Wireless Adapter Card Setup"
+=1 40 3
++ProductSoftwareDescription      = "Raspberry Pi Wireless Adapter Driver"
+=1 44 8
++ProductSoftwareTitle    = "Raspberry Pi Wireless Adapter Driver"
++ProductHardwareBCMWLANTitle      = "Raspberry Pi Wireless Adapter"
+=1 54 20
++; No UI for bcmwlan
+=1 75 5

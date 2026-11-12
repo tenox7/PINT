@@ -6,6 +6,9 @@
 +
 +doeacharminf:: \
 +        ..\$(NEWINF)$(LOCATION)\oemnadbc.inf \
++        ..\$(NEWINF)$(LOCATION)\oemnadbw.inf \
 =1 10 3
 +..\$(NEWINF)$(LOCATION)\oemnadbc.inf: oemnadbc.inf
+=1 14 2
++..\$(NEWINF)$(LOCATION)\oemnadbw.inf: oemnadbw.inf
 =1 23 4
