@@ -656,7 +656,8 @@ FwAddAudio (
     ArcAudioData.AudioData.DmaChannel = Channel;
     ArcAudioData.AudioData.DmaChannelMask = Mask;
     ArcAudioData.AudioData.Flags = (FwBcm2711 ? BCMSOUND_BCM2711 : 0) |
-                                   (MailboxGetFirmwareRevision() < AUDIO_REAL_FIRMWARE ? BCMSOUND_EMULATED : 0);
+                                   (MailboxGetFirmwareRevision() < AUDIO_REAL_FIRMWARE ?
+                                    BCMSOUND_EMULATED : 0);
 
     SetComponent(&ArcAudioNode, ControllerClass, AudioController, 0);
     SetIdentifier(&ArcAudioNode, BCMSOUND_ID);
@@ -1169,21 +1170,20 @@ Routine Description:
 // not fit. Both are off by default.
 //
 
-#define CONFIG_TXT_PATH "scsi(0)disk(0)rdisk(0)partition(1)\\config.txt"
-#define CONFIG_TXT_SIZE 8192
+#define CONFIG_TXT_PATH         "scsi(0)disk(0)rdisk(0)partition(1)\\config.txt"
+#define CONFIG_TXT_SIZE         8192
 
 static CHAR FwConfigText[CONFIG_TXT_SIZE + 1];
+
+//
+// The value of a "key=value" line (not case sensitive), or NULL.
+//
 
 static PCHAR
 FwConfigValue (
     IN PCHAR Line,
     IN PCHAR Key
     )
-
-//
-// The value of a "key=value" line (not case sensitive), or NULL.
-//
-
 {
     ULONG Index;
 
@@ -1226,7 +1226,8 @@ FwCrashDumpRequested (
     }
 
     while (Length < CONFIG_TXT_SIZE &&
-           FwRead(FileId, FwConfigText + Length, CONFIG_TXT_SIZE - Length, &Count) == ESUCCESS && Count != 0) {
+           FwRead(FileId, FwConfigText + Length, CONFIG_TXT_SIZE - Length, &Count) == ESUCCESS &&
+           Count != 0) {
         Length += Count;
     }
 
@@ -1247,7 +1248,8 @@ FwCrashDumpRequested (
         if ((Value = FwConfigValue(Line, "crash_dump")) != NULL) {
             CrashDump = (BOOLEAN)(*Value == '1' || *Value == 'y' || *Value == 'Y' || *Value == 't' ||
                                   *Value == 'T' ||
-                                  ((*Value == 'o' || *Value == 'O') && (Value[1] == 'n' || Value[1] == 'N')));
+                                  ((*Value == 'o' || *Value == 'O') &&
+                                   (Value[1] == 'n' || Value[1] == 'N')));
         } else if ((Value = FwConfigValue(Line, "total_mem")) != NULL) {
             for (TotalMemory = 0; *Value >= '0' && *Value <= '9'; Value += 1) {
                 TotalMemory = TotalMemory * 10 + (*Value - '0');

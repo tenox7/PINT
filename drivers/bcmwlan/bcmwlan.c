@@ -127,6 +127,28 @@ WlanLog(
     IN PCHAR Format,
     ...
     )
+
+/*++
+
+Routine Description:
+
+    This routine writes a line to the log file, the time of day in front of
+    it. Nothing is written without the file, above PASSIVE_LEVEL, or once the
+    log has LOG_LINES lines.
+
+Arguments:
+
+    Adapter - Supplies the adapter, or NULL (nothing is written).
+
+    Format - Supplies the format of the line, as of printf, and its values
+        after it.
+
+Return Value:
+
+    None.
+
+--*/
+
 {
     CHAR Line[512];
     LARGE_INTEGER Time;
@@ -151,7 +173,6 @@ WlanLog(
     Line[Length++] = '\r';
     Line[Length++] = '\n';
     Line[Length] = 0;
-    DbgPrint("BCMWLAN: %s", Line);
     if (Adapter == NULL || Adapter->LogFile == NULL || KeGetCurrentIrql() != PASSIVE_LEVEL ||
         Adapter->LogLines >= LOG_LINES) {
         return;
@@ -168,6 +189,29 @@ WlanLogBytes(
     IN PUCHAR Data,
     IN ULONG Length
     )
+
+/*++
+
+Routine Description:
+
+    This routine writes bytes to the log in hexadecimal, 32 to a line.
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+    Title - Supplies the name of the bytes, which starts each line.
+
+    Data - Supplies the bytes.
+
+    Length - Supplies their number.
+
+Return Value:
+
+    None.
+
+--*/
+
 {
     CHAR Hex[3 * 32 + 1];
     ULONG Offset;
@@ -182,16 +226,34 @@ WlanLogBytes(
     }
 }
 
-//
-// Read a whole file into nonpaged pool, which the caller frees.
-//
-
 PUCHAR
 WlanReadFile(
     IN PWLAN_ADAPTER Adapter,
     IN PWCHAR Path,
     OUT PULONG Length
     )
+
+/*++
+
+Routine Description:
+
+    This routine reads a whole file into nonpaged pool, which the caller
+    frees.
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+    Path - Supplies the path of the file.
+
+    Length - Receives the length of the file, in bytes.
+
+Return Value:
+
+    The file's data, a NUL after it, or NULL if the file could not be read.
+
+--*/
+
 {
     UNICODE_STRING Name;
     OBJECT_ATTRIBUTES Attributes;
@@ -596,6 +658,28 @@ WlanQueueReceive(
     IN PUCHAR Frame,
     IN ULONG Length
     )
+
+/*++
+
+Routine Description:
+
+    This routine puts a frame the chip received into the receive ring, for the
+    timer to indicate. It runs in the thread.
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+    Frame - Supplies the Ethernet frame.
+
+    Length - Supplies its length, in bytes.
+
+Return Value:
+
+    None.
+
+--*/
+
 {
     PWLAN_SLOT Slot;
 
@@ -635,6 +719,26 @@ WlanSetLink(
     IN PWLAN_ADAPTER Adapter,
     IN BOOLEAN Up
     )
+
+/*++
+
+Routine Description:
+
+    This routine sets the state of the link; a change is logged, and left for
+    the timer to indicate. It runs in the thread.
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+    Up - Supplies whether the network is joined.
+
+Return Value:
+
+    None.
+
+--*/
+
 {
     if ((Adapter->LinkState == LINK_UP) != Up) {
         Adapter->LinkState = Up ? LINK_UP : LINK_IDLE;
@@ -718,9 +822,7 @@ WlanTimer(
             Adapter->LinkIndicated = Adapter->LinkState == LINK_UP;
 
             //
-            // NDIS 3.0 of NT 3.5 has no media status: the protocols there find
-            // the link as it is when they start (the first join is waited for)
-            // and by their own retries after it comes back.
+            // (the NDIS of NT 3.5 has no media status to indicate)
             //
 
 #ifdef NDIS_STATUS_MEDIA_CONNECT
@@ -1149,15 +1251,31 @@ WlanSend(
     return NDIS_STATUS_SUCCESS;
 }
 
-//
-// The frames of the transmit ring, for the thread to send (chip.c).
-//
-
 BOOLEAN
 WlanNextTransmit(
     IN PWLAN_ADAPTER Adapter,
     OUT PWLAN_SLOT *Slot
     )
+
+/*++
+
+Routine Description:
+
+    This routine finds the next frame of the transmit ring, for the thread to
+    send (chip.c).
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+    Slot - Receives the slot of the frame.
+
+Return Value:
+
+    TRUE if the ring has a frame.
+
+--*/
+
 {
     BOOLEAN Found;
 
@@ -1176,6 +1294,26 @@ WlanTransmitDone(
     IN PWLAN_ADAPTER Adapter,
     IN BOOLEAN Ok
     )
+
+/*++
+
+Routine Description:
+
+    This routine takes the frame the thread sent, or failed to, off the
+    transmit ring, and counts it.
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+    Ok - Supplies whether the frame was sent.
+
+Return Value:
+
+    None.
+
+--*/
+
 {
     if (Ok) {
         Adapter->TransmitOk += 1;

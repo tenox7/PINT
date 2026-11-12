@@ -41,151 +41,170 @@ Environment:
 // SDIO: the CCCR, and the Broadcom registers of F1.
 //
 
-#define CCCR_IOEX               0x02
-#define CCCR_IORX               0x03
-#define CCCR_IENX               0x04
-#define CCCR_ABORT              0x06
+#define CCCR_IOEX                   0x02
+#define CCCR_IORX                   0x03
+#define CCCR_IENX                   0x04
+#define CCCR_ABORT                  0x06
 
-#define SB_WATERMARK            0x10008
-#define SB_DEVICE_CTL           0x10009
-#define SB_ADDR_LOW             0x1000A
-#define SB_ADDR_MID             0x1000B
-#define SB_ADDR_HIGH            0x1000C
-#define SB_FRAME_CTRL           0x1000D
-#define SB_CHIP_CLOCK_CSR       0x1000E
-#define SB_PULLUP               0x1000F
-#define SB_RFRAME_BC_LOW        0x1001B
-#define SB_RFRAME_BC_HIGH       0x1001C
-#define SB_MES_BUSY_CTRL        0x1001D
-#define SB_SLEEP_CSR            0x1001F
+#define SB_WATERMARK                0x10008
+#define SB_DEVICE_CTL               0x10009
+#define SB_ADDR_LOW                 0x1000A
+#define SB_ADDR_MID                 0x1000B
+#define SB_ADDR_HIGH                0x1000C
+#define SB_FRAME_CTRL               0x1000D
+#define SB_CHIP_CLOCK_CSR           0x1000E
+#define SB_PULLUP                   0x1000F
+#define SB_RFRAME_BC_LOW            0x1001B
+#define SB_RFRAME_BC_HIGH           0x1001C
+#define SB_MES_BUSY_CTRL            0x1001D
+#define SB_SLEEP_CSR                0x1001F
 
-#define SB_ACCESS_4B            0x8000
-#define SB_WINDOW_MASK          0xFFFF8000
-#define SB_OFFSET_MASK          0x7FFF
+#define SB_ACCESS_4B                0x8000
+#define SB_WINDOW_MASK              0xFFFF8000
+#define SB_OFFSET_MASK              0x7FFF
 
-#define CLK_FORCE_ALP           0x01
-#define CLK_FORCE_HT            0x02
-#define CLK_ALP_REQ             0x08
-#define CLK_HT_REQ              0x10
-#define CLK_HW_REQ_OFF          0x20
-#define CLK_ALP_AVAIL           0x40
-#define CLK_HT_AVAIL            0x80
+#define CLK_FORCE_ALP               0x01
+#define CLK_FORCE_HT                0x02
+#define CLK_ALP_REQ                 0x08
+#define CLK_HT_REQ                  0x10
+#define CLK_HW_REQ_OFF              0x20
+#define CLK_ALP_AVAIL               0x40
+#define CLK_HT_AVAIL                0x80
 
 //
 // The backplane: chip common and its registers, the core ids of the
 // enumeration ROM, and the AI wrapper of a core.
 //
 
-#define CHIPCOMMON_BASE         0x18000000
-#define CC_EROM_PTR             0xFC
+#define CHIPCOMMON_BASE             0x18000000
+#define CC_EROM_PTR                 0xFC
 
-#define CORE_CHIPCOMMON         0x800
-#define CORE_SOCRAM             0x80E
-#define CORE_80211              0x812
-#define CORE_PMU                0x827
-#define CORE_SDIO_DEV           0x829
-#define CORE_ARM_CM3            0x82A
-#define CORE_ARM_CR4            0x83E
-#define CORE_GCI                0x840
+#define CORE_CHIPCOMMON             0x800
+#define CORE_SOCRAM                 0x80E
+#define CORE_80211                  0x812
+#define CORE_PMU                    0x827
+#define CORE_SDIO_DEV               0x829
+#define CORE_ARM_CM3                0x82A
+#define CORE_ARM_CR4                0x83E
+#define CORE_GCI                    0x840
 
-#define AI_IOCTRL               0x408
-#define AI_RESETCTRL            0x800
-#define IOCTRL_CLK              0x01
-#define IOCTRL_FGC              0x02
-#define IOCTRL_PHYCLOCKEN       0x04
-#define IOCTRL_PHYRESET         0x08
-#define IOCTRL_CPUHALT          0x20
+#define AI_IOCTRL                   0x408
+#define AI_RESETCTRL                0x800
+#define IOCTRL_CLK                  0x01
+#define IOCTRL_FGC                  0x02
+#define IOCTRL_PHYCLOCKEN           0x04
+#define IOCTRL_PHYRESET             0x08
+#define IOCTRL_CPUHALT              0x20
 
-#define CHIP_43430              0xA9A6
-#define CHIP_4345               0x4345
+#define CHIP_43430                  0xA9A6
+#define CHIP_4345                   0x4345
 
 //
 // The SDIO device core of the chip.
 //
 
-#define SDIO_INTSTATUS          0x20
-#define SDIO_HOSTINTMASK        0x24
-#define SDIO_TOSBMAILBOX        0x40
-#define SDIO_TOSBMAILBOXDATA    0x48
-#define SDIO_TOHOSTMAILBOXDATA  0x4C
+#define SDIO_INTSTATUS              0x20
+#define SDIO_HOSTINTMASK            0x24
+#define SDIO_TOSBMAILBOX            0x40
+#define SDIO_TOSBMAILBOXDATA        0x48
+#define SDIO_TOHOSTMAILBOXDATA      0x4C
 
-#define I_HMB_FC_STATE          0x10
-#define I_HMB_FC_CHANGE         0x20
-#define I_HMB_FRAME_IND         0x40
-#define I_HMB_HOST_INT          0x80
-#define HOSTINTMASK             0x200000F0
+#define I_HMB_FC_STATE              0x10
+#define I_HMB_FC_CHANGE             0x20
+#define I_HMB_FRAME_IND             0x40
+#define I_HMB_HOST_INT              0x80
+#define HOSTINTMASK                 0x200000F0
 
-#define SMB_INT_ACK             0x02
-#define HMB_DATA_NAKHANDLED     0x01
-#define HMB_DATA_FWHALT         0x10
+#define SMB_INT_ACK                 0x02
+#define HMB_DATA_NAKHANDLED         0x01
+#define HMB_DATA_FWHALT             0x10
 
 //
 // SDPCM, CDC and BDC.
 //
 
-#define SDPCM_HEADER            12
-#define CDC_HEADER              16
-#define BDC_HEADER              4
-#define CHANNEL_CONTROL         0
-#define CHANNEL_EVENT           1
-#define CHANNEL_DATA            2
-#define CHANNEL_GLOM            3
-#define CDC_FLAG_ERROR          0x01
-#define CDC_FLAG_SET            0x02
-#define BDC_VERSION             2
+#define SDPCM_HEADER                12
+#define CDC_HEADER                  16
+#define BDC_HEADER                  4
+#define CHANNEL_CONTROL             0
+#define CHANNEL_EVENT               1
+#define CHANNEL_DATA                2
+#define CHANNEL_GLOM                3
+#define CDC_FLAG_ERROR              0x01
+#define CDC_FLAG_SET                0x02
+#define BDC_VERSION                 2
 
 //
 // Ioctls and their values.
 //
 
-#define WLC_UP                  2
-#define WLC_SET_PROMISC         10
-#define WLC_SET_INFRA           20
-#define WLC_SET_AUTH            22
-#define WLC_GET_BSSID           23
-#define WLC_SET_SSID            26
-#define WLC_DISASSOC            52
-#define WLC_SET_PM              86
-#define WLC_GET_RSSI            127
-#define WLC_SET_WSEC            134
-#define WLC_SET_WPA_AUTH        165
-#define WLC_GET_VAR             262
-#define WLC_SET_VAR             263
-#define WLC_SET_WSEC_PMK        268
+#define WLC_UP                      2
+#define WLC_SET_PROMISC             10
+#define WLC_SET_INFRA               20
+#define WLC_SET_AUTH                22
+#define WLC_GET_BSSID               23
+#define WLC_SET_SSID                26
+#define WLC_DISASSOC                52
+#define WLC_SET_PM                  86
+#define WLC_GET_RSSI                127
+#define WLC_SET_WSEC                134
+#define WLC_SET_WPA_AUTH            165
+#define WLC_GET_VAR                 262
+#define WLC_SET_VAR                 263
+#define WLC_SET_WSEC_PMK            268
 
-#define WSEC_AES                4
-#define WPA_AUTH_DISABLED       0
-#define WPA2_AUTH_PSK           0x80
-#define WPA3_AUTH_SAE_PSK       0x40000
-#define WSEC_PASSPHRASE         1
+#define WSEC_AES                    4
+#define WPA_AUTH_DISABLED           0
+#define WPA2_AUTH_PSK               0x80
+#define WPA3_AUTH_SAE_PSK           0x40000
+#define WSEC_PASSPHRASE             1
 
 //
-// Events.
+// Events, their status and flags, and their reasons: the supplicant's, a
+// pruned network's, and those of 802.11.
 //
 
-#define E_SET_SSID              0
-#define E_JOIN                  1
-#define E_AUTH                  3
-#define E_DEAUTH                5
-#define E_DEAUTH_IND            6
-#define E_ASSOC                 7
-#define E_REASSOC               9
-#define E_DISASSOC              11
-#define E_DISASSOC_IND          12
-#define E_LINK                  16
-#define E_ROAM                  19
-#define E_PRUNE                 23
-#define E_PSK_SUP               46
-#define E_ESCAN_RESULT          69
+#define E_SET_SSID                  0
+#define E_JOIN                      1
+#define E_AUTH                      3
+#define E_DEAUTH                    5
+#define E_DEAUTH_IND                6
+#define E_ASSOC                     7
+#define E_REASSOC                   9
+#define E_DISASSOC                  11
+#define E_DISASSOC_IND              12
+#define E_LINK                      16
+#define E_ROAM                      19
+#define E_PRUNE                     23
+#define E_PSK_SUP                   46
+#define E_ESCAN_RESULT              69
 
-#define SUP_KEYED               6
+#define E_STATUS_SUCCESS            0
+#define E_STATUS_TIMEOUT            2
+#define E_STATUS_NO_NETWORKS        3
+#define E_STATUS_NO_ACK             5
+#define E_STATUS_UNSOLICITED        6
+#define E_STATUS_PARTIAL            8
 
-#define IOCTL_TIMEOUT_MS        2500
-#define JOIN_TIMEOUT_MS         20000
-#define REJOIN_DELAY_MS         10000
-#define CLM_CHUNK               1400
+#define E_FLAG_LINK                 0x0001
 
-#define BCME_TIMEOUT            (-100)
+#define SUP_KEYED                   6
+#define E_SUP_WPA_PSK_TMO           15
+#define E_SUP_WPA_PSK_M1_TMO        16
+#define E_SUP_WPA_PSK_M3_TMO        17
+
+#define E_PRUNE_RSN_MISMATCH        8
+
+#define DOT11_RC_AUTH_INVALID       2
+#define DOT11_RC_4WAY_TIMEOUT       15
+#define DOT11_RC_8021X_FAILED       23
+
+#define IOCTL_TIMEOUT_MS            2500
+#define JOIN_TIMEOUT_MS             20000
+#define REJOIN_DELAY_MS             10000
+#define CLM_CHUNK                   1400
+
+#define BCME_TIMEOUT                (-100)
 
 static const PCHAR EventNames[] = {
     "SET_SSID", "JOIN", "START", "AUTH", "AUTH_IND", "DEAUTH", "DEAUTH_IND", "ASSOC", "ASSOC_IND",
@@ -210,60 +229,60 @@ ChipPoll(
 
 static ULONG
 Le16(
-    IN PUCHAR p
+    IN PUCHAR Bytes
     )
 {
-    return p[0] | ((ULONG)p[1] << 8);
+    return Bytes[0] | ((ULONG)Bytes[1] << 8);
 }
 
 static ULONG
 Le32(
-    IN PUCHAR p
+    IN PUCHAR Bytes
     )
 {
-    return p[0] | ((ULONG)p[1] << 8) | ((ULONG)p[2] << 16) | ((ULONG)p[3] << 24);
+    return Bytes[0] | ((ULONG)Bytes[1] << 8) | ((ULONG)Bytes[2] << 16) | ((ULONG)Bytes[3] << 24);
 }
 
 static ULONG
 Be16(
-    IN PUCHAR p
+    IN PUCHAR Bytes
     )
 {
-    return ((ULONG)p[0] << 8) | p[1];
+    return ((ULONG)Bytes[0] << 8) | Bytes[1];
 }
 
 static ULONG
 Be32(
-    IN PUCHAR p
+    IN PUCHAR Bytes
     )
 {
-    return ((ULONG)p[0] << 24) | ((ULONG)p[1] << 16) | ((ULONG)p[2] << 8) | p[3];
+    return ((ULONG)Bytes[0] << 24) | ((ULONG)Bytes[1] << 16) | ((ULONG)Bytes[2] << 8) | Bytes[3];
 }
 
 static VOID
 PutLe16(
-    OUT PUCHAR p,
-    IN ULONG v
+    OUT PUCHAR Bytes,
+    IN ULONG Value
     )
 {
-    p[0] = (UCHAR)v;
-    p[1] = (UCHAR)(v >> 8);
+    Bytes[0] = (UCHAR)Value;
+    Bytes[1] = (UCHAR)(Value >> 8);
 }
 
 static VOID
 PutLe32(
-    OUT PUCHAR p,
-    IN ULONG v
+    OUT PUCHAR Bytes,
+    IN ULONG Value
     )
 {
-    p[0] = (UCHAR)v;
-    p[1] = (UCHAR)(v >> 8);
-    p[2] = (UCHAR)(v >> 16);
-    p[3] = (UCHAR)(v >> 24);
+    Bytes[0] = (UCHAR)Value;
+    Bytes[1] = (UCHAR)(Value >> 8);
+    Bytes[2] = (UCHAR)(Value >> 16);
+    Bytes[3] = (UCHAR)(Value >> 24);
 }
 
 static VOID
-Sleep(
+ChipSleep(
     IN ULONG Milliseconds
     )
 {
@@ -481,8 +500,18 @@ ChipScanCores(
 {
     ULONG Pointer = BpRead32(Adapter, CHIPCOMMON_BASE + CC_EROM_PTR);
     ULONG End = Pointer + 0x1000;
-    ULONG Descriptor, Second, Type, Id, Revision, WrapType, RegBase, WrapBase, Size, SlaveType;
-    ULONG Masters, Slaves;
+    ULONG Descriptor;
+    ULONG Second;
+    ULONG Type;
+    ULONG Id;
+    ULONG Revision;
+    ULONG WrapType;
+    ULONG RegBase;
+    ULONG WrapBase;
+    ULONG Size;
+    ULONG SlaveType;
+    ULONG Masters;
+    ULONG Slaves;
 
     NdisZeroMemory(Cores, sizeof(CHIP_CORES));
     WlanLog(Adapter, "EROM at %08lx", Pointer);
@@ -614,7 +643,13 @@ ChipRamSize(
     IN PCHIP_CORES Cores
     )
 {
-    ULONG Info, Banks, BankSize, Lss, Index, Bank, Size = 0;
+    ULONG Info;
+    ULONG Banks;
+    ULONG BankSize;
+    ULONG Lss;
+    ULONG Index;
+    ULONG Bank;
+    ULONG Size = 0;
 
     if (Adapter->ArmCr4) {
         Adapter->RamBase = 0x198000;
@@ -629,7 +664,6 @@ ChipRamSize(
         if (Size == 0 || Size > 0x200000) {
             Size = 0xC8000;
         }
-
     } else {
         Adapter->RamBase = 0;
         Info = BpRead32(Adapter, Cores->Socram);
@@ -641,7 +675,6 @@ ChipRamSize(
             if (Lss != 0) {
                 Size += 1 << (Lss - 1 + 14);
             }
-
         } else {
             Banks = (Info >> 4) & (Cores->SocramRevision >= 23 ? 0x1F : 0xF);
             for (Index = 0; Index < Banks; Index += 1) {
@@ -731,13 +764,16 @@ ChipFormatNvram(
     OUT PUCHAR Out
     )
 {
-    ULONG In = 0, Size = 0, Start, Words;
+    ULONG In = 0;
+    ULONG Size = 0;
+    ULONG Start;
+    ULONG Words;
     BOOLEAN BoardRev = FALSE;
-    UCHAR c;
+    UCHAR Character;
 
     while (In < Length) {
-        c = Text[In];
-        if (c == '#') {
+        Character = Text[In];
+        if (Character == '#') {
             while (In < Length && Text[In] != '\n') {
                 In += 1;
             }
@@ -745,7 +781,7 @@ ChipFormatNvram(
             continue;
         }
 
-        if (c <= ' ' || c > 0x7E) {
+        if (Character <= ' ' || Character > 0x7E) {
             In += 1;
             continue;
         }
@@ -862,7 +898,7 @@ ChipWaitCredit(
         ChipPoll(Adapter);
         if (!ChipCanSend(Adapter)) {
             BpWrite32(Adapter, Adapter->SdioCoreBase + SDIO_TOSBMAILBOX, 0x08);
-            Sleep(2);
+            ChipSleep(2);
         }
     }
 
@@ -923,7 +959,7 @@ ChipIoctl(
 
         ChipPoll(Adapter);
         if (!Adapter->ResponseReady) {
-            Sleep(1);
+            ChipSleep(1);
         }
     }
 
@@ -1037,11 +1073,23 @@ ChipLogScanResult(
     IN ULONG Length
     )
 {
-    PUCHAR Bss, Ie, End;
-    ULONG BssLength, Index, IeOffset, IeLength, SsidLength, Akm, Count, Caps;
+    PUCHAR Bss;
+    PUCHAR Ie;
+    PUCHAR End;
+    ULONG BssLength;
+    ULONG Index;
+    ULONG IeOffset;
+    ULONG IeLength;
+    ULONG SsidLength;
+    ULONG Akm;
+    ULONG Count;
+    ULONG Caps;
     CHAR Ssid[33];
     CHAR Security[32];
-    BOOLEAN Rsn = FALSE, Wpa = FALSE, Sae = FALSE, Psk = FALSE;
+    BOOLEAN Rsn = FALSE;
+    BOOLEAN Wpa = FALSE;
+    BOOLEAN Sae = FALSE;
+    BOOLEAN Psk = FALSE;
     LONG Rssi;
 
     if (Length < 12 + 128) {
@@ -1102,7 +1150,6 @@ ChipLogScanResult(
                         }
                     }
                 }
-
             } else if (Ie[0] == 221 && Ie[1] >= 4 && Ie[2] == 0x00 && Ie[3] == 0x50 && Ie[4] == 0xF2 &&
                        Ie[5] == 1) {
                 Wpa = TRUE;
@@ -1145,7 +1192,11 @@ ChipEvent(
     )
 {
     UCHAR Message[48];
-    ULONG Type, Status, Reason, Flags, DataLength;
+    ULONG Type;
+    ULONG Status;
+    ULONG Reason;
+    ULONG Flags;
+    ULONG DataLength;
 
     if (Length < 72 || Be16(Ethernet + 12) != 0x886C || Ethernet[19] != 0x00 || Ethernet[20] != 0x10 ||
         Ethernet[21] != 0x18 || Be16(Ethernet + 22) != 1) {
@@ -1163,7 +1214,7 @@ ChipEvent(
     }
 
     if (Type == E_ESCAN_RESULT) {
-        if (Status == 8) {
+        if (Status == E_STATUS_PARTIAL) {
             ChipLogScanResult(Adapter, Ethernet + 72, DataLength);
         } else {
             WlanLog(Adapter, "Scan done (status %lu): %lu networks", Status, Adapter->ScanCount);
@@ -1182,24 +1233,25 @@ ChipEvent(
 
     switch (Type) {
     case E_SET_SSID:
-        if (Adapter->LinkState == LINK_JOINING && Status != 0) {
-            ChipJoinFailed(Adapter, Status == 3 ? "network not found" : "the join did not complete");
+        if (Adapter->LinkState == LINK_JOINING && Status != E_STATUS_SUCCESS) {
+            ChipJoinFailed(Adapter, Status == E_STATUS_NO_NETWORKS ? "network not found" :
+                           "the join did not complete");
         }
         break;
 
     case E_AUTH:
-        if (Adapter->LinkState == LINK_JOINING && Status != 0 && Status != 2 && Status != 5 && Status != 6) {
+        if (Adapter->LinkState == LINK_JOINING && Status != E_STATUS_SUCCESS && Status != E_STATUS_TIMEOUT &&
+            Status != E_STATUS_NO_ACK && Status != E_STATUS_UNSOLICITED) {
             ChipJoinFailed(Adapter, "authentication refused");
         }
         break;
 
     case E_LINK:
-        if (Status == 0 && (Flags & 1) != 0) {
+        if (Status == E_STATUS_SUCCESS && (Flags & E_FLAG_LINK) != 0) {
             Adapter->Associated = TRUE;
             if (Adapter->Security == SECURITY_OPEN || Adapter->Keyed) {
                 WlanSetLink(Adapter, TRUE);
             }
-
         } else {
             Adapter->Associated = FALSE;
             Adapter->Keyed = FALSE;
@@ -1218,10 +1270,10 @@ ChipEvent(
             if (Adapter->Associated) {
                 WlanSetLink(Adapter, TRUE);
             }
-
         } else if (Adapter->LinkState == LINK_JOINING) {
-            ChipJoinFailed(Adapter, Reason == 15 || Reason == 16 || Reason == 17 ?
-                           "the WPA handshake timed out (wrong password?)" : "the WPA handshake failed (wrong password?)");
+            ChipJoinFailed(Adapter, Reason == E_SUP_WPA_PSK_TMO || Reason == E_SUP_WPA_PSK_M1_TMO ||
+                           Reason == E_SUP_WPA_PSK_M3_TMO ? "the WPA handshake timed out (wrong password?)" :
+                           "the WPA handshake failed (wrong password?)");
         }
         break;
 
@@ -1249,13 +1301,14 @@ ChipEvent(
             WlanSetLink(Adapter, FALSE);
             Adapter->NextJoin.LowPart = NowMs() + 2000;
         } else if (Adapter->LinkState == LINK_JOINING) {
-            ChipJoinFailed(Adapter, Reason == 2 || Reason == 15 || Reason == 23 ?
-                           "the network refused the station (wrong password?)" : "the network refused the station");
+            ChipJoinFailed(Adapter, Reason == DOT11_RC_AUTH_INVALID || Reason == DOT11_RC_4WAY_TIMEOUT ||
+                           Reason == DOT11_RC_8021X_FAILED ? "the network refused the station (wrong password?)" :
+                           "the network refused the station");
         }
         break;
 
     case E_PRUNE:
-        if (Adapter->LinkState == LINK_JOINING && Reason == 8) {
+        if (Adapter->LinkState == LINK_JOINING && Reason == E_PRUNE_RSN_MISMATCH) {
             WlanLog(Adapter, "The network's security does not match SECURITY=");
         }
         break;
@@ -1354,7 +1407,8 @@ ChipRecoverRead(
     IN PWLAN_ADAPTER Adapter
     )
 {
-    UCHAR High, Low;
+    UCHAR High;
+    UCHAR Low;
     ULONG Index;
 
     SdioWrite8(Adapter, 0, CCCR_ABORT, 2);
@@ -1374,7 +1428,9 @@ ChipProcessFrames(
     )
 {
     PUCHAR Frame = Adapter->FrameBuffer;
-    ULONG Length, Rest, Count;
+    ULONG Length;
+    ULONG Rest;
+    ULONG Count;
     BOOLEAN Ready;
 
     for (Count = 0; Count < Bound; Count += 1) {
@@ -1487,7 +1543,10 @@ ChipLoadClm(
     )
 {
     PUCHAR Data = ExAllocatePool(NonPagedPool, 12 + CLM_CHUNK + 4);
-    ULONG Offset = 0, Chunk, Flag, Status32 = 0;
+    ULONG Offset = 0;
+    ULONG Chunk;
+    ULONG Flag;
+    ULONG Status32 = 0;
     LONG Status = 0;
 
     if (Data == NULL) {
@@ -1515,21 +1574,48 @@ ChipLoadClm(
     WlanLog(Adapter, "CLM: %lu bytes loaded (status %ld, clmload_status %lu)", Offset, Status, Status32);
 }
 
-//
-// Bring the chip up: from the SDIO interface to the radio, and the station
-// address.
-//
-
 NDIS_STATUS
 ChipStart(
     IN PWLAN_ADAPTER Adapter
     )
+
+/*++
+
+Routine Description:
+
+    This routine brings the chip up: from the SDIO interface to the radio, and
+    the station address.
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+Return Value:
+
+    NDIS_STATUS_SUCCESS; NDIS_STATUS_ADAPTER_NOT_FOUND if there is no chip,
+    the chip is not a supported one or its files are missing;
+    NDIS_STATUS_RESOURCES; or NDIS_STATUS_HARD_ERRORS.
+
+--*/
+
 {
     CHIP_CORES Cores;
-    PUCHAR Firmware = NULL, Nvram = NULL, Clm = NULL, Blob = NULL, Check = NULL;
-    ULONG FirmwareLength, NvramLength, ClmLength = 0, BlobLength, ChipId, Index, Value, Start;
+    PUCHAR Firmware = NULL;
+    PUCHAR Nvram = NULL;
+    PUCHAR Clm = NULL;
+    PUCHAR Blob = NULL;
+    PUCHAR Check = NULL;
+    ULONG FirmwareLength;
+    ULONG NvramLength;
+    ULONG ClmLength = 0;
+    ULONG BlobLength;
+    ULONG ChipId;
+    ULONG Index;
+    ULONG Value;
+    ULONG Start;
     PCHAR Base;
-    UCHAR Byte, Csr;
+    UCHAR Byte;
+    UCHAR Csr;
     UCHAR Data[64];
     UCHAR Mask[27];
     LONG Status;
@@ -1549,7 +1635,7 @@ ChipStart(
             break;
         }
 
-        Sleep(1);
+        ChipSleep(1);
     }
 
     if (!SdioSetBlockSize(Adapter, 0, 64) || !SdioSetBlockSize(Adapter, 1, 64) ||
@@ -1564,7 +1650,7 @@ ChipStart(
             break;
         }
 
-        Sleep(1);
+        ChipSleep(1);
     }
 
     if ((Byte & 0x02) == 0) {
@@ -1587,7 +1673,7 @@ ChipStart(
             break;
         }
 
-        Sleep(1);
+        ChipSleep(1);
     }
 
     if ((Csr & CLK_ALP_AVAIL) == 0) {
@@ -1652,7 +1738,6 @@ ChipStart(
         if (Cores.D11Wrapper != 0) {
             AiCoreDisable(Adapter, Cores.D11Wrapper, IOCTRL_PHYRESET | IOCTRL_PHYCLOCKEN, IOCTRL_PHYCLOCKEN);
         }
-
     } else {
         AiCoreDisable(Adapter, Cores.ArmWrapper, 0, 0);
         if (Cores.D11Wrapper != 0) {
@@ -1755,7 +1840,7 @@ ChipStart(
             break;
         }
 
-        Sleep(5);
+        ChipSleep(5);
     }
 
     if ((Csr & 0xC0) != 0xC0) {
@@ -1776,7 +1861,7 @@ ChipStart(
             break;
         }
 
-        Sleep(5);
+        ChipSleep(5);
     }
 
     if ((Byte & 0x04) == 0) {
@@ -1804,7 +1889,7 @@ ChipStart(
     WlanLog(Adapter, "The firmware runs (F2 ready)");
     Adapter->TxSequence = 0;
     Adapter->TxMaxSequence = 1;
-    Sleep(150);
+    ChipSleep(150);
     Adapter->FramesPending = TRUE;
     ChipPoll(Adapter);
 
@@ -1843,7 +1928,7 @@ ChipStart(
     PutLe32(Data + 4, 0xFFFFFFFF);
     Status = ChipVar(Adapter, "country", TRUE, Data, 12);
     WlanLog(Adapter, "Country %s (status %ld)", Adapter->Country, Status);
-    Sleep(50);
+    ChipSleep(50);
 
     NdisZeroMemory(Mask, sizeof(Mask));
     Status = ChipVar(Adapter, "event_msgs", FALSE, Mask, sizeof(Mask));
@@ -1875,7 +1960,7 @@ ChipStart(
         goto Done;
     }
 
-    Sleep(50);
+    ChipSleep(50);
     ChipSetIoctl32(Adapter, WLC_SET_PM, 0);
     Adapter->Supplicant = ChipGetVar32(Adapter, "sup_wpa", &Value) == 0;
     Adapter->Mfp = ChipGetVar32(Adapter, "mfp", &Value) == 0;
@@ -1909,7 +1994,7 @@ ChipStart(
         WlanLog(Adapter, "Scanning (status %ld):", Status);
         for (Start = NowMs(); Status == 0 && Adapter->Scanning && NowMs() - Start < 5000; ) {
             ChipPoll(Adapter);
-            Sleep(10);
+            ChipSleep(10);
         }
 
         Adapter->Scanning = FALSE;
@@ -1946,6 +2031,24 @@ VOID
 ChipStop(
     IN PWLAN_ADAPTER Adapter
     )
+
+/*++
+
+Routine Description:
+
+    This routine leaves the network, if one was joined or a join is under way,
+    and shuts the SDIO host down.
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+Return Value:
+
+    None.
+
+--*/
+
 {
     if (Adapter->LinkState != LINK_IDLE && Adapter->F2BlockSize != 0) {
         ChipIoctl(Adapter, WLC_DISASSOC, TRUE, NULL, 0, 0);
@@ -1954,17 +2057,32 @@ ChipStop(
     SdioShutdown(Adapter);
 }
 
-//
-// Join the configured network with the firmware's supplicant: open, or
-// WPA2-PSK with the passphrase (which the firmware turns into the key). The
-// firmware here does no WPA3 (SAE) by itself: a WPA3 network that also takes
-// WPA2 is joined with WPA2.
-//
-
 BOOLEAN
 ChipJoin(
     IN PWLAN_ADAPTER Adapter
     )
+
+/*++
+
+Routine Description:
+
+    This routine joins the configured network with the firmware's supplicant:
+    open, or WPA2-PSK with the passphrase (which the firmware turns into the
+    key). The firmware here does no WPA3 (SAE) by itself: a WPA3 network that
+    also takes WPA2 is joined with WPA2.
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+Return Value:
+
+    TRUE if the join started (the firmware's events tell how it ends), FALSE
+    if no network is configured, the passphrase is not one, or the firmware
+    refused the join.
+
+--*/
+
 {
     UCHAR Data[132];
     LONG Status;
@@ -1983,7 +2101,8 @@ ChipJoin(
     }
 
     if (Security == SECURITY_WPA3 || Security == SECURITY_WPA2_WPA3) {
-        WlanLog(Adapter, "WPA3: the chip's firmware has no in-chip SAE; joining with WPA2-PSK (works on WPA2/WPA3 networks)");
+        WlanLog(Adapter, "WPA3: the chip's firmware has no in-chip SAE; joining with WPA2-PSK (works on WPA2/WPA3 "
+                "networks)");
         Security = SECURITY_WPA2;
     }
 
@@ -2007,7 +2126,7 @@ ChipJoin(
 
         ChipSetBss32(Adapter, "sup_wpa2_eapver", 0xFFFFFFFF);
         ChipSetBss32(Adapter, "sup_wpa_tmo", 5000);
-        Sleep(2);
+        ChipSleep(2);
         NdisZeroMemory(Data, sizeof(Data));
         if (Adapter->PassphraseLength == 64) {
 
@@ -2029,6 +2148,7 @@ ChipJoin(
             PutLe16(Data + 2, WSEC_PASSPHRASE);
             NdisMoveMemory(Data + 4, Adapter->Passphrase, Adapter->PassphraseLength);
         }
+
         Status = ChipIoctl(Adapter, WLC_SET_WSEC_PMK, TRUE, Data, 132, 0);
         if (Status != 0) {
             Status = ChipIoctl(Adapter, WLC_SET_WSEC_PMK, TRUE, Data, 68, 0);
@@ -2058,16 +2178,31 @@ ChipJoin(
     return TRUE;
 }
 
-//
-// A frame of the transmit ring: SDPCM (12 bytes) and BDC (4) headers in
-// front of the Ethernet frame, in the slot's headroom.
-//
-
 BOOLEAN
 ChipSend(
     IN PWLAN_ADAPTER Adapter,
     IN PWLAN_SLOT Slot
     )
+
+/*++
+
+Routine Description:
+
+    This routine sends a frame of the transmit ring: SDPCM (12 bytes) and BDC
+    (4) headers in front of the Ethernet frame, in the slot's headroom.
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+    Slot - Supplies the slot of the frame.
+
+Return Value:
+
+    TRUE if the chip took the frame.
+
+--*/
+
 {
     PUCHAR Frame = (PUCHAR)Slot->Data + FRAME_HEADROOM - SDPCM_HEADER - BDC_HEADER;
 
@@ -2078,14 +2213,28 @@ ChipSend(
     return ChipSendFrame(Adapter, Frame, SDPCM_HEADER + BDC_HEADER + Slot->Length, CHANNEL_DATA, SDPCM_HEADER);
 }
 
-//
-// The receive filter: all multicast, or the list; promiscuous.
-//
-
 VOID
 ChipSetFilter(
     IN PWLAN_ADAPTER Adapter
     )
+
+/*++
+
+Routine Description:
+
+    This routine sets the receive filter: all multicast, or the list;
+    promiscuous.
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+Return Value:
+
+    None.
+
+--*/
+
 {
     UCHAR Data[4 + WLAN_MULTICAST_LIST * ETH_LENGTH_OF_ADDRESS];
 
@@ -2100,18 +2249,50 @@ VOID
 ChipCheckLink(
     IN PWLAN_ADAPTER Adapter
     )
+
+/*++
+
+Routine Description:
+
+    This routine has nothing to do: the firmware's events tell the state of
+    the link.
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+Return Value:
+
+    None.
+
+--*/
+
 {
 }
-
-//
-// The work of the thread: what the chip has for the host, the frames to
-// send, a join to (re)start or time out, and a new receive filter.
-//
 
 BOOLEAN
 ChipService(
     IN PWLAN_ADAPTER Adapter
     )
+
+/*++
+
+Routine Description:
+
+    This routine does the work of the thread: what the chip has for the host,
+    the frames to send, a join to (re)start or time out, and a new receive
+    filter.
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+Return Value:
+
+    TRUE if received frames wait for the timer to indicate them.
+
+--*/
+
 {
     PWLAN_SLOT Slot;
     ULONG Now = NowMs();

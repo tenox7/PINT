@@ -57,9 +57,10 @@ framebuffer_height=1080
 # framebuffer_height=1024
 # hdmi_group=2
 # hdmi_mode=35
+#
 # 1920x1200 is mode 68, reduced blanking: mode 69, its normal-blanking version, needs a
-# faster pixel clock than a Pi 2 or 3 drives (a Pi 4 does). In QEMU
-# the size is RES of build/run.sh (RES=1280x1024 build/run.sh).
+# faster pixel clock than a Pi 2 or 3 drives (a Pi 4 does). In QEMU the size is RES of
+# build/run.sh (RES=1280x1024 build/run.sh).
 
 # Show the frame buffer on the whole screen. Without this line the GPU firmware takes an HD
 # display for a TV that hides its edges (overscan) and shrinks the picture into a black
@@ -72,14 +73,13 @@ disable_overscan=1
 enable_gic=1
 [all]
 
-# ---- Windows NT's settings ----------------------------------------------------------------
-# The boot firmware passes over these keys; Windows NT reads them at startup (C:\CONFIG.TXT).
-# Keep them here, after [all].
+# Windows NT's settings. The boot firmware passes over these keys; Windows NT reads them at
+# startup (C:\CONFIG.TXT). Keep them here, after [all].
 #
 # Wi-Fi (Pi 3, 3B+, 3A+, 4, 400, Zero 2 W):
 #   wifi_ssid      the network's name, as written (spaces allowed, no quotes)
 #   wifi_password  its passphrase (8-63 characters), or nothing for an open network
-#   wifi_security  WPA2 (default), WPA3, WPA2/WPA3 (either) or OPEN
+#   wifi_security  WPA2 (default), WPA2/WPA3 (joined with WPA2) or OPEN
 #   wifi_country   two-letter country code (channels and power); XX by default
 wifi_ssid=
 wifi_password=
@@ -94,10 +94,10 @@ sound_output=AUTO
 debug_wifi=0
 debug_sound=0
 
-# Crash dumps, for debugging (off by default). With crash_dump=1 AND a memory limit
+# Crash dumps, for debugging (off by default). With crash_dump=1 and a memory limit
 # (total_mem, the Pi firmware's, in MB), NT writes all of its memory on a crash (STOP
 # screen) and saves it as C:\WINNT\MEMORY.DMP at the next start. C: needs about twice the
 # limit free (the pagefile and MEMORY.DMP), so grow the partition. Without total_mem,
 # crash_dump is ignored (and NT takes all the memory there is).
-#crash_dump=1
-#total_mem=256
+# crash_dump=1
+# total_mem=256

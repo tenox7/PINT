@@ -316,11 +316,6 @@ Failed:
     return FALSE;
 }
 
-//
-// CMD52: read or write one byte of a function's register space. A write
-// returns the byte read back after it when Value is given.
-//
-
 BOOLEAN
 SdioCmd52(
     IN PWLAN_ADAPTER Adapter,
@@ -330,6 +325,34 @@ SdioCmd52(
     IN UCHAR Data,
     OUT PUCHAR Value OPTIONAL
     )
+
+/*++
+
+Routine Description:
+
+    This routine reads or writes one byte of a function's register space
+    (CMD52). A write returns the byte read back after it when Value is given.
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+    Function - Supplies the number of the function.
+
+    Address - Supplies the address of the register.
+
+    Write - Supplies whether the byte is written.
+
+    Data - Supplies the byte to write.
+
+    Value - Receives the byte read, if given.
+
+Return Value:
+
+    TRUE if the card took the command.
+
+--*/
+
 {
     ULONG Argument = (Write ? 0x80000000 : 0) | (Function << 28) | ((Address & 0x1FFFF) << 9) | Data;
     ULONG Response;
@@ -360,6 +383,29 @@ SdioRead8(
     IN ULONG Address,
     OUT PUCHAR Value
     )
+
+/*++
+
+Routine Description:
+
+    This routine reads one byte of a function's register space.
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+    Function - Supplies the number of the function.
+
+    Address - Supplies the address of the register.
+
+    Value - Receives the byte.
+
+Return Value:
+
+    TRUE if the byte was read.
+
+--*/
+
 {
     return SdioCmd52(Adapter, Function, Address, FALSE, 0, Value);
 }
@@ -371,18 +417,32 @@ SdioWrite8(
     IN ULONG Address,
     IN UCHAR Value
     )
+
+/*++
+
+Routine Description:
+
+    This routine writes one byte of a function's register space.
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+    Function - Supplies the number of the function.
+
+    Address - Supplies the address of the register.
+
+    Value - Supplies the byte.
+
+Return Value:
+
+    TRUE if the byte was written.
+
+--*/
+
 {
     return SdioCmd52(Adapter, Function, Address, TRUE, Value, NULL);
 }
-
-//
-// CMD53: move Length bytes (a multiple of four) between a function and a
-// longword aligned buffer: up to 512 bytes in one byte mode command; more in
-// block mode, whole blocks of the function's block size (the callers pad to
-// it), the rest in byte mode. A frame of F2 thus goes in one command, as the
-// chip takes it. Increment moves through the function's address space;
-// without it every byte goes to the same address (a FIFO).
-//
 
 BOOLEAN
 SdioCmd53(
@@ -394,6 +454,40 @@ SdioCmd53(
     IN BOOLEAN Write,
     IN BOOLEAN Increment
     )
+
+/*++
+
+Routine Description:
+
+    This routine moves Length bytes (a multiple of four) between a function
+    and a longword aligned buffer (CMD53): up to 512 bytes in one byte mode
+    command; more in block mode, whole blocks of the function's block size
+    (the callers pad to it), the rest in byte mode. A frame of F2 thus goes in
+    one command, as the chip takes it. Increment moves through the function's
+    address space; without it every byte goes to the same address (a FIFO).
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+    Function - Supplies the number of the function.
+
+    Address - Supplies the address in the function's address space.
+
+    Buffer - Supplies the buffer, which receives the bytes of a read.
+
+    Length - Supplies the number of bytes.
+
+    Write - Supplies whether the bytes are written.
+
+    Increment - Supplies whether the address moves with the bytes.
+
+Return Value:
+
+    TRUE if all the bytes moved.
+
+--*/
+
 {
     PUCHAR Next = Buffer;
     ULONG BlockSize = Adapter->BlockSize[Function];
@@ -421,7 +515,6 @@ SdioCmd53(
                 Adapter->LastSdioAddress = (Function << 28) | Address;
                 return FALSE;
             }
-
         } else {
             Count = Length;
             if (Count > 512) {
@@ -453,17 +546,34 @@ SdioCmd53(
     return TRUE;
 }
 
-//
-// The block size of a function: FBR 0x10-0x11 of the function (F0's in the
-// CCCR), and the size CMD53 uses in block mode.
-//
-
 BOOLEAN
 SdioSetBlockSize(
     IN PWLAN_ADAPTER Adapter,
     IN ULONG Function,
     IN ULONG Size
     )
+
+/*++
+
+Routine Description:
+
+    This routine sets the block size of a function: FBR 0x10-0x11 of the
+    function (F0's in the CCCR), and the size CMD53 uses in block mode.
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+    Function - Supplies the number of the function.
+
+    Size - Supplies the block size, in bytes.
+
+Return Value:
+
+    TRUE if the card took the block size.
+
+--*/
+
 {
     ULONG Base = Function * 0x100 + 0x10;
 
@@ -475,19 +585,35 @@ SdioSetBlockSize(
     return TRUE;
 }
 
-//
-// Reset the controller and bring the chip's SDIO interface up: CMD0, CMD5
-// until the card is ready, CMD3 (its address), CMD7 (select), the 4-bit bus
-// (CCCR 0x07) and high speed (CCCR 0x13) when the card has it, then the
-// transfer clock. The card interrupt shows in the interrupt status register
-// (its status enable is on, its signal off until SdioEnableInterrupt).
-//
-
 BOOLEAN
 SdioInitialize(
     IN PWLAN_ADAPTER Adapter,
     IN ULONG TransferClock
     )
+
+/*++
+
+Routine Description:
+
+    This routine resets the controller and brings the chip's SDIO interface
+    up: CMD0, CMD5 until the card is ready, CMD3 (its address), CMD7 (select),
+    the 4-bit bus (CCCR 0x07) and high speed (CCCR 0x13) when the card has it,
+    then the transfer clock. The card interrupt shows in the interrupt status
+    register (its status enable is on, its signal off until
+    SdioEnableInterrupt).
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+    TransferClock - Supplies the clock of the transfers, in Hz.
+
+Return Value:
+
+    TRUE if the card is ready for transfers.
+
+--*/
+
 {
     ULONG Ocr = 0;
     ULONG Rca;
@@ -575,15 +701,28 @@ SdioInitialize(
     return TRUE;
 }
 
-//
-// Whether the card interrupt is pending (its status, whether or not it is
-// signalled).
-//
-
 BOOLEAN
 SdioInterruptPending(
     IN PWLAN_ADAPTER Adapter
     )
+
+/*++
+
+Routine Description:
+
+    This routine tells whether the card interrupt is pending (its status,
+    whether or not it is signalled).
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+Return Value:
+
+    TRUE if the card interrupt is pending.
+
+--*/
+
 {
     return (HostRead(Adapter, INTERRUPT) & INT_CARD) != 0;
 }
@@ -612,6 +751,26 @@ SdioEnableInterrupt(
     IN PWLAN_ADAPTER Adapter,
     IN BOOLEAN Enable
     )
+
+/*++
+
+Routine Description:
+
+    This routine sets the signal of the card interrupt on or off, synchronized
+    with the interrupt service routine.
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+    Enable - Supplies whether the card interrupt is signalled.
+
+Return Value:
+
+    None.
+
+--*/
+
 {
     //
     // Without its interrupt connected (on a BCM2711 the EMMC shares the
@@ -628,15 +787,28 @@ SdioEnableInterrupt(
     NdisMSynchronizeWithInterrupt(&Adapter->Interrupt, SdioSetInterrupt, Adapter);
 }
 
-//
-// The interrupt service routine's part: whether the card interrupts, and
-// then its signal off.
-//
-
 BOOLEAN
 SdioIsr(
     IN PWLAN_ADAPTER Adapter
     )
+
+/*++
+
+Routine Description:
+
+    This routine is the interrupt service routine's part: whether the card
+    interrupts, and then its signal off.
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+Return Value:
+
+    TRUE if the card interrupted.
+
+--*/
+
 {
     if (Adapter->InterruptEnable == 0 ||
         (READ_REGISTER_ULONG((PULONG)(Adapter->Registers + INTERRUPT)) & INT_CARD) == 0) {
@@ -648,14 +820,27 @@ SdioIsr(
     return TRUE;
 }
 
-//
-// Leave the controller reset, its card powered down.
-//
-
 VOID
 SdioShutdown(
     IN PWLAN_ADAPTER Adapter
     )
+
+/*++
+
+Routine Description:
+
+    This routine leaves the controller reset, its card powered down.
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+Return Value:
+
+    None.
+
+--*/
+
 {
     HostWrite(Adapter, IRPT_EN, 0);
     SdioCmd52(Adapter, 0, 0x06, TRUE, 0x08, NULL);

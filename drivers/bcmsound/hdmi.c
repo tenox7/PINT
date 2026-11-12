@@ -9,12 +9,12 @@ Abstract:
     HDMI audio on the display the VideoCore firmware brought up, driven
     directly (not through the firmware's audio service): the MAI (the audio
     FIFO of the HD block, which a DMA channel feeds), its sample rate divider,
-    the audio clock recovery (N and CTS) and the audio
-    InfoFrame in slot 4 of the packet RAM. Video is left alone: of the
-    registers it shares, only bit 4 of RAM_PACKET_CONFIG (the slot of the
-    InfoFrame) and the RNG power-down bit of the PHY are changed. The audio
-    clock recovery packets carry the N and CTS the driver computes (CTS from
-    the pixel clock), as Circle and Linux send them.
+    the audio clock recovery (N and CTS) and the audio InfoFrame in slot 4 of
+    the packet RAM. Video is left alone: of the registers it shares, only bit
+    4 of RAM_PACKET_CONFIG (the slot of the InfoFrame) and the RNG power-down
+    bit of the PHY are changed. The audio clock recovery packets carry the N
+    and CTS the driver computes (CTS from the pixel clock), as Circle and
+    Linux send them.
 
     Raspberry Pi 2, 3 and Zero 2 W: the VC4 HDMI (core 0x902000, HD 0x808000
     of the peripherals), whose audio clock is the HSM clock (PLLD divided by
@@ -35,80 +35,92 @@ Abstract:
 
 #include "bcmsound.h"
 
-#define READ_REGISTER(Base, Offset)         READ_REGISTER_ULONG((PULONG)((Base) + (Offset)))
-#define WRITE_REGISTER(Base, Offset, Value) WRITE_REGISTER_ULONG((PULONG)((Base) + (Offset)), (Value))
-
 //
 // The VideoCore mailbox (property channel).
 //
 
-#define MAILBOX_OFFSET          0xB880
-#define MAILBOX_READ            0x00
-#define MAILBOX_STATUS          0x18
-#define MAILBOX_WRITE           0x20
-#define MAILBOX_FULL            0x80000000
-#define MAILBOX_EMPTY           0x40000000
-#define MAILBOX_PROPERTY        8
-#define MAILBOX_SUCCESS         0x80000000
+#define MAILBOX_OFFSET              0xB880
+#define MAILBOX_READ                0x00
+#define MAILBOX_STATUS              0x18
+#define MAILBOX_WRITE               0x20
+#define MAILBOX_FULL                0x80000000
+#define MAILBOX_EMPTY               0x40000000
+#define MAILBOX_PROPERTY            8
+#define MAILBOX_SUCCESS             0x80000000
 
-#define TAG_GET_CLOCK_RATE      0x00030002
-#define TAG_GET_EDID_BLOCK      0x00030020
-#define TAG_GET_EDID_BLOCK_DISPLAY 0x00030023
-#define TAG_GET_NUM_DISPLAYS    0x00040013
-#define TAG_GET_DISPLAY_ID      0x00040016
+#define TAG_GET_CLOCK_RATE          0x00030002
+#define TAG_GET_EDID_BLOCK          0x00030020
+#define TAG_GET_EDID_BLOCK_DISPLAY  0x00030023
+#define TAG_GET_NUM_DISPLAYS        0x00040013
+#define TAG_GET_DISPLAY_ID          0x00040016
 
-#define CLOCK_PIXEL             9       // the pixel clock (the firmware's view)
-#define CLOCK_HSM               13      // the HDMI clock of a BCM2711
-#define CLOCK_PIXEL_BVB         14      // the pixel clock of a BCM2711
+//
+// The clocks of the firmware: the pixel clock (the firmware's view), and
+// the HDMI clock and the pixel clock of a BCM2711.
+//
+
+#define CLOCK_PIXEL                 9
+#define CLOCK_HSM                   13
+#define CLOCK_PIXEL_BVB             14
 
 //
 // The clocks of a BCM2835-7 (the clock manager): the HSM divider of PLLD
 // (500 MHz) and PLLH (from the 19.2 MHz crystal), whose tenth is the pixel
-// clock.
+// clock. A2W_PLLH_PIX is the divider of PLLH's pixel channel (0 is 256).
 //
 
-#define CM_OFFSET               0x101000
-#define CM_SIZE                 0x2000
-#define CM_HSMDIV               0x08C
-#define A2W_PLLH_ANA1           0x1074
-#define A2W_PLLH_CTRLR          0x1960
-#define A2W_PLLH_FRACR          0x1A60
-#define A2W_PLLH_PIX            0x1560          // the divider of PLLH's pixel channel (0 is 256)
-#define PLLD_RATE               500000000
-#define CRYSTAL_RATE            19200000
+#define CM_OFFSET                   0x101000
+#define CM_SIZE                     0x2000
+#define CM_HSMDIV                   0x08C
+#define A2W_PLLH_ANA1               0x1074
+#define A2W_PLLH_CTRLR              0x1960
+#define A2W_PLLH_FRACR              0x1A60
+#define A2W_PLLH_PIX                0x1560
+#define PLLD_RATE                   500000000
+#define CRYSTAL_RATE                19200000
 
-#define DISPLAY_HDMI0           2
-#define DISPLAY_HDMI1           7
+#define DISPLAY_HDMI0               2
+#define DISPLAY_HDMI1               7
 
 //
 // The registers (offsets of their blocks).
 //
 
-#define VC4_CORE_OFFSET         0x902000
-#define VC4_HD_OFFSET           0x808000
-#define VC5_CORE_OFFSET(Port)   (0xF00700 + (Port) * 0x5000)
-#define VC5_PHY_OFFSET(Port)    (0xF00F00 + (Port) * 0x5000)
-#define VC5_PACKET_OFFSET(Port) (0xF01B00 + (Port) * 0x5000)
-#define VC5_HD_OFFSET           0xF20000
+#define VC4_CORE_OFFSET             0x902000
+#define VC4_HD_OFFSET               0x808000
+#define VC5_CORE_OFFSET(Port)       (0xF00700 + (Port) * 0x5000)
+#define VC5_PHY_OFFSET(Port)        (0xF00F00 + (Port) * 0x5000)
+#define VC5_PACKET_OFFSET(Port)     (0xF01B00 + (Port) * 0x5000)
+#define VC5_HD_OFFSET               0xF20000
 
-#define MAI_CTL_RESET           0x00000001
-#define MAI_CTL_ERRORF          0x00000002
-#define MAI_CTL_ERRORE          0x00000004
-#define MAI_CTL_ENABLE          0x00000008
-#define MAI_CTL_CHNUM(x)        ((x) << 4)
-#define MAI_CTL_FLUSH           0x00000200
-#define MAI_CTL_CHALIGN         0x00001000
-#define MAI_CTL_WHOLSMP         0x00002000
-#define MAI_CTL_DLATE           0x00008000
+#define MAI_CTL_RESET               0x00000001
+#define MAI_CTL_ERRORF              0x00000002
+#define MAI_CTL_ERRORE              0x00000004
+#define MAI_CTL_ENABLE              0x00000008
+#define MAI_CTL_CHNUM(Channels)     ((Channels) << 4)
+#define MAI_CTL_FLUSH               0x00000200
+#define MAI_CTL_CHALIGN             0x00001000
+#define MAI_CTL_WHOLSMP             0x00002000
+#define MAI_CTL_DLATE               0x00008000
 
-#define SCHEDULER_HDMI          0x00000003  // MODE_HDMI | HDMI_ACTIVE
-#define RAM_PACKET_ENABLE       0x00010000
-#define RAM_PACKET_AUDIO        0x00000010  // slot 4
-#define AUDIO_SLOT_OFFSET       (4 * 0x24)
-#define CRP_EXTERNAL_CTS_EN     0x01000000
+//
+// The scheduler in HDMI mode (MODE_HDMI | HDMI_ACTIVE), the packet RAM and
+// its slot of the audio InfoFrame (slot 4), and the clock recovery.
+//
 
-#define MAI_CONFIG_VALUE        0x0C000003
-#define AUDIO_PACKET_VALUE      0x21003C03  // zero data on flat samples and inactive channels, B frame 0x0F, channels 0-1
+#define SCHEDULER_HDMI              0x00000003
+#define RAM_PACKET_ENABLE           0x00010000
+#define RAM_PACKET_AUDIO            0x00000010
+#define AUDIO_SLOT_OFFSET           (4 * 0x24)
+#define CRP_EXTERNAL_CTS_EN         0x01000000
+
+//
+// The audio packets: zero data on flat samples and inactive channels, B
+// frame 0x0F, channels 0-1.
+//
+
+#define MAI_CONFIG_VALUE            0x0C000003
+#define AUDIO_PACKET_VALUE          0x21003C03
 
 typedef struct _HDMI_STATE {
     BOOLEAN Vc5;
@@ -121,17 +133,43 @@ typedef struct _HDMI_STATE {
     PULONG MailboxBuffer;
     ULONG MailboxBufferBus;
 
-    ULONG MaiCtl, MaiThr, MaiFmt, MaiData, MaiSmp;
-    ULONG ChannelMap, MaiConfig, AudioPacket, RamConfig, RamStatus, Crp, Cts0, Cts1, Scheduler;
-    ULONG PhyControl, PhyRngBit;
-    ULONG ThresholdValue, ChannelMapValue;
+    //
+    // The offsets of the registers (the MAI's in the HD block, the others
+    // in the core, the control of the PHY) and the RNG power-down bit of
+    // the PHY; the values of the threshold and of the channel map, the
+    // clocks, and the DREQ and the bus address of the FIFO of the MAI.
+    //
+
+    ULONG MaiCtl;
+    ULONG MaiThr;
+    ULONG MaiFmt;
+    ULONG MaiData;
+    ULONG MaiSmp;
+    ULONG ChannelMap;
+    ULONG MaiConfig;
+    ULONG AudioPacket;
+    ULONG RamConfig;
+    ULONG RamStatus;
+    ULONG Crp;
+    ULONG Cts0;
+    ULONG Cts1;
+    ULONG Scheduler;
+    ULONG PhyControl;
+    ULONG PhyRngBit;
+    ULONG ThresholdValue;
+    ULONG ChannelMapValue;
     ULONG AudioClock;
     ULONG PixelClock;
     ULONG Dreq;
     ULONG FifoBus;
 
-    ULONG N, Cts;               // the audio clock recovery last set (HdmiStart)
+    //
+    // The audio clock recovery last set (HdmiStart), and the frame of the
+    // block of 192 and the channel status of the samples.
+    //
 
+    ULONG N;
+    ULONG Cts;
     ULONG Frame;
     UCHAR ChannelStatus[5];
 } HDMI_STATE, *PHDMI_STATE;
@@ -164,7 +202,8 @@ MailboxTag(
 {
     PULONG Buffer = Hdmi->MailboxBuffer;
     ULONG Words = ValueSize / sizeof(ULONG);
-    ULONG Index, Count;
+    ULONG Index;
+    ULONG Count;
 
     Buffer[0] = (6 + Words) * sizeof(ULONG);
     Buffer[1] = 0;
@@ -176,7 +215,7 @@ MailboxTag(
     }
 
     Buffer[5 + Words] = 0;
-    __dsb(_ARM_BARRIER_SY);
+    MEMORY_BARRIER();
     for (Count = 0; (READ_REGISTER(Hdmi->Mailbox, MAILBOX_STATUS) & MAILBOX_FULL) != 0; Count += 1) {
         if (Count > 100000) {
             return FALSE;
@@ -200,7 +239,7 @@ MailboxTag(
         }
     }
 
-    __dsb(_ARM_BARRIER_SY);
+    MEMORY_BARRIER();
     if (Buffer[1] != MAILBOX_SUCCESS || (Buffer[4] & 0x80000000) == 0) {
         return FALSE;
     }
@@ -249,6 +288,18 @@ Routine Description:
     crystal, its multiplier and fraction, doubled with the prescaler, over
     its predivider), through the divider of its pixel channel (A2W_PLLH_PIX,
     as Linux's clock driver reads it), over a fixed 10.
+
+Arguments:
+
+    Clock - Supplies the registers of the clock manager.
+
+    Pllh - Receives the rate of PLLH.
+
+    PixelDivider - Receives the divider of the pixel channel of PLLH.
+
+Return Value:
+
+    The pixel clock in Hz, or 0 if PLLH is not set up.
 
 --*/
 
@@ -315,16 +366,22 @@ EdidBlock(
 
 BOOLEAN
 HdmiSinkHasAudio(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 {
-    PHDMI_STATE Hdmi = pGDI->Hdmi;
+    PHDMI_STATE Hdmi = GlobalInfo->Hdmi;
     UCHAR Data[128];
-    ULONG Extensions, Block, Offset, End, Length, Index;
-    BOOLEAN Audio = FALSE, HdmiSink = FALSE;
+    ULONG Extensions;
+    ULONG Block;
+    ULONG Offset;
+    ULONG End;
+    ULONG Length;
+    ULONG Index;
+    BOOLEAN Audio = FALSE;
+    BOOLEAN HdmiSink = FALSE;
 
     if (Hdmi == NULL || !EdidBlock(Hdmi, 0, Data)) {
-        BcmSoundLog(pGDI, "HDMI: no EDID");
+        BcmSoundLog(GlobalInfo, "HDMI: no EDID");
         return FALSE;
     }
 
@@ -365,14 +422,14 @@ HdmiSinkHasAudio(
         }
     }
 
-    BcmSoundLog(pGDI, "HDMI: EDID with %u extension(s): %s sink, audio %s", Extensions,
+    BcmSoundLog(GlobalInfo, "HDMI: EDID with %u extension(s): %s sink, audio %s", Extensions,
                 HdmiSink ? "HDMI" : "DVI", Audio ? "yes" : "no");
     return Audio && HdmiSink;
 }
 
 BOOLEAN
 HdmiInitialize(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 
 /*++
@@ -383,18 +440,40 @@ Routine Description:
     can go on it: its clock runs (else its registers stall the processor),
     it sends HDMI (not DVI) and its packet RAM is on.
 
+Arguments:
+
+    GlobalInfo - Supplies the global device information.
+
+Return Value:
+
+    TRUE if audio can go on the HDMI port.
+
 --*/
 
 {
-    ULONG Base = pGDI->Hardware.PeripheralBase;
+    ULONG Base = GlobalInfo->Hardware.PeripheralBase;
     PHDMI_STATE Hdmi;
     PADAPTER_OBJECT Adapter;
     DEVICE_DESCRIPTION Description;
     PHYSICAL_ADDRESS Logical;
-    ULONG MapRegisters_, Value[1], Count, Index, Hsm, Scheduler, Packet, Pllh = 0, PixelDivider = 0;
-    ULONG FirmwarePixel = 0, Candidate[3], Horizontal, Vertical, Total, Refresh;
+    ULONG MapRegisterCount;
+    ULONG Value[1];
+    ULONG Count;
+    ULONG Index;
+    ULONG Hsm;
+    ULONG Scheduler;
+    ULONG Packet;
+    ULONG Pllh = 0;
+    ULONG PixelDivider = 0;
+    ULONG FirmwarePixel = 0;
+    ULONG Candidate[3];
+    ULONG Horizontal;
+    ULONG Vertical;
+    ULONG Total;
+    ULONG Refresh;
     PUCHAR Clock;
-    BOOLEAN Hdmi0 = FALSE, Hdmi1 = FALSE;
+    BOOLEAN Hdmi0 = FALSE;
+    BOOLEAN Hdmi1 = FALSE;
     UCHAR Edid[128];
 
     Hdmi = ExAllocatePool(NonPagedPool, sizeof(HDMI_STATE));
@@ -403,7 +482,7 @@ Routine Description:
     }
 
     RtlZeroMemory(Hdmi, sizeof(HDMI_STATE));
-    Hdmi->Vc5 = (pGDI->Hardware.Flags & BCMSOUND_BCM2711) != 0;
+    Hdmi->Vc5 = (GlobalInfo->Hardware.Flags & BCMSOUND_BCM2711) != 0;
     Hdmi->Mailbox = MapRegisters(Base + MAILBOX_OFFSET, 0x40);
     RtlZeroMemory(&Description, sizeof(Description));
     Description.Version = DEVICE_DESCRIPTION_VERSION;
@@ -411,14 +490,14 @@ Routine Description:
     Description.Dma32BitAddresses = TRUE;
     Description.InterfaceType = Internal;
     Description.MaximumLength = PAGE_SIZE;
-    Adapter = HalGetAdapter(&Description, &MapRegisters_);
+    Adapter = HalGetAdapter(&Description, &MapRegisterCount);
     if (Adapter != NULL) {
         Hdmi->MailboxBuffer = HalAllocateCommonBuffer(Adapter, PAGE_SIZE, &Logical, FALSE);
         Hdmi->MailboxBufferBus = Logical.LowPart;
     }
 
     if (Hdmi->Mailbox == NULL || Hdmi->MailboxBuffer == NULL) {
-        BcmSoundLog(pGDI, "HDMI: no mailbox");
+        BcmSoundLog(GlobalInfo, "HDMI: no mailbox");
         ExFreePool(Hdmi);
         return FALSE;
     }
@@ -431,12 +510,13 @@ Routine Description:
         if (Clock != NULL) {
             Hdmi->PixelClock = Vc4PixelRate(Clock, &Pllh, &PixelDivider);
             FirmwarePixel = MailboxClockRate(Hdmi, CLOCK_PIXEL);
-            BcmSoundLog(pGDI, "HDMI: PLLH %u Hz, pixel divider %u (A2W_PLLH_PIX %08X); firmware pixel clock %u Hz",
+            BcmSoundLog(GlobalInfo,
+                        "HDMI: PLLH %u Hz, pixel divider %u (A2W_PLLH_PIX %08X); firmware pixel clock %u Hz",
                         Pllh, PixelDivider, READ_REGISTER(Clock, A2W_PLLH_PIX), FirmwarePixel);
         }
     }
 
-    BcmSoundLog(pGDI, "HDMI: HSM clock %u Hz", Hsm);
+    BcmSoundLog(GlobalInfo, "HDMI: HSM clock %u Hz", Hsm);
     if (Hsm == 0) {
         ExFreePool(Hdmi);
         return FALSE;
@@ -454,7 +534,7 @@ Routine Description:
         }
 
         Hdmi->Port = !Hdmi0 && Hdmi1 ? 1 : 0;
-        BcmSoundLog(pGDI, "HDMI: %u display(s)%s%s; port HDMI%u", Count, Hdmi0 ? ", HDMI0" : "",
+        BcmSoundLog(GlobalInfo, "HDMI: %u display(s)%s%s; port HDMI%u", Count, Hdmi0 ? ", HDMI0" : "",
                     Hdmi1 ? ", HDMI1" : "", Hdmi->Port);
     }
 
@@ -464,7 +544,7 @@ Routine Description:
     //
 
     if (!EdidBlock(Hdmi, 0, Edid)) {
-        BcmSoundLog(pGDI, "HDMI: no EDID from the firmware: no HDMI audio");
+        BcmSoundLog(GlobalInfo, "HDMI: no EDID from the firmware: no HDMI audio");
         ExFreePool(Hdmi);
         return FALSE;
     }
@@ -525,14 +605,14 @@ Routine Description:
     }
 
     if (Hdmi->Core == NULL || Hdmi->Hd == NULL || Hdmi->Packet == NULL || Hdmi->Phy == NULL) {
-        BcmSoundLog(pGDI, "HDMI: cannot map the registers");
+        BcmSoundLog(GlobalInfo, "HDMI: cannot map the registers");
         ExFreePool(Hdmi);
         return FALSE;
     }
 
     Scheduler = READ_REGISTER(Hdmi->Core, Hdmi->Scheduler);
     Packet = READ_REGISTER(Hdmi->Core, Hdmi->RamConfig);
-    BcmSoundLog(pGDI, "HDMI: scheduler %08X, packet RAM %08X, MAI %08X, pixel clock %u Hz", Scheduler, Packet,
+    BcmSoundLog(GlobalInfo, "HDMI: scheduler %08X, packet RAM %08X, MAI %08X, pixel clock %u Hz", Scheduler, Packet,
                 READ_REGISTER(Hdmi->Hd, Hdmi->MaiCtl), Hdmi->PixelClock);
     if (!Hdmi->Vc5) {
 
@@ -546,10 +626,12 @@ Routine Description:
         // sample rate and stays silent.
         //
 
-        ULONG HorzA = READ_REGISTER(Hdmi->Core, 0xC4), HorzB = READ_REGISTER(Hdmi->Core, 0xC8);
-        ULONG VertA = READ_REGISTER(Hdmi->Core, 0xCC), VertB = READ_REGISTER(Hdmi->Core, 0xD0);
+        ULONG HorzA = READ_REGISTER(Hdmi->Core, 0xC4);
+        ULONG HorzB = READ_REGISTER(Hdmi->Core, 0xC8);
+        ULONG VertA = READ_REGISTER(Hdmi->Core, 0xCC);
+        ULONG VertB = READ_REGISTER(Hdmi->Core, 0xD0);
 
-        BcmSoundLog(pGDI, "HDMI: timing %08X %08X %08X %08X", HorzA, HorzB, VertA, VertB);
+        BcmSoundLog(GlobalInfo, "HDMI: timing %08X %08X %08X %08X", HorzA, HorzB, VertA, VertB);
         Horizontal = (HorzA & 0x1FFF) + (HorzB & 0x3FF) + ((HorzB >> 10) & 0x3FF) + ((HorzB >> 20) & 0x3FF);
         Vertical = (VertA & 0x1FFF) + ((VertA >> 13) & 0x7F) + ((VertA >> 20) & 0x1F) + (VertB & 0x1FF);
         Total = Horizontal * Vertical;
@@ -559,7 +641,7 @@ Routine Description:
         if (Total != 0) {
             for (Index = 0; Index < 3; Index += 1) {
                 Refresh = (ULONG)(((ULONGLONG)Candidate[Index] * 100) / Total);
-                BcmSoundLog(pGDI, "HDMI: pixel clock %u Hz would be %u.%02u Hz of refresh", Candidate[Index],
+                BcmSoundLog(GlobalInfo, "HDMI: pixel clock %u Hz would be %u.%02u Hz of refresh", Candidate[Index],
                             Refresh / 100, Refresh % 100);
                 if (Refresh >= 2300 && Refresh <= 12200) {
                     break;
@@ -569,7 +651,7 @@ Routine Description:
             Hdmi->PixelClock = Index < 3 ? Candidate[Index] : Total * 60;
         }
 
-        BcmSoundLog(pGDI, "HDMI: mode %ux%u (total %ux%u), pixel clock %u Hz", HorzA & 0x1FFF, VertA & 0x1FFF,
+        BcmSoundLog(GlobalInfo, "HDMI: mode %ux%u (total %ux%u), pixel clock %u Hz", HorzA & 0x1FFF, VertA & 0x1FFF,
                     Horizontal, Vertical, Hdmi->PixelClock);
     }
 
@@ -577,40 +659,40 @@ Routine Description:
     // What the firmware left of the audio.
     //
 
-    BcmSoundLog(pGDI, "HDMI: firmware's audio: CRP %08X CTS %08X %08X, MAI SMP %08X FMT %08X THR %08X",
+    BcmSoundLog(GlobalInfo, "HDMI: firmware's audio: CRP %08X CTS %08X %08X, MAI SMP %08X FMT %08X THR %08X",
                 READ_REGISTER(Hdmi->Core, Hdmi->Crp), READ_REGISTER(Hdmi->Core, Hdmi->Cts0),
                 READ_REGISTER(Hdmi->Core, Hdmi->Cts1), READ_REGISTER(Hdmi->Hd, Hdmi->MaiSmp),
                 READ_REGISTER(Hdmi->Hd, Hdmi->MaiFmt), READ_REGISTER(Hdmi->Hd, Hdmi->MaiThr));
-    BcmSoundLog(pGDI, "    MAI config %08X, channel map %08X, audio packet %08X, PHY %08X, InfoFrame %08X %08X",
+    BcmSoundLog(GlobalInfo, "    MAI config %08X, channel map %08X, audio packet %08X, PHY %08X, InfoFrame %08X %08X",
                 READ_REGISTER(Hdmi->Core, Hdmi->MaiConfig), READ_REGISTER(Hdmi->Core, Hdmi->ChannelMap),
                 READ_REGISTER(Hdmi->Core, Hdmi->AudioPacket), READ_REGISTER(Hdmi->Phy, Hdmi->PhyControl),
                 READ_REGISTER(Hdmi->Packet, AUDIO_SLOT_OFFSET), READ_REGISTER(Hdmi->Packet, AUDIO_SLOT_OFFSET + 4));
 
     if ((Scheduler & SCHEDULER_HDMI) != SCHEDULER_HDMI || (Packet & RAM_PACKET_ENABLE) == 0 ||
         Hdmi->PixelClock == 0) {
-        BcmSoundLog(pGDI, "HDMI: the display is not in HDMI mode with packets: no HDMI audio");
+        BcmSoundLog(GlobalInfo, "HDMI: the display is not in HDMI mode with packets: no HDMI audio");
         ExFreePool(Hdmi);
         return FALSE;
     }
 
-    pGDI->Hdmi = Hdmi;
+    GlobalInfo->Hdmi = Hdmi;
     return TRUE;
 }
 
 ULONG
 HdmiFifoBus(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 {
-    return ((PHDMI_STATE)pGDI->Hdmi)->FifoBus;
+    return ((PHDMI_STATE)GlobalInfo->Hdmi)->FifoBus;
 }
 
 ULONG
 HdmiDreq(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 {
-    return ((PHDMI_STATE)pGDI->Hdmi)->Dreq;
+    return ((PHDMI_STATE)GlobalInfo->Hdmi)->Dreq;
 }
 
 //
@@ -624,8 +706,13 @@ SampleDivider(
     IN ULONG Rate
     )
 {
-    ULONGLONG Best = (ULONGLONG)-1, Error, Product;
-    ULONG M, N, BestN = 1, BestM = 1;
+    ULONGLONG Best = (ULONGLONG)-1;
+    ULONGLONG Error;
+    ULONGLONG Product;
+    ULONG M;
+    ULONG N;
+    ULONG BestN = 1;
+    ULONG BestM = 1;
 
     for (M = 1; M <= 256; M += 1) {
         Product = (ULONGLONG)Clock * M;
@@ -669,7 +756,7 @@ WaitPacket(
 
 BOOLEAN
 HdmiStart(
-    IN PGLOBAL_DEVICE_INFO pGDI,
+    IN PGLOBAL_DEVICE_INFO GlobalInfo,
     IN ULONG Rate
     )
 
@@ -681,11 +768,24 @@ Routine Description:
     before the DMA channel starts (HdmiEnable turns it on after). It is
     called at DISPATCH_LEVEL.
 
+Arguments:
+
+    GlobalInfo - Supplies the global device information.
+
+    Rate - Supplies the sample rate.
+
+Return Value:
+
+    TRUE, or FALSE for another rate.
+
 --*/
 
 {
-    PHDMI_STATE Hdmi = pGDI->Hdmi;
-    ULONG N, Cts, Code, Index;
+    PHDMI_STATE Hdmi = GlobalInfo->Hdmi;
+    ULONG N;
+    ULONG Cts;
+    ULONG Code;
+    ULONG Index;
     PUCHAR Slot;
 
     switch (Rate) {
@@ -753,7 +853,7 @@ Routine Description:
 
 VOID
 HdmiEnable(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 
 /*++
@@ -763,10 +863,18 @@ Routine Description:
     This routine turns the audio on once the DMA channel feeds the MAI: the
     RNG of the PHY, then the MAI (as Circle and Linux do, last).
 
+Arguments:
+
+    GlobalInfo - Supplies the global device information.
+
+Return Value:
+
+    None.
+
 --*/
 
 {
-    PHDMI_STATE Hdmi = pGDI->Hdmi;
+    PHDMI_STATE Hdmi = GlobalInfo->Hdmi;
 
     WRITE_REGISTER(Hdmi->Phy, Hdmi->PhyControl, READ_REGISTER(Hdmi->Phy, Hdmi->PhyControl) & ~Hdmi->PhyRngBit);
     WRITE_REGISTER(Hdmi->Hd, Hdmi->MaiCtl, MAI_CTL_CHNUM(2) | MAI_CTL_WHOLSMP | MAI_CTL_CHALIGN | MAI_CTL_ENABLE);
@@ -774,10 +882,10 @@ Routine Description:
 
 VOID
 HdmiStop(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 {
-    PHDMI_STATE Hdmi = pGDI->Hdmi;
+    PHDMI_STATE Hdmi = GlobalInfo->Hdmi;
 
     WRITE_REGISTER(Hdmi->Hd, Hdmi->MaiCtl, MAI_CTL_DLATE | MAI_CTL_ERRORE | MAI_CTL_ERRORF);
     WRITE_REGISTER(Hdmi->Phy, Hdmi->PhyControl, READ_REGISTER(Hdmi->Phy, Hdmi->PhyControl) | Hdmi->PhyRngBit);
@@ -789,10 +897,10 @@ HdmiStop(
 
 VOID
 HdmiResetFrames(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 {
-    ((PHDMI_STATE)pGDI->Hdmi)->Frame = 0;
+    ((PHDMI_STATE)GlobalInfo->Hdmi)->Frame = 0;
 }
 
 static ULONG
@@ -813,13 +921,13 @@ Subframe(
 
 VOID
 HdmiEncode(
-    IN PGLOBAL_DEVICE_INFO pGDI,
+    IN PGLOBAL_DEVICE_INFO GlobalInfo,
     OUT PULONG Words,
     IN LONG Left,
     IN LONG Right
     )
 {
-    PHDMI_STATE Hdmi = pGDI->Hdmi;
+    PHDMI_STATE Hdmi = GlobalInfo->Hdmi;
     ULONG Frame = Hdmi->Frame;
     ULONG Status = Frame < 40 ? (Hdmi->ChannelStatus[Frame >> 3] >> (Frame & 7)) & 1 : 0;
     ULONG Preamble = Frame == 0 ? 0x0F : 0;
@@ -831,17 +939,17 @@ HdmiEncode(
 
 ULONG
 HdmiReadControl(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 {
-    PHDMI_STATE Hdmi = pGDI->Hdmi;
+    PHDMI_STATE Hdmi = GlobalInfo->Hdmi;
 
     return READ_REGISTER(Hdmi->Hd, Hdmi->MaiCtl);
 }
 
 VOID
 HdmiLogState(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 
 /*++
@@ -852,16 +960,24 @@ Routine Description:
     clock recovery set and read back, the packets and the MAI. It is called
     at PASSIVE_LEVEL.
 
+Arguments:
+
+    GlobalInfo - Supplies the global device information.
+
+Return Value:
+
+    None.
+
 --*/
 
 {
-    PHDMI_STATE Hdmi = pGDI->Hdmi;
+    PHDMI_STATE Hdmi = GlobalInfo->Hdmi;
 
-    BcmSoundLog(pGDI, "    HDMI: N %u CTS %u (pixel clock %u Hz); CRP %08X CTS %08X %08X, packets %08X/%08X",
+    BcmSoundLog(GlobalInfo, "    HDMI: N %u CTS %u (pixel clock %u Hz); CRP %08X CTS %08X %08X, packets %08X/%08X",
                 Hdmi->N, Hdmi->Cts, Hdmi->PixelClock, READ_REGISTER(Hdmi->Core, Hdmi->Crp),
                 READ_REGISTER(Hdmi->Core, Hdmi->Cts0), READ_REGISTER(Hdmi->Core, Hdmi->Cts1),
                 READ_REGISTER(Hdmi->Core, Hdmi->RamConfig), READ_REGISTER(Hdmi->Core, Hdmi->RamStatus));
-    BcmSoundLog(pGDI, "    MAI CTL %08X SMP %08X FMT %08X, audio packet %08X, InfoFrame %08X %08X",
+    BcmSoundLog(GlobalInfo, "    MAI CTL %08X SMP %08X FMT %08X, audio packet %08X, InfoFrame %08X %08X",
                 READ_REGISTER(Hdmi->Hd, Hdmi->MaiCtl), READ_REGISTER(Hdmi->Hd, Hdmi->MaiSmp),
                 READ_REGISTER(Hdmi->Hd, Hdmi->MaiFmt), READ_REGISTER(Hdmi->Core, Hdmi->AudioPacket),
                 READ_REGISTER(Hdmi->Packet, AUDIO_SLOT_OFFSET), READ_REGISTER(Hdmi->Packet, AUDIO_SLOT_OFFSET + 4));

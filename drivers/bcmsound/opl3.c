@@ -1,87 +1,120 @@
-/*
- * opl3.c - YMF262 (OPL3) FM synthesizer emulator for the bcmsound driver.
- *
- * Original work written for PINT from the YMF262 data sheet and the
- * published descriptions of the chip's behaviour (log-sine/exponent
- * arithmetic, envelope rates, LFO depths).  No code from other emulators.
- * The log-sine, exponent and KSL tables are generated from their
- * mathematical definitions by a small script (see the comment above them).
- *
- * The chip is modelled at its native 49716 Hz sample rate and the output is
- * linearly interpolated to the driver's rate.  Integer arithmetic only, no
- * C runtime, no 64-bit division, C89; usable in an NT 4.0 kernel driver.
- *
- * Supported: OPL2 and OPL3 (NEW) modes, both register banks, 2-op and 4-op
- * channels (0x104), all 8 waveforms (OPL2 WSE gating), MULT, KSL, TL,
- * AR/DR/SL/RR, EG type, KSR, tremolo and vibrato with 0xBD depths, feedback,
- * FM/AM connections, left/right output bits, note select, rhythm mode,
- * timers 1/2 with the status register.
- *
- * Limitations (aimed at "musically correct", not cycle exact):
- *  - Envelopes advance with a fractional rate every 4 chip samples instead
- *    of the chip's global counter and per-rate step patterns, so envelope
- *    timing is close to, but not bit-identical with, hardware.
- *  - Rhythm-mode hi-hat, snare and cymbal phases follow the documented
- *    scheme (bits of the HH/TC phase generators mixed with a noise LFSR)
- *    only approximately.
- *  - CSM mode, the CHC/CHD outputs, the test registers and the OPL2-mode
- *    behaviour of bank-1 writes are not modelled; all 18 channels are
- *    always active and in OPL2 mode they play on both outputs.
- *  - Timers only advance while samples are rendered.
- *  - Output is a sum of channels (no DAC floating-point emulation); a
- *    single full-level carrier is about -12 dBFS and the mix saturates.
- */
+/*++
 
-#include "opl3.h"
+Module Name:
 
-#if defined(_MSC_VER)
-#define OPL_INLINE static __inline
-#elif defined(__GNUC__)
-#define OPL_INLINE static __inline__
-#else
-#define OPL_INLINE static
-#endif
+    opl3.c
 
-#define OPL_EG_OFF      0
-#define OPL_EG_ATTACK   1
-#define OPL_EG_DECAY    2
-#define OPL_EG_SUSTAIN  3
-#define OPL_EG_RELEASE  4
+Abstract:
 
-#define OPL_CH_2OP      0
-#define OPL_CH_4OP_PRI  1   /* first channel of a 4-op pair: owns all 4 ops */
-#define OPL_CH_4OP_SEC  2   /* second channel of a 4-op pair: silent itself */
+    The FM synthesizer of the sound driver: an emulator of the YMF262 (OPL3),
+    written for PINT from the data sheet of the chip and the published
+    descriptions of its behaviour (the log-sine and exponent arithmetic, the
+    rates of the envelopes, the depths of the LFOs), with no code of other
+    emulators. The log-sine, exponent and KSL tables are generated from their
+    mathematical definitions by a small script (see the comment above them).
 
-#define OPL_ALG_SKIP    0   /* rendered elsewhere (4-op second half, rhythm) */
-#define OPL_ALG_FM      1   /* 1 -> 2 */
-#define OPL_ALG_AM      2   /* 1 + 2 */
-#define OPL_ALG_FMFM    3   /* 1 -> 2 -> 3 -> 4 */
-#define OPL_ALG_FMAM    4   /* (1 -> 2) + (3 -> 4) */
-#define OPL_ALG_AMFM    5   /* 1 + (2 -> 3 -> 4) */
-#define OPL_ALG_AMAM    6   /* 1 + (2 -> 3) + 4 */
-#define OPL_ALG_BD      7   /* rhythm: bass drum on channel 6 */
-#define OPL_ALG_PERC    8   /* rhythm: HH/SD on channel 7, TT/TC on channel 8 */
+    The chip is modelled at its own sample rate, 49716 Hz, and the output is
+    interpolated linearly to the driver's rate. It uses integers only, no C
+    runtime and no 64-bit division.
 
-#define OPL_ENV_MAX     511
+    Supported: the OPL2 and OPL3 (NEW) modes, both register banks, channels
+    of two and of four operators (0x104), all 8 waveforms (the WSE gating of
+    an OPL2), MULT, KSL, TL, AR/DR/SL/RR, the EG type, KSR, the tremolo and
+    the vibrato with the depths of 0xBD, the feedback, the FM and AM
+    connections, the left and right output bits, the note select, the rhythm
+    mode, and timers 1 and 2 with the status register.
 
-/* Envelopes are stepped every 4 chip samples (12.4 kHz). */
+    Its limitations (it aims at musically correct, not cycle exact):
+
+        The envelopes advance with a fractional rate every 4 chip samples
+        instead of the global counter of the chip and the step patterns of
+        each rate, so their timing is close to, but not bit-identical with,
+        the hardware's.
+
+        The phases of the hi-hat, snare and cymbal of the rhythm mode follow
+        the documented scheme (bits of the HH and TC phase generators mixed
+        with a noise LFSR) only approximately.
+
+        The CSM mode, the CHC and CHD outputs, the test registers and the
+        OPL2-mode behaviour of the writes of bank 1 are not modelled; all 18
+        channels are always active, and in OPL2 mode they play on both
+        outputs.
+
+        The timers only advance while samples are rendered.
+
+        The output is a sum of the channels (the floating-point DAC is not
+        emulated); a single carrier at full level is about -12 dBFS and the
+        mix saturates.
+
+--*/
+
+#include "bcmsound.h"
+
+//
+// The states of an envelope.
+//
+
+#define OPL_EG_OFF          0
+#define OPL_EG_ATTACK       1
+#define OPL_EG_DECAY        2
+#define OPL_EG_SUSTAIN      3
+#define OPL_EG_RELEASE      4
+
+//
+// The modes of a channel: of two operators, the first channel of a pair of
+// four operators (it owns all four), or the second (silent itself).
+//
+
+#define OPL_CH_2OP          0
+#define OPL_CH_4OP_PRI      1
+#define OPL_CH_4OP_SEC      2
+
+//
+// How a channel is rendered: elsewhere (the second half of four operators,
+// the rhythm); FM (1 -> 2); AM (1 + 2); 1 -> 2 -> 3 -> 4; (1 -> 2) + (3 -> 4);
+// 1 + (2 -> 3 -> 4); 1 + (2 -> 3) + 4; and of the rhythm, the bass drum on
+// channel 6, and HH/SD on channel 7 with TT/TC on channel 8.
+//
+
+#define OPL_ALG_SKIP        0
+#define OPL_ALG_FM          1
+#define OPL_ALG_AM          2
+#define OPL_ALG_FMFM        3
+#define OPL_ALG_FMAM        4
+#define OPL_ALG_AMFM        5
+#define OPL_ALG_AMAM        6
+#define OPL_ALG_BD          7
+#define OPL_ALG_PERC        8
+
+#define OPL_ENV_MAX         511
+
+//
+// The envelopes are stepped every 4 chip samples (12.4 kHz).
+//
+
 #define OPL_EG_PERIOD_SHIFT 2
-#define OPL_EG_PERIOD   (1u << OPL_EG_PERIOD_SHIFT)
+#define OPL_EG_PERIOD       (1u << OPL_EG_PERIOD_SHIFT)
 
-#define OPL_KEY_CHANNEL 1
-#define OPL_KEY_RHYTHM  2
+#define OPL_KEY_CHANNEL     1
+#define OPL_KEY_RHYTHM      2
 
-#define OPL_LOG_SILENT  3072    /* log attenuation at which output is 0 */
+//
+// The log attenuation at which the output is 0.
+//
 
-/*
- * Tables generated by gentables.py (attenuations in 1/256 octave):
- *   logsin(i)     = round(-log2(sin((i + 0.5) / 256 * pi / 2)) * 256)
- *   OplWave[w * 1024 + p]: waveform w at 10-bit phase p, built from logsin
- *                  as log attenuation (bits 0-14) and sign (bit 15)
- *   OplExp[i]     = round(4095 * 2^(-i / 256))
- *   OplKslBase[h] = round(8 * log2(h) + 32), 0 for h = 0 (0.75 dB units)
- */
-static const OPL_U16 OplWave[8 * 1024] = {
+#define OPL_LOG_SILENT      3072
+
+//
+// The tables, generated by gentables.py (attenuations in 1/256 octave):
+//
+//     logsin(i)     = round(-log2(sin((i + 0.5) / 256 * pi / 2)) * 256)
+//     OplWave[w * 1024 + p]: waveform w at 10-bit phase p, built from logsin
+//                     as log attenuation (bits 0-14) and sign (bit 15)
+//     OplExp[i]     = round(4095 * 2^(-i / 256))
+//     OplKslBase[h] = round(8 * log2(h) + 32), 0 for h = 0 (0.75 dB units)
+//
+
+static const USHORT OplWave[8 * 1024] = {
     2137, 1731, 1543, 1419, 1326, 1252, 1190, 1137, 1091, 1050, 1013, 979,
     949, 920, 894, 869, 846, 825, 804, 785, 767, 749, 732, 717,
     701, 687, 672, 659, 646, 633, 621, 609, 598, 587, 576, 566,
@@ -767,7 +800,7 @@ static const OPL_U16 OplWave[8 * 1024] = {
     32824, 32816, 32808, 32800, 32792, 32784, 32776, 32768
 };
 
-static const OPL_U16 OplExp[256] = {
+static const USHORT OplExp[256] = {
     4095, 4084, 4073, 4062, 4051, 4040, 4029, 4018, 4007, 3996, 3986, 3975,
     3964, 3953, 3943, 3932, 3921, 3911, 3900, 3890, 3879, 3869, 3858, 3848,
     3837, 3827, 3817, 3806, 3796, 3786, 3776, 3765, 3755, 3745, 3735, 3725,
@@ -792,66 +825,98 @@ static const OPL_U16 OplExp[256] = {
     2070, 2064, 2059, 2053
 };
 
-static const OPL_U8 OplKslBase[16] = {
+static const UCHAR OplKslBase[16] = {
     0, 32, 40, 45, 48, 51, 53, 54, 56, 57, 59, 60, 61, 62, 62, 63
 };
 
-/* Frequency multiplier, times two (MULT 0 means 1/2). */
-static const OPL_U8 OplMult2[16] = {
+//
+// The frequency multiplier, times two (MULT 0 means 1/2).
+//
+
+static const UCHAR OplMult2[16] = {
     1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 20, 24, 24, 30, 30
 };
 
-/* ------------------------------------------------------------------------ */
-/* Parameter calculation (done on register writes, not per sample)          */
-/* ------------------------------------------------------------------------ */
+//
+// The calculation of the parameters (done on the register writes, not for
+// each sample).
+//
+// OplRateInc turns the rate of an envelope (0-63) into the steps of
+// attenuation a sample (16.16): each step of 4 doubles the speed, and the
+// low two bits add increments of 1/4.
+//
 
-/* Envelope rate (0..63) to attenuation steps per sample in 16.16 format.
-   Each step of 4 doubles the speed; the low two bits add 1/4 increments. */
-static OPL_U32 OplRateInc(OPL_S32 Rate)
+static UINT
+OplRateInc(
+    IN INT Rate
+    )
 {
-    OPL_S32 Hi, Lo;
+    INT Hi;
+    INT Lo;
 
     if (Rate <= 0) {
         return 0;
     }
+
     if (Rate > 63) {
         Rate = 63;
     }
+
     Hi = Rate >> 2;
     Lo = Rate & 3;
     if (Hi >= 15) {
         Lo = 0;
     }
-    return (OPL_U32)(4 + Lo) << (Hi + 1);
+
+    return (UINT)(4 + Lo) << (Hi + 1);
 }
 
-/* The channel whose F-number/block drive a channel's operators. */
-static OPL3_CHANNEL *OplFreqChannel(OPL3 *Chip, OPL_U32 Index)
+//
+// The channel whose F-number and block drive the operators of a channel.
+//
+
+static OPL3_CHANNEL *
+OplFreqChannel(
+    IN OPL3 *Chip,
+    IN UINT Index
+    )
 {
     if (Chip->Ch[Index].Mode == OPL_CH_4OP_SEC) {
         Index -= 3;
     }
+
     return &Chip->Ch[Index];
 }
 
-static void OplCalcInc(OPL3 *Chip, OPL3_OP *Op)
+static VOID
+OplCalcInc(
+    IN OPL3 *Chip,
+    IN OUT OPL3_OP *Op
+    )
 {
     OPL3_CHANNEL *Ch;
-    OPL_S32 FNum, Mag;
+    INT FNum;
+    INT Mag;
 
     Ch = OplFreqChannel(Chip, Op->Channel);
     FNum = Ch->FNum;
 
     if (Op->Reg20 & 0x40) {
-        /* Vibrato: 8-step triangle, peak FNum/128 (about 14 cents) when
-           0xBD bit 6 is set, half of that otherwise. */
+
+        //
+        // The vibrato: a triangle of 8 steps, its peak FNum/128 (about 14
+        // cents) when bit 6 of 0xBD is set, half of that otherwise.
+        //
+
         Mag = FNum >> 7;
         if ((Chip->VibPos & 3) != 2) {
             Mag = ((Chip->VibPos & 3) == 0) ? 0 : Mag >> 1;
         }
+
         if (!(Chip->RegBD & 0x40)) {
             Mag >>= 1;
         }
+
         if (Chip->VibPos & 4) {
             FNum -= Mag;
         } else {
@@ -859,52 +924,75 @@ static void OplCalcInc(OPL3 *Chip, OPL3_OP *Op)
         }
     }
 
-    Op->Inc = (((OPL_U32)FNum << Ch->Block) * OplMult2[Op->Reg20 & 15]) >> 1;
+    Op->Inc = (((UINT)FNum << Ch->Block) * OplMult2[Op->Reg20 & 15]) >> 1;
 }
 
-/* Total log attenuation of envelope, TL and KSL.  Anything from
-   OPL_LOG_SILENT on is inaudible (the output shifts to 0), so clamp there;
-   this keeps waveform + attenuation + tremolo below a shift count of 32. */
-static void OplSetAtt8(OPL3_OP *Op)
+//
+// The total log attenuation of the envelope, TL and KSL. Anything from
+// OPL_LOG_SILENT on is inaudible (the output shifts to 0), so it is clamped
+// there; this keeps the waveform, the attenuation and the tremolo together
+// below a shift count of 32.
+//
+
+static VOID
+OplSetAtt8(
+    IN OUT OPL3_OP *Op
+    )
 {
-    OPL_S32 Att = (Op->Env + Op->BaseAtt) << 3;
+    INT Att = (Op->Env + Op->BaseAtt) << 3;
 
     if (Att > OPL_LOG_SILENT) {
         Att = OPL_LOG_SILENT;
     }
-    Op->Att8 = (OPL_S16)Att;
+
+    Op->Att8 = (SHORT)Att;
 }
 
-/* Enter (or refresh) an envelope state: set its rate and the level that
-   ends it, so the per-sample code is a single add and compare. */
-static void OplSetEgState(OPL3_OP *Op, OPL_U8 State)
+//
+// Enter (or refresh) a state of an envelope: set its rate and the level
+// that ends it, so that the code of each sample is a single add and compare.
+// A decay already at the sustain level is a sustain; a sustained sound holds
+// its level, and a percussive one decays on.
+//
+
+static VOID
+OplSetEgState(
+    IN OUT OPL3_OP *Op,
+    IN UCHAR State
+    )
 {
     if (State == OPL_EG_DECAY && Op->Env >= Op->SustainLevel) {
-        State = OPL_EG_SUSTAIN;             /* already at sustain level */
+        State = OPL_EG_SUSTAIN;
     }
+
     Op->State = State;
     switch (State) {
     case OPL_EG_ATTACK:
         Op->CurInc = Op->AttackInc;
         Op->Target = 0;
         break;
+
     case OPL_EG_DECAY:
         Op->CurInc = Op->DecayInc;
         Op->Target = Op->SustainLevel;
         break;
+
     case OPL_EG_SUSTAIN:
         if (Op->Reg20 & 0x20) {
-            Op->CurInc = 0;                 /* sustained tone: hold */
+            Op->CurInc = 0;
             Op->Target = 0x7FFF;
         } else {
-            Op->CurInc = Op->ReleaseInc;    /* percussive tone: decay on */
+            Op->CurInc = Op->ReleaseInc;
             Op->Target = OPL_ENV_MAX;
         }
+
         break;
+
     case OPL_EG_RELEASE:
         Op->CurInc = Op->ReleaseInc;
         Op->Target = OPL_ENV_MAX;
         break;
+
     default:
         Op->State = OPL_EG_OFF;
         Op->CurInc = 0;
@@ -912,33 +1000,59 @@ static void OplSetEgState(OPL3_OP *Op, OPL_U8 State)
         Op->Env = OPL_ENV_MAX;
         break;
     }
+
     OplSetAtt8(Op);
 }
 
-static void OplUpdateOp(OPL3 *Chip, OPL3_OP *Op)
+static VOID
+OplUpdateOp(
+    IN OPL3 *Chip,
+    IN OUT OPL3_OP *Op
+    )
 {
     OPL3_CHANNEL *Ch;
-    OPL_S32 Ksl, Rof, Rate;
-    OPL_U32 SustainLevel;
+    INT Ksl;
+    INT Rof;
+    INT Rate;
+    UINT SustainLevel;
 
     Ch = OplFreqChannel(Chip, Op->Channel);
     OplCalcInc(Chip, Op);
 
-    /* Key scale level: 6 dB/octave base curve in 0.75 dB units. */
-    Ksl = (OPL_S32)OplKslBase[Ch->FNum >> 6] - 8 * (7 - (OPL_S32)Ch->Block);
+    //
+    // The key scale level: a base curve of 6 dB an octave in units of
+    // 0.75 dB; off, or 3.0, 1.5 or 6.0 dB an octave.
+    //
+
+    Ksl = (INT)OplKslBase[Ch->FNum >> 6] - 8 * (7 - (INT)Ch->Block);
     if (Ksl < 0) {
         Ksl = 0;
     }
-    switch (Op->Reg40 >> 6) {
-    case 0:  Ksl = 0;   break;          /* off */
-    case 1:  Ksl <<= 1; break;          /* 3.0 dB/oct */
-    case 2:  break;                     /* 1.5 dB/oct */
-    default: Ksl <<= 2; break;          /* 6.0 dB/oct */
-    }
-    Op->BaseAtt = (OPL_S16)(((Op->Reg40 & 63) << 2) + Ksl);
 
-    /* Key scale rate offset. */
-    Rof = (OPL_S32)Ch->Block << 1;
+    switch (Op->Reg40 >> 6) {
+    case 0:
+        Ksl = 0;
+        break;
+
+    case 1:
+        Ksl <<= 1;
+        break;
+
+    case 2:
+        break;
+
+    default:
+        Ksl <<= 2;
+        break;
+    }
+
+    Op->BaseAtt = (SHORT)(((Op->Reg40 & 63) << 2) + Ksl);
+
+    //
+    // The offset of the key scale rate.
+    //
+
+    Rof = (INT)Ch->Block << 1;
     Rof |= Chip->Nts ? (Ch->FNum >> 8) & 1 : (Ch->FNum >> 9) & 1;
     if (!(Op->Reg20 & 0x10)) {
         Rof >>= 2;
@@ -949,7 +1063,8 @@ static void OplUpdateOp(OPL3 *Chip, OPL3_OP *Op)
     if (Rate > 63) {
         Rate = 63;
     }
-    Op->AttackRate = (OPL_U8)Rate;
+
+    Op->AttackRate = (UCHAR)Rate;
     Op->AttackInc = OplRateInc(Rate);
 
     Rate = Op->Reg60 & 15;
@@ -958,35 +1073,47 @@ static void OplUpdateOp(OPL3 *Chip, OPL3_OP *Op)
     Rate = Op->Reg80 & 15;
     Op->ReleaseInc = OplRateInc(Rate ? Rate * 4 + Rof : 0);
 
+    //
+    // The sustain level, in steps of 3 dB (15 is 93 dB).
+    //
+
     SustainLevel = Op->Reg80 >> 4;
     if (SustainLevel == 15) {
-        SustainLevel = 31;              /* 93 dB */
+        SustainLevel = 31;
     }
-    Op->SustainLevel = (OPL_S16)(SustainLevel << 4);   /* 3 dB steps */
+
+    Op->SustainLevel = (SHORT)(SustainLevel << 4);
 
     if (Chip->New) {
-        Op->Wave = (OPL_U8)(Op->RegE0 & 7);
+        Op->Wave = (UCHAR)(Op->RegE0 & 7);
     } else if (Chip->Wse) {
-        Op->Wave = (OPL_U8)(Op->RegE0 & 3);
+        Op->Wave = (UCHAR)(Op->RegE0 & 3);
     } else {
         Op->Wave = 0;
     }
 
-    Op->WaveTab = &OplWave[(OPL_U32)Op->Wave << 10];
-    Op->AmMask = (OPL_S16)((Op->Reg20 & 0x80) ? -1 : 0);
+    Op->WaveTab = &OplWave[(UINT)Op->Wave << 10];
+    Op->AmMask = (SHORT)((Op->Reg20 & 0x80) ? -1 : 0);
     OplSetEgState(Op, Op->State);
 }
 
-static void OplUpdateAllOps(OPL3 *Chip)
+static VOID
+OplUpdateAllOps(
+    IN OUT OPL3 *Chip
+    )
 {
-    OPL_U32 i;
+    UINT Index;
 
-    for (i = 0; i < OPL3_NUM_OPS; i++) {
-        OplUpdateOp(Chip, &Chip->Op[i]);
+    for (Index = 0; Index < OPL3_NUM_OPS; Index++) {
+        OplUpdateOp(Chip, &Chip->Op[Index]);
     }
 }
 
-static void OplUpdateChannelOps(OPL3 *Chip, OPL_U32 Index)
+static VOID
+OplUpdateChannelOps(
+    IN OUT OPL3 *Chip,
+    IN UINT Index
+    )
 {
     OPL3_CHANNEL *Ch = &Chip->Ch[Index];
 
@@ -998,18 +1125,23 @@ static void OplUpdateChannelOps(OPL3 *Chip, OPL_U32 Index)
     }
 }
 
-/* ------------------------------------------------------------------------ */
-/* Key on/off                                                               */
-/* ------------------------------------------------------------------------ */
+//
+// The keys.
+//
 
-static void OplKey(OPL3_OP *Op, OPL_U8 Bit, int On)
+static VOID
+OplKey(
+    IN OUT OPL3_OP *Op,
+    IN UCHAR Bit,
+    IN INT On
+    )
 {
-    OPL_U8 Old = Op->KeyOn;
+    UCHAR Old = Op->KeyOn;
 
     if (On) {
-        Op->KeyOn = (OPL_U8)(Old | Bit);
+        Op->KeyOn = (UCHAR)(Old | Bit);
     } else {
-        Op->KeyOn = (OPL_U8)(Old & ~Bit);
+        Op->KeyOn = (UCHAR)(Old & ~Bit);
     }
 
     if (!Old && Op->KeyOn) {
@@ -1028,15 +1160,23 @@ static void OplKey(OPL3_OP *Op, OPL_U8 Bit, int On)
     }
 }
 
-/* Apply a channel's B0 key bit to the operators it owns. */
-static void OplChannelKey(OPL3 *Chip, OPL_U32 Index)
+//
+// Apply the key bit of a channel (B0) to the operators it owns.
+//
+
+static VOID
+OplChannelKey(
+    IN OUT OPL3 *Chip,
+    IN UINT Index
+    )
 {
     OPL3_CHANNEL *Ch = &Chip->Ch[Index];
-    int On = Ch->KeyOn;
+    INT On = Ch->KeyOn;
 
     if (Ch->Mode == OPL_CH_4OP_SEC) {
         return;
     }
+
     OplKey(&Chip->Op[Ch->Op[0]], OPL_KEY_CHANNEL, On);
     OplKey(&Chip->Op[Ch->Op[1]], OPL_KEY_CHANNEL, On);
     if (Ch->Mode == OPL_CH_4OP_PRI) {
@@ -1045,134 +1185,185 @@ static void OplChannelKey(OPL3 *Chip, OPL_U32 Index)
     }
 }
 
-static void OplRhythmKeys(OPL3 *Chip)
-{
-    OPL_U8 Bd = Chip->RegBD;
-    int Rhy = (Bd & 0x20) != 0;
+//
+// The keys of the rhythm: the bass drum (both its operators), the snare,
+// the tom, the cymbal and the hi-hat.
+//
 
-    OplKey(&Chip->Op[Chip->Ch[6].Op[0]], OPL_KEY_RHYTHM, Rhy && (Bd & 0x10)); /* BD */
-    OplKey(&Chip->Op[Chip->Ch[6].Op[1]], OPL_KEY_RHYTHM, Rhy && (Bd & 0x10)); /* BD */
-    OplKey(&Chip->Op[Chip->Ch[7].Op[1]], OPL_KEY_RHYTHM, Rhy && (Bd & 0x08)); /* SD */
-    OplKey(&Chip->Op[Chip->Ch[8].Op[0]], OPL_KEY_RHYTHM, Rhy && (Bd & 0x04)); /* TT */
-    OplKey(&Chip->Op[Chip->Ch[8].Op[1]], OPL_KEY_RHYTHM, Rhy && (Bd & 0x02)); /* TC */
-    OplKey(&Chip->Op[Chip->Ch[7].Op[0]], OPL_KEY_RHYTHM, Rhy && (Bd & 0x01)); /* HH */
+static VOID
+OplRhythmKeys(
+    IN OUT OPL3 *Chip
+    )
+{
+    UCHAR Bd = Chip->RegBD;
+    INT Rhy = (Bd & 0x20) != 0;
+
+    OplKey(&Chip->Op[Chip->Ch[6].Op[0]], OPL_KEY_RHYTHM, Rhy && (Bd & 0x10));
+    OplKey(&Chip->Op[Chip->Ch[6].Op[1]], OPL_KEY_RHYTHM, Rhy && (Bd & 0x10));
+    OplKey(&Chip->Op[Chip->Ch[7].Op[1]], OPL_KEY_RHYTHM, Rhy && (Bd & 0x08));
+    OplKey(&Chip->Op[Chip->Ch[8].Op[0]], OPL_KEY_RHYTHM, Rhy && (Bd & 0x04));
+    OplKey(&Chip->Op[Chip->Ch[8].Op[1]], OPL_KEY_RHYTHM, Rhy && (Bd & 0x02));
+    OplKey(&Chip->Op[Chip->Ch[7].Op[0]], OPL_KEY_RHYTHM, Rhy && (Bd & 0x01));
 }
 
-/* Recompute how each channel is rendered, its feedback shift and its
-   output routing (after C0, NEW, 0x104 or the rhythm bit change). */
-static void OplUpdateAlgos(OPL3 *Chip)
+//
+// Recompute how each channel is rendered, the shift of its feedback and
+// the routing of its output (after C0, NEW, 0x104 or the rhythm bit change).
+// In the rhythm mode the operators of channel 7 are HH, SD, TT and TC.
+//
+
+static VOID
+OplUpdateAlgos(
+    IN OUT OPL3 *Chip
+    )
 {
-    OPL_U32 i, Fb;
+    UINT Index;
+    UINT Fb;
     OPL3_CHANNEL *Ch;
 
-    for (i = 0; i < OPL3_NUM_CHANNELS; i++) {
-        Ch = &Chip->Ch[i];
+    for (Index = 0; Index < OPL3_NUM_CHANNELS; Index++) {
+        Ch = &Chip->Ch[Index];
         Fb = (Ch->RegC0 >> 1) & 7;
-        Ch->FbShift = (OPL_U8)(Fb ? 9 - Fb : 0);
-        Ch->MaskL = (OPL_S16)((!Chip->New || (Ch->RegC0 & 0x10)) ? -1 : 0);
-        Ch->MaskR = (OPL_S16)((!Chip->New || (Ch->RegC0 & 0x20)) ? -1 : 0);
-        Ch->FmMask = (OPL_S16)((Ch->RegC0 & 1) ? 0 : -1);
+        Ch->FbShift = (UCHAR)(Fb ? 9 - Fb : 0);
+        Ch->MaskL = (SHORT)((!Chip->New || (Ch->RegC0 & 0x10)) ? -1 : 0);
+        Ch->MaskR = (SHORT)((!Chip->New || (Ch->RegC0 & 0x20)) ? -1 : 0);
+        Ch->FmMask = (SHORT)((Ch->RegC0 & 1) ? 0 : -1);
         Ch->P[0] = Ch->P[2] = &Chip->Op[Ch->Op[0]];
         Ch->P[1] = Ch->P[3] = &Chip->Op[Ch->Op[1]];
         switch (Ch->Mode) {
         case OPL_CH_4OP_SEC:
             Ch->Algo = OPL_ALG_SKIP;
             break;
+
         case OPL_CH_4OP_PRI:
-            Ch->Algo = (OPL_U8)(OPL_ALG_FMFM +
-                                (((Ch->RegC0 & 1) << 1) | (Chip->Ch[i + 3].RegC0 & 1)));
-            Ch->P[2] = &Chip->Op[Chip->Ch[i + 3].Op[0]];
-            Ch->P[3] = &Chip->Op[Chip->Ch[i + 3].Op[1]];
+            Ch->Algo = (UCHAR)(OPL_ALG_FMFM +
+                               (((Ch->RegC0 & 1) << 1) | (Chip->Ch[Index + 3].RegC0 & 1)));
+            Ch->P[2] = &Chip->Op[Chip->Ch[Index + 3].Op[0]];
+            Ch->P[3] = &Chip->Op[Chip->Ch[Index + 3].Op[1]];
             break;
+
         default:
-            Ch->Algo = (OPL_U8)((Ch->RegC0 & 1) ? OPL_ALG_AM : OPL_ALG_FM);
+            Ch->Algo = (UCHAR)((Ch->RegC0 & 1) ? OPL_ALG_AM : OPL_ALG_FM);
             break;
         }
     }
+
     if (Chip->RegBD & 0x20) {
         Chip->Ch[6].Algo = OPL_ALG_BD;
-        Chip->Ch[7].Algo = OPL_ALG_PERC;    /* P: HH, SD, TT, TC */
+        Chip->Ch[7].Algo = OPL_ALG_PERC;
         Chip->Ch[7].P[2] = &Chip->Op[Chip->Ch[8].Op[0]];
         Chip->Ch[7].P[3] = &Chip->Op[Chip->Ch[8].Op[1]];
         Chip->Ch[8].Algo = OPL_ALG_SKIP;
     }
 }
 
-/* Recompute 2-op/4-op channel roles after NEW or 0x104 changes. */
-static void OplUpdateModes(OPL3 *Chip)
-{
-    OPL_U32 i, Pri;
+//
+// Recompute the roles of the channels, of two or four operators, after NEW
+// or 0x104 change.
+//
 
-    for (i = 0; i < OPL3_NUM_CHANNELS; i++) {
-        Chip->Ch[i].Mode = OPL_CH_2OP;
+static VOID
+OplUpdateModes(
+    IN OUT OPL3 *Chip
+    )
+{
+    UINT Index;
+    UINT Pri;
+
+    for (Index = 0; Index < OPL3_NUM_CHANNELS; Index++) {
+        Chip->Ch[Index].Mode = OPL_CH_2OP;
     }
+
     if (Chip->New) {
-        for (i = 0; i < 6; i++) {
-            if (Chip->Conn4Op & (1u << i)) {
-                Pri = (i < 3) ? i : i - 3 + 9;
+        for (Index = 0; Index < 6; Index++) {
+            if (Chip->Conn4Op & (1u << Index)) {
+                Pri = (Index < 3) ? Index : Index - 3 + 9;
                 Chip->Ch[Pri].Mode = OPL_CH_4OP_PRI;
                 Chip->Ch[Pri + 3].Mode = OPL_CH_4OP_SEC;
             }
         }
     }
+
     OplUpdateAlgos(Chip);
     OplUpdateAllOps(Chip);
-    for (i = 0; i < OPL3_NUM_CHANNELS; i++) {
-        if (Chip->Ch[i].Mode != OPL_CH_4OP_SEC) {
-            OplChannelKey(Chip, i);
+    for (Index = 0; Index < OPL3_NUM_CHANNELS; Index++) {
+        if (Chip->Ch[Index].Mode != OPL_CH_4OP_SEC) {
+            OplChannelKey(Chip, Index);
         }
     }
 }
 
-/* ------------------------------------------------------------------------ */
-/* Public: init, reset, register writes, status                             */
-/* ------------------------------------------------------------------------ */
+//
+// The routines of the driver: the start, the reset, the register writes and
+// the status.
+//
 
-void Opl3Reset(OPL3 *Chip)
+VOID
+Opl3Reset(
+    IN OUT OPL3 *Chip
+    )
 {
-    volatile OPL_U8 *Bytes = (volatile OPL_U8 *)Chip;
-    OPL_U32 Rate = Chip->OutputRate;
-    OPL_U32 Step = Chip->Step;
-    OPL_U32 i, Bank, Local, First;
+    volatile UCHAR *Bytes = (volatile UCHAR *)Chip;
+    UINT Rate = Chip->OutputRate;
+    UINT Step = Chip->Step;
+    UINT Index;
+    UINT Bank;
+    UINT Local;
+    UINT First;
 
-    for (i = 0; i < sizeof(OPL3); i++) {
-        Bytes[i] = 0;
+    for (Index = 0; Index < sizeof(OPL3); Index++) {
+        Bytes[Index] = 0;
     }
+
     Chip->OutputRate = Rate;
     Chip->Step = Step;
     Chip->Noise = 1;
     Chip->Frac = 0x10000;
 
-    for (i = 0; i < OPL3_NUM_CHANNELS; i++) {
-        Bank = i / 9;
-        Local = i % 9;
+    for (Index = 0; Index < OPL3_NUM_CHANNELS; Index++) {
+        Bank = Index / 9;
+        Local = Index % 9;
         First = Bank * 18 + (Local % 3) + 6 * (Local / 3);
-        Chip->Ch[i].Op[0] = (OPL_U8)First;
-        Chip->Ch[i].Op[1] = (OPL_U8)(First + 3);
-        Chip->Op[First].Channel = (OPL_U8)i;
-        Chip->Op[First + 3].Channel = (OPL_U8)i;
+        Chip->Ch[Index].Op[0] = (UCHAR)First;
+        Chip->Ch[Index].Op[1] = (UCHAR)(First + 3);
+        Chip->Op[First].Channel = (UCHAR)Index;
+        Chip->Op[First + 3].Channel = (UCHAR)Index;
     }
-    for (i = 0; i < OPL3_NUM_OPS; i++) {
-        OplSetEgState(&Chip->Op[i], OPL_EG_OFF);
+
+    for (Index = 0; Index < OPL3_NUM_OPS; Index++) {
+        OplSetEgState(&Chip->Op[Index], OPL_EG_OFF);
     }
+
     OplUpdateModes(Chip);
 }
 
-void Opl3Init(OPL3 *Chip, unsigned long OutputRate)
+VOID
+Opl3Init(
+    OUT OPL3 *Chip,
+    IN ULONG OutputRate
+    )
 {
     if (OutputRate == 0) {
         OutputRate = OPL3_CHIP_RATE;
     }
-    Chip->OutputRate = (OPL_U32)OutputRate;
-    Chip->Step = ((OPL_U32)OPL3_CHIP_RATE << 16) / (OPL_U32)OutputRate;
+
+    Chip->OutputRate = (UINT)OutputRate;
+    Chip->Step = ((UINT)OPL3_CHIP_RATE << 16) / (UINT)OutputRate;
     Opl3Reset(Chip);
 }
 
-void Opl3Write(OPL3 *Chip, unsigned int Register, unsigned char Value)
+VOID
+Opl3Write(
+    IN OUT OPL3 *Chip,
+    IN UINT Register,
+    IN UCHAR Value
+    )
 {
-    OPL_U32 Bank = (Register >> 8) & 1;
-    OPL_U32 Reg = Register & 0xFF;
-    OPL_U32 Group, Slot, Index;
+    UINT Bank = (Register >> 8) & 1;
+    UINT Reg = Register & 0xFF;
+    UINT Group;
+    UINT Slot;
+    UINT Index;
     OPL3_OP *Op;
     OPL3_CHANNEL *Ch;
 
@@ -1180,45 +1371,61 @@ void Opl3Write(OPL3 *Chip, unsigned int Register, unsigned char Value)
     case 0x00:
         if (Bank) {
             if (Reg == 0x04) {
-                Chip->Conn4Op = (OPL_U8)(Value & 0x3F);
+                Chip->Conn4Op = (UCHAR)(Value & 0x3F);
                 OplUpdateModes(Chip);
             } else if (Reg == 0x05) {
-                Chip->New = (OPL_U8)(Value & 1);
+                Chip->New = (UCHAR)(Value & 1);
                 OplUpdateModes(Chip);
             }
+
             break;
         }
+
         switch (Reg) {
         case 0x01:
-            Chip->Wse = (OPL_U8)((Value >> 5) & 1);
+            Chip->Wse = (UCHAR)((Value >> 5) & 1);
             OplUpdateAllOps(Chip);
             break;
+
         case 0x02:
             Chip->Timer1 = Value;
             break;
+
         case 0x03:
             Chip->Timer2 = Value;
             break;
+
         case 0x04:
+
+            //
+            // Bit 7 resets the IRQ, and the other bits are ignored.
+            //
+
             if (Value & 0x80) {
-                Chip->Status = 0;       /* IRQ reset; other bits ignored */
+                Chip->Status = 0;
                 break;
             }
+
             if ((Value & 0x01) && !(Chip->TimerCtl & 0x01)) {
                 Chip->Timer1Cnt = Chip->Timer1;
             }
+
             if ((Value & 0x02) && !(Chip->TimerCtl & 0x02)) {
                 Chip->Timer2Cnt = Chip->Timer2;
             }
-            Chip->TimerCtl = (OPL_U8)(Value & 0x63);
+
+            Chip->TimerCtl = (UCHAR)(Value & 0x63);
             break;
+
         case 0x08:
-            Chip->Nts = (OPL_U8)((Value >> 6) & 1);
+            Chip->Nts = (UCHAR)((Value >> 6) & 1);
             OplUpdateAllOps(Chip);
             break;
+
         default:
             break;
         }
+
         break;
 
     case 0x20:
@@ -1231,49 +1438,76 @@ void Opl3Write(OPL3 *Chip, unsigned int Register, unsigned char Value)
         if (Group > 2 || Slot > 5) {
             break;
         }
+
         Op = &Chip->Op[Bank * 18 + Group * 6 + Slot];
         switch (Reg & 0xE0) {
-        case 0x20: Op->Reg20 = Value; break;
-        case 0x40: Op->Reg40 = Value; break;
-        case 0x60: Op->Reg60 = Value; break;
-        case 0x80: Op->Reg80 = Value; break;
-        default:   Op->RegE0 = Value; break;
+        case 0x20:
+            Op->Reg20 = Value;
+            break;
+
+        case 0x40:
+            Op->Reg40 = Value;
+            break;
+
+        case 0x60:
+            Op->Reg60 = Value;
+            break;
+
+        case 0x80:
+            Op->Reg80 = Value;
+            break;
+
+        default:
+            Op->RegE0 = Value;
+            break;
         }
+
         OplUpdateOp(Chip, Op);
         break;
 
     case 0xA0:
+
+        //
+        // 0xBD: the operators are updated for the depth of the vibrato.
+        //
+
         if (Reg == 0xBD) {
             if (!Bank) {
                 Chip->RegBD = Value;
                 OplUpdateAlgos(Chip);
                 OplRhythmKeys(Chip);
-                OplUpdateAllOps(Chip);  /* vibrato depth */
+                OplUpdateAllOps(Chip);
             }
+
             break;
         }
+
         if ((Reg & 0x0F) > 8) {
             break;
         }
+
         Index = Bank * 9 + (Reg & 0x0F);
         Ch = &Chip->Ch[Index];
         if (Reg < 0xB0) {
-            Ch->FNum = (OPL_U16)((Ch->FNum & 0x300) | Value);
+            Ch->FNum = (USHORT)((Ch->FNum & 0x300) | Value);
         } else {
-            Ch->FNum = (OPL_U16)((Ch->FNum & 0xFF) | ((Value & 3) << 8));
-            Ch->Block = (OPL_U8)((Value >> 2) & 7);
-            Ch->KeyOn = (OPL_U8)((Value >> 5) & 1);
+            Ch->FNum = (USHORT)((Ch->FNum & 0xFF) | ((Value & 3) << 8));
+            Ch->Block = (UCHAR)((Value >> 2) & 7);
+            Ch->KeyOn = (UCHAR)((Value >> 5) & 1);
             OplChannelKey(Chip, Index);
         }
+
         if (Ch->Mode != OPL_CH_4OP_SEC) {
             OplUpdateChannelOps(Chip, Index);
         }
+
         break;
 
     case 0xC0:
         if (Reg > 0xC8) {
             break;
         }
+
         Chip->Ch[Bank * 9 + (Reg & 0x0F)].RegC0 = Value;
         OplUpdateAlgos(Chip);
         break;
@@ -1283,108 +1517,156 @@ void Opl3Write(OPL3 *Chip, unsigned int Register, unsigned char Value)
     }
 }
 
-unsigned char Opl3ReadStatus(OPL3 *Chip)
+UCHAR
+Opl3ReadStatus(
+    IN OPL3 *Chip
+    )
 {
-    OPL_U8 Status = (OPL_U8)(Chip->Status & 0x60);
+    UCHAR Status = (UCHAR)(Chip->Status & 0x60);
 
     if (Status) {
         Status |= 0x80;
     }
+
     return Status;
 }
 
-int Opl3IsSilent(OPL3 *Chip)
+INT
+Opl3IsSilent(
+    IN OPL3 *Chip
+    )
 {
-    OPL_U32 i;
+    UINT Index;
 
-    for (i = 0; i < OPL3_NUM_OPS; i++) {
-        if (Chip->Op[i].State != OPL_EG_OFF) {
+    for (Index = 0; Index < OPL3_NUM_OPS; Index++) {
+        if (Chip->Op[Index].State != OPL_EG_OFF) {
             return 0;
         }
     }
+
     return 1;
 }
 
-/* ------------------------------------------------------------------------ */
-/* Sample generation                                                        */
-/* ------------------------------------------------------------------------ */
+//
+// The generation of the samples.
+//
+// OplOpOut gives the output of an operator for a 10-bit phase, about
+// +-4095; Trem8 is the attenuation of the tremolo times 8. Log is below
+// 32 * 256 (Att8 is clamped), and from 12 * 256 on the shift yields 0, so no
+// test for silence is needed. Sign is 0 or -1.
+//
 
-/* One operator's output for a 10-bit phase, about +-4095.  Trem8 is the
-   tremolo attenuation times 8. */
-OPL_INLINE OPL_S32 OplOpOut(const OPL3_OP *Op, OPL_U32 Phase, OPL_S32 Trem8)
+static __inline INT
+OplOpOut(
+    IN const OPL3_OP *Op,
+    IN UINT Phase,
+    IN INT Trem8
+    )
 {
-    OPL_U32 W;
-    OPL_S32 Log, Out, Sign;
+    UINT W;
+    INT Log;
+    INT Out;
+    INT Sign;
 
     W = Op->WaveTab[Phase & 1023];
-    /* Log < 32 * 256 (Att8 is clamped), and from 12 * 256 on the shift
-       yields 0, so no explicit silence test is needed. */
-    Log = (OPL_S32)(W & 0x7FFF) + Op->Att8 + (Trem8 & Op->AmMask);
+    Log = (INT)(W & 0x7FFF) + Op->Att8 + (Trem8 & Op->AmMask);
     Out = OplExp[Log & 255] >> (Log >> 8);
-    Sign = -(OPL_S32)(W >> 15);         /* 0 or -1 */
+    Sign = -(INT)(W >> 15);
     return (Out ^ Sign) - Sign;
 }
 
-/* Current 10-bit phase of an operator; advances it by one chip sample.
-   Called exactly once per sample for each operator of a sounding channel. */
-OPL_INLINE OPL_U32 OplPh(OPL3_OP *Op)
+//
+// The current 10-bit phase of an operator, which it advances by one chip
+// sample. It is called exactly once a sample for each operator of a channel
+// that sounds.
+//
+
+static __inline UINT
+OplPh(
+    IN OUT OPL3_OP *Op
+    )
 {
-    OPL_U32 Phase = Op->Phase;
+    UINT Phase = Op->Phase;
 
     Op->Phase = Phase + Op->Inc;
     return Phase >> 10;
 }
 
-/* End of decay (to sustain) or of percussive sustain/release (to off). */
-static void OplEgEnd(OPL3_OP *Op)
+//
+// The end of a decay (to the sustain) or of a percussive sustain or a
+// release (to off).
+//
+
+static VOID
+OplEgEnd(
+    IN OUT OPL3_OP *Op
+    )
 {
     if (Op->State == OPL_EG_DECAY) {
         if (Op->Env > OPL_ENV_MAX) {
             Op->Env = OPL_ENV_MAX;
         }
+
         OplSetEgState(Op, OPL_EG_SUSTAIN);
     } else {
         OplSetEgState(Op, OPL_EG_OFF);
     }
 }
 
-/* Advance the envelope of every operator that is not off by
-   OPL_EG_PERIOD chip samples. */
-static void OplEnvelopes(OPL3 *Chip)
+//
+// Advance the envelope of every operator that is not off by OPL_EG_PERIOD
+// chip samples.
+//
+
+static VOID
+OplEnvelopes(
+    IN OUT OPL3 *Chip
+    )
 {
     OPL3_OP *Op = Chip->Op;
     OPL3_OP *End = Chip->Op + OPL3_NUM_OPS;
-    OPL_U32 Ticks;
-    OPL_S32 Env;
+    UINT Ticks;
+    INT Env;
 
     for (; Op < End; Op++) {
         if (Op->State == OPL_EG_OFF) {
             continue;
         }
+
         Op->EnvFrac += Op->CurInc << OPL_EG_PERIOD_SHIFT;
         Ticks = Op->EnvFrac >> 16;
         if (!Ticks) {
             continue;
         }
+
         Op->EnvFrac &= 0xFFFF;
         Env = Op->Env;
         if (Op->State == OPL_EG_ATTACK) {
-            /* Exponential approach to 0 dB. */
+
+            //
+            // An exponential approach to 0 dB.
+            //
+
             do {
                 Env -= (Env >> 3) + 1;
             } while (--Ticks && Env > 0);
+
             if (Env <= 0) {
                 Op->Env = 0;
                 Op->EnvFrac = 0;
                 OplSetEgState(Op, OPL_EG_DECAY);
             } else {
-                Op->Env = (OPL_S16)Env;
+                Op->Env = (SHORT)Env;
                 OplSetAtt8(Op);
             }
         } else {
-            /* Linear (in dB) decay, sustain or release. */
-            Env += (OPL_S32)Ticks;
-            Op->Env = (OPL_S16)Env;
+
+            //
+            // A linear (in dB) decay, sustain or release.
+            //
+
+            Env += (INT)Ticks;
+            Op->Env = (SHORT)Env;
             OplSetAtt8(Op);
             if (Env >= Op->Target) {
                 OplEgEnd(Op);
@@ -1393,34 +1675,54 @@ static void OplEnvelopes(OPL3 *Chip)
     }
 }
 
-/* LFOs, timers and noise; called once per chip sample. */
-static void OplClock(OPL3 *Chip)
+//
+// The LFOs, the timers and the noise; called once a chip sample.
+//
+
+static VOID
+OplClock(
+    IN OUT OPL3 *Chip
+    )
 {
-    OPL_U32 Cnt = ++Chip->SampleCnt;
-    OPL_U32 Pos, i;
+    UINT Cnt = ++Chip->SampleCnt;
+    UINT Pos;
+    UINT Index;
 
     if ((Cnt & 63) == 0) {
-        /* Tremolo: triangle over 210 steps of 64 samples (3.7 Hz),
-           peak 4.8 dB (0xBD bit 7) or 1.1 dB. */
+
+        //
+        // The tremolo: a triangle over 210 steps of 64 samples (3.7 Hz),
+        // its peak 4.8 dB (bit 7 of 0xBD) or 1.1 dB.
+        //
+
         Pos = (Cnt >> 6) % 210;
         if (Pos >= 105) {
             Pos = 209 - Pos;
         }
-        Chip->TremVal = (OPL_U8)((Chip->RegBD & 0x80) ? Pos >> 2 : Pos >> 4);
+
+        Chip->TremVal = (UCHAR)((Chip->RegBD & 0x80) ? Pos >> 2 : Pos >> 4);
     }
 
     if ((Cnt & 1023) == 0) {
-        /* Vibrato: 8 steps of 1024 samples (6.1 Hz). */
-        Chip->VibPos = (OPL_U8)((Cnt >> 10) & 7);
-        for (i = 0; i < OPL3_NUM_OPS; i++) {
-            if (Chip->Op[i].Reg20 & 0x40) {
-                OplCalcInc(Chip, &Chip->Op[i]);
+
+        //
+        // The vibrato: 8 steps of 1024 samples (6.1 Hz).
+        //
+
+        Chip->VibPos = (UCHAR)((Cnt >> 10) & 7);
+        for (Index = 0; Index < OPL3_NUM_OPS; Index++) {
+            if (Chip->Op[Index].Reg20 & 0x40) {
+                OplCalcInc(Chip, &Chip->Op[Index]);
             }
         }
     }
 
     if ((Cnt & 3) == 0 && (Chip->TimerCtl & 0x01)) {
-        /* Timer 1: 80 us ticks (4 chip samples). */
+
+        //
+        // Timer 1: ticks of 80 us (4 chip samples).
+        //
+
         if (++Chip->Timer1Cnt >= 256) {
             Chip->Timer1Cnt = Chip->Timer1;
             if (!(Chip->TimerCtl & 0x40)) {
@@ -1428,8 +1730,13 @@ static void OplClock(OPL3 *Chip)
             }
         }
     }
+
     if ((Cnt & 15) == 0 && (Chip->TimerCtl & 0x02)) {
-        /* Timer 2: 320 us ticks (16 chip samples). */
+
+        //
+        // Timer 2: ticks of 320 us (16 chip samples).
+        //
+
         if (++Chip->Timer2Cnt >= 256) {
             Chip->Timer2Cnt = Chip->Timer2;
             if (!(Chip->TimerCtl & 0x20)) {
@@ -1438,32 +1745,61 @@ static void OplClock(OPL3 *Chip)
         }
     }
 
-    /* 23-bit noise LFSR. */
+    //
+    // The 23-bit LFSR of the noise.
+    //
+
     Chip->Noise = ((Chip->Noise << 1) |
                    (((Chip->Noise >> 22) ^ (Chip->Noise >> 17)) & 1)) & 0x7FFFFF;
 }
 
-OPL_INLINE OPL_S32 OplSat16(OPL_S32 V)
+static __inline INT
+OplSat16(
+    IN INT V
+    )
 {
     if (V > 32767) {
         return 32767;
     }
+
     if (V < -32768) {
         return -32768;
     }
+
     return V;
 }
 
-/* Render a 4-op channel or the rhythm section; returns the channel output
-   (for OPL_ALG_PERC the channel 7 part; channel 8 is added to the sums). */
-static OPL_S32 OplComplexChannel(OPL3 *Chip, OPL3_CHANNEL *Ch, OPL_S32 Trem,
-                                 OPL_S32 *SumL, OPL_S32 *SumR)
-{
-    OPL3_OP *A = Ch->P[0], *B = Ch->P[1], *C = Ch->P[2], *D = Ch->P[3];
-    OPL_S32 Mod, O1, O2, O3, Out;
-    OPL_U32 PhHH, PhTC, Noise, Res, Bit8;
+//
+// Render a channel of four operators or the rhythm section; returns the
+// output of the channel (for OPL_ALG_PERC the part of channel 7; channel 8
+// is added to the sums).
+//
 
-    Mod = Ch->FbShift ? ((OPL_S32)Ch->Fb[0] + Ch->Fb[1]) >> Ch->FbShift : 0;
+static INT
+OplComplexChannel(
+    IN OPL3 *Chip,
+    IN OUT OPL3_CHANNEL *Ch,
+    IN INT Trem,
+    IN OUT INT *SumL,
+    IN OUT INT *SumR
+    )
+{
+    OPL3_OP *A = Ch->P[0];
+    OPL3_OP *B = Ch->P[1];
+    OPL3_OP *C = Ch->P[2];
+    OPL3_OP *D = Ch->P[3];
+    INT Mod;
+    INT O1;
+    INT O2;
+    INT O3;
+    INT Out;
+    UINT PhHH;
+    UINT PhTC;
+    UINT Noise;
+    UINT Res;
+    UINT Bit8;
+
+    Mod = Ch->FbShift ? ((INT)Ch->Fb[0] + Ch->Fb[1]) >> Ch->FbShift : 0;
     O1 = 0;
     switch (Ch->Algo) {
     case OPL_ALG_FMFM:
@@ -1472,33 +1808,48 @@ static OPL_S32 OplComplexChannel(OPL3 *Chip, OPL3_CHANNEL *Ch, OPL_S32 Trem,
         O3 = OplOpOut(C, OplPh(C) + O2, Trem);
         Out = OplOpOut(D, OplPh(D) + O3, Trem);
         break;
+
     case OPL_ALG_FMAM:
         O1 = OplOpOut(A, OplPh(A) + Mod, Trem);
         O2 = OplOpOut(B, OplPh(B) + O1, Trem);
         O3 = OplOpOut(C, OplPh(C), Trem);
         Out = O2 + OplOpOut(D, OplPh(D) + O3, Trem);
         break;
+
     case OPL_ALG_AMFM:
         O1 = OplOpOut(A, OplPh(A) + Mod, Trem);
         O2 = OplOpOut(B, OplPh(B), Trem);
         O3 = OplOpOut(C, OplPh(C) + O2, Trem);
         Out = O1 + OplOpOut(D, OplPh(D) + O3, Trem);
         break;
+
     case OPL_ALG_AMAM:
         O1 = OplOpOut(A, OplPh(A) + Mod, Trem);
         O2 = OplOpOut(B, OplPh(B), Trem);
         O3 = OplOpOut(C, OplPh(C) + O2, Trem);
         Out = O1 + O3 + OplOpOut(D, OplPh(D), Trem);
         break;
+
     case OPL_ALG_BD:
-        /* Bass drum: a 2-op voice (carrier alone when CNT=1), doubled. */
+
+        //
+        // The bass drum: a voice of two operators (the carrier alone when
+        // CNT is 1), doubled.
+        //
+
         O1 = OplOpOut(A, OplPh(A) + Mod, Trem);
         Out = OplOpOut(B, OplPh(B) + ((Ch->RegC0 & 1) ? 0 : O1), Trem) * 2;
         break;
+
     default:
-        /* Hi-hat (A) and snare (B) on channel 7, tom (C) and cymbal (D) on
-           channel 8.  HH, SD and TC take their phase from bits of the HH
-           and TC phase generators mixed with noise; outputs doubled. */
+
+        //
+        // The hi-hat (A) and the snare (B) on channel 7, the tom (C) and
+        // the cymbal (D) on channel 8. HH, SD and TC take their phase from
+        // bits of the HH and TC phase generators mixed with the noise; the
+        // outputs are doubled.
+        //
+
         PhHH = OplPh(A);
         PhTC = OplPh(D);
         Noise = Chip->Noise & 1;
@@ -1513,25 +1864,40 @@ static OPL_S32 OplComplexChannel(OPL3 *Chip, OPL3_CHANNEL *Ch, OPL_S32 Trem,
                OplOpOut(B, (Bit8 << 9) | ((Bit8 ^ Noise) << 8), Trem)) * 2;
         break;
     }
+
     Ch->Fb[0] = Ch->Fb[1];
-    Ch->Fb[1] = (OPL_S16)O1;
+    Ch->Fb[1] = (SHORT)O1;
     return Out;
 }
 
-/* Produce one chip-rate stereo sample. */
-static void OplGenerate(OPL3 *Chip, OPL_S32 *Left, OPL_S32 *Right)
+//
+// Produce one stereo sample at the rate of the chip.
+//
+
+static VOID
+OplGenerate(
+    IN OUT OPL3 *Chip,
+    OUT INT *Left,
+    OUT INT *Right
+    )
 {
-    OPL_S32 SumL = 0, SumR = 0;
-    OPL_S32 Trem = (OPL_S32)Chip->TremVal << 3;
-    OPL_S32 Mod, O1, Out, Fm;
+    INT SumL = 0;
+    INT SumR = 0;
+    INT Trem = (INT)Chip->TremVal << 3;
+    INT Mod;
+    INT O1;
+    INT Out;
+    INT Fm;
     OPL3_CHANNEL *Ch = Chip->Ch;
     OPL3_CHANNEL *End = Chip->Ch + OPL3_NUM_CHANNELS;
-    OPL3_OP *A, *B;
+    OPL3_OP *A;
+    OPL3_OP *B;
 
     for (; Ch < End; Ch++) {
         if (Ch->Algo == OPL_ALG_SKIP) {
             continue;
         }
+
         A = Ch->P[0];
         B = Ch->P[1];
         if (A->State == OPL_EG_OFF && B->State == OPL_EG_OFF &&
@@ -1539,17 +1905,23 @@ static void OplGenerate(OPL3 *Chip, OPL_S32 *Left, OPL_S32 *Right)
             Ch->Fb[0] = Ch->Fb[1] = 0;
             continue;
         }
+
         if (Ch->Algo <= OPL_ALG_AM) {
-            /* 2-op voice: FM (1 -> 2) or AM (1 + 2). */
-            Mod = Ch->FbShift ? ((OPL_S32)Ch->Fb[0] + Ch->Fb[1]) >> Ch->FbShift : 0;
+
+            //
+            // A voice of two operators: FM (1 -> 2) or AM (1 + 2).
+            //
+
+            Mod = Ch->FbShift ? ((INT)Ch->Fb[0] + Ch->Fb[1]) >> Ch->FbShift : 0;
             O1 = OplOpOut(A, OplPh(A) + Mod, Trem);
             Fm = Ch->FmMask;
             Out = OplOpOut(B, OplPh(B) + (O1 & Fm), Trem) + (O1 & ~Fm);
             Ch->Fb[0] = Ch->Fb[1];
-            Ch->Fb[1] = (OPL_S16)O1;
+            Ch->Fb[1] = (SHORT)O1;
         } else {
             Out = OplComplexChannel(Chip, Ch, Trem, &SumL, &SumR);
         }
+
         SumL += Out & Ch->MaskL;
         SumR += Out & Ch->MaskR;
     }
@@ -1557,16 +1929,28 @@ static void OplGenerate(OPL3 *Chip, OPL_S32 *Left, OPL_S32 *Right)
     if ((Chip->SampleCnt & (OPL_EG_PERIOD - 1)) == 0) {
         OplEnvelopes(Chip);
     }
+
     OplClock(Chip);
 
-    /* Two times the operator scale: a lone full-level carrier is -12 dBFS. */
+    //
+    // Two times the scale of the operators: a lone carrier at full level is
+    // -12 dBFS.
+    //
+
     *Left = OplSat16(SumL * 2);
     *Right = OplSat16(SumR * 2);
 }
 
-void Opl3Render(OPL3 *Chip, short *Stereo, unsigned long Frames)
+VOID
+Opl3Render(
+    IN OUT OPL3 *Chip,
+    OUT PSHORT Stereo,
+    IN ULONG Frames
+    )
 {
-    OPL_S32 F, L, R;
+    INT F;
+    INT L;
+    INT R;
 
     while (Frames--) {
         while (Chip->Frac >= 0x10000) {
@@ -1575,11 +1959,12 @@ void Opl3Render(OPL3 *Chip, short *Stereo, unsigned long Frames)
             Chip->PrevR = Chip->CurR;
             OplGenerate(Chip, &Chip->CurL, &Chip->CurR);
         }
-        F = (OPL_S32)(Chip->Frac >> 1);
+
+        F = (INT)(Chip->Frac >> 1);
         L = Chip->PrevL + (((Chip->CurL - Chip->PrevL) * F) >> 15);
         R = Chip->PrevR + (((Chip->CurR - Chip->PrevR) * F) >> 15);
-        Stereo[0] = (short)L;
-        Stereo[1] = (short)R;
+        Stereo[0] = (SHORT)L;
+        Stereo[1] = (SHORT)R;
         Stereo += 2;
         Chip->Frac += Chip->Step;
     }

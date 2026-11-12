@@ -31,7 +31,7 @@ SynthQuiet(
     IN BOOLEAN Opl3
     )
 {
-    static CONST UCHAR Slots[18] = { 0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13, 16, 17, 18, 19, 20, 21 };
+    static const UCHAR Slots[18] = {0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13, 16, 17, 18, 19, 20, 21};
     ULONG Index;
 
     Opl3Reset(Chip);
@@ -45,6 +45,7 @@ SynthQuiet(
             Opl3Write(Chip, AD_LEVEL + Index, 0x3F);
             Opl3Write(Chip, AD_LEVEL2 + Index, 0x3F);
         }
+
         for (Index = 0; Index < 0x08; Index += 1) {
             Opl3Write(Chip, AD_BLOCK + Index, 0x00);
             Opl3Write(Chip, AD_BLOCK2 + Index, 0x00);
@@ -54,34 +55,37 @@ SynthQuiet(
         for (Index = 0; Index < 18; Index += 1) {
             Opl3Write(Chip, AD_LEVEL + Slots[Index], 0x3F);
         }
+
         for (Index = 0; Index <= 8; Index += 1) {
             Opl3Write(Chip, AD_FNUMBER + Index, 0);
             Opl3Write(Chip, AD_BLOCK + Index, 0);
         }
+
         Opl3Write(Chip, AD_DRUM, 0x20);
     }
 }
 
 static VOID
 SynthReset(
-    IN PGLOBAL_DEVICE_INFO pGDI,
+    IN PGLOBAL_DEVICE_INFO GlobalInfo,
     IN BOOLEAN Opl3
     )
 {
     KIRQL Irql;
 
-    KeAcquireSpinLock(&pGDI->EngineLock, &Irql);
-    SynthQuiet(&pGDI->Synth, Opl3);
-    pGDI->SynthAddress = 0;
-    KeReleaseSpinLock(&pGDI->EngineLock, Irql);
+    KeAcquireSpinLock(&GlobalInfo->EngineLock, &Irql);
+    SynthQuiet(&GlobalInfo->Synth, Opl3);
+    GlobalInfo->SynthAddress = 0;
+    KeReleaseSpinLock(&GlobalInfo->EngineLock, Irql);
 }
 
 static NTSTATUS
 SynthWrite(
-    IN PGLOBAL_DEVICE_INFO pGDI,
+    IN PGLOBAL_DEVICE_INFO GlobalInfo,
     IN PIRP Irp,
     IN PIO_STACK_LOCATION IrpStack
     )
+
 /*++
 
 Routine Description:
@@ -91,12 +95,28 @@ Routine Description:
     copied from the caller's buffer a batch at a time, and applied under the
     lock of the output.
 
+Arguments:
+
+    GlobalInfo - Supplies the global device information.
+
+    Irp - Supplies the write request, whose buffer holds the port writes.
+
+    IrpStack - Supplies the stack location of the request.
+
+Return Value:
+
+    STATUS_SUCCESS, STATUS_BUFFER_TOO_SMALL for a length that is not of whole
+    port writes, STATUS_ACCESS_VIOLATION for a bad buffer, or
+    STATUS_INVALID_PARAMETER for a port that is not the chip's.
+
 --*/
+
 {
     SYNTH_DATA Batch[64];
     PSYNTH_DATA Data = (PSYNTH_DATA)Irp->UserBuffer;
     ULONG Length = IrpStack->Parameters.Write.Length;
-    ULONG Count, Index;
+    ULONG Count;
+    ULONG Index;
     NTSTATUS Status = STATUS_SUCCESS;
     KIRQL Irql;
 
@@ -110,48 +130,57 @@ Routine Description:
                 (ULONG)(Data + Count) > (ULONG)MM_HIGHEST_USER_ADDRESS) {
                 ExRaiseStatus(STATUS_ACCESS_VIOLATION);
             }
+
             RtlCopyMemory(Batch, Data, Count * sizeof(SYNTH_DATA));
         } except (EXCEPTION_EXECUTE_HANDLER) {
             Status = STATUS_ACCESS_VIOLATION;
             break;
         }
-        KeAcquireSpinLock(&pGDI->EngineLock, &Irql);
+
+        KeAcquireSpinLock(&GlobalInfo->EngineLock, &Irql);
         for (Index = 0; Index < Count; Index += 1) {
             switch (Batch[Index].IoPort) {
             case SYNTH_PORT:
-                pGDI->SynthAddress = Batch[Index].PortData & 0xFF;
+                GlobalInfo->SynthAddress = Batch[Index].PortData & 0xFF;
                 break;
+
             case SYNTH_PORT + 2:
-                pGDI->SynthAddress = 0x100 | (Batch[Index].PortData & 0xFF);
+                GlobalInfo->SynthAddress = 0x100 | (Batch[Index].PortData & 0xFF);
                 break;
+
             case SYNTH_PORT + 1:
             case SYNTH_PORT + 3:
-                Opl3Write(&pGDI->Synth, pGDI->SynthAddress, (UCHAR)Batch[Index].PortData);
+                Opl3Write(&GlobalInfo->Synth, GlobalInfo->SynthAddress, (UCHAR)Batch[Index].PortData);
                 break;
+
             default:
                 Status = STATUS_INVALID_PARAMETER;
                 break;
             }
+
             if (!NT_SUCCESS(Status)) {
                 break;
             }
         }
-        KeReleaseSpinLock(&pGDI->EngineLock, Irql);
+
+        KeReleaseSpinLock(&GlobalInfo->EngineLock, Irql);
         if (!NT_SUCCESS(Status)) {
             Count = Index;
             Length -= Count * sizeof(SYNTH_DATA);
             break;
         }
+
         Data += Count;
         Length -= Count * sizeof(SYNTH_DATA);
     }
+
     Irp->IoStatus.Information = IrpStack->Parameters.Write.Length - Length;
     return Status;
 }
 
 static NTSTATUS
 SynthReadStatus(
-    IN PGLOBAL_DEVICE_INFO pGDI,
+    IN PGLOBAL_DEVICE_INFO GlobalInfo,
     IN PIRP Irp,
     IN PIO_STACK_LOCATION IrpStack
     )
@@ -162,24 +191,27 @@ SynthReadStatus(
     if (IrpStack->Parameters.Read.Length != sizeof(UCHAR)) {
         return STATUS_INVALID_PARAMETER;
     }
-    KeAcquireSpinLock(&pGDI->EngineLock, &Irql);
-    Value = Opl3ReadStatus(&pGDI->Synth);
-    KeReleaseSpinLock(&pGDI->EngineLock, Irql);
+
+    KeAcquireSpinLock(&GlobalInfo->EngineLock, &Irql);
+    Value = Opl3ReadStatus(&GlobalInfo->Synth);
+    KeReleaseSpinLock(&GlobalInfo->EngineLock, Irql);
     try {
         if (Irp->RequestorMode != KernelMode) {
             ProbeForWrite(Irp->UserBuffer, sizeof(UCHAR), sizeof(UCHAR));
         }
+
         *(PUCHAR)Irp->UserBuffer = Value;
     } except (EXCEPTION_EXECUTE_HANDLER) {
         return STATUS_ACCESS_VIOLATION;
     }
+
     Irp->IoStatus.Information = sizeof(UCHAR);
     return STATUS_SUCCESS;
 }
 
 NTSTATUS
 SynthGetCaps(
-    IN PLOCAL_DEVICE_INFO pLDI,
+    IN PLOCAL_DEVICE_INFO LocalInfo,
     IN OUT PIRP Irp,
     IN PIO_STACK_LOCATION IrpStack
     )
@@ -203,10 +235,11 @@ SynthGetCaps(
 
 NTSTATUS
 SynthDispatch(
-    IN OUT PLOCAL_DEVICE_INFO pLDI,
+    IN OUT PLOCAL_DEVICE_INFO LocalInfo,
     IN PIRP Irp,
     IN PIO_STACK_LOCATION IrpStack
     )
+
 /*++
 
 Routine Description:
@@ -216,68 +249,91 @@ Routine Description:
     the driver's mutex). One handle at a time may write: the opening one
     starts the output and the closing one silences the chip.
 
+Arguments:
+
+    LocalInfo - Supplies the synthesizer device.
+
+    Irp - Supplies the request.
+
+    IrpStack - Supplies the stack location of the request.
+
+Return Value:
+
+    The status of the request.
+
 --*/
+
 {
-    PGLOBAL_DEVICE_INFO pGDI = pLDI->pGlobalInfo;
+    PGLOBAL_DEVICE_INFO GlobalInfo = LocalInfo->pGlobalInfo;
     NTSTATUS Status = STATUS_SUCCESS;
 
     switch (IrpStack->MajorFunction) {
     case IRP_MJ_CREATE:
-        Status = SoundSetShareAccess(pLDI, IrpStack);
+        Status = SoundSetShareAccess(LocalInfo, IrpStack);
         if (NT_SUCCESS(Status) && IrpStack->FileObject->WriteAccess) {
-            SynthReset(pGDI, FALSE);
-            pGDI->SynthOpen = TRUE;
-            OutputEngineUpdate(pGDI);
-            OutputLogState(pGDI, "Synthesizer opened");
-            SoundLineNotify(pLDI, 0);
+            SynthReset(GlobalInfo, FALSE);
+            GlobalInfo->SynthOpen = TRUE;
+            OutputEngineUpdate(GlobalInfo);
+            OutputLogState(GlobalInfo, "Synthesizer opened");
+            SoundLineNotify(LocalInfo, 0);
         }
+
         break;
 
     case IRP_MJ_WRITE:
-        Status = IrpStack->FileObject->WriteAccess ? SynthWrite(pGDI, Irp, IrpStack) : STATUS_ACCESS_DENIED;
+        Status = IrpStack->FileObject->WriteAccess ? SynthWrite(GlobalInfo, Irp, IrpStack) : STATUS_ACCESS_DENIED;
         break;
 
     case IRP_MJ_READ:
-        Status = IrpStack->FileObject->WriteAccess ? SynthReadStatus(pGDI, Irp, IrpStack) : STATUS_ACCESS_DENIED;
+        Status = IrpStack->FileObject->WriteAccess ? SynthReadStatus(GlobalInfo, Irp, IrpStack) : STATUS_ACCESS_DENIED;
         break;
 
     case IRP_MJ_DEVICE_CONTROL:
         switch (IrpStack->Parameters.DeviceIoControl.IoControlCode) {
         case IOCTL_MIDI_SET_VOLUME:
-            Status = pLDI->PreventVolumeSetting ? STATUS_ACCESS_DENIED : SoundIoctlSetVolume(pLDI, Irp, IrpStack);
+            Status = LocalInfo->PreventVolumeSetting ? STATUS_ACCESS_DENIED :
+                     SoundIoctlSetVolume(LocalInfo, Irp, IrpStack);
             break;
+
         case IOCTL_MIDI_GET_VOLUME:
-            Status = SoundIoctlGetVolume(pLDI, Irp, IrpStack);
+            Status = SoundIoctlGetVolume(LocalInfo, Irp, IrpStack);
             break;
+
         case IOCTL_SOUND_GET_CHANGED_VOLUME:
-            Status = SoundIoctlGetChangedVolume(pLDI, Irp, IrpStack);
+            Status = SoundIoctlGetChangedVolume(LocalInfo, Irp, IrpStack);
             break;
+
         case IOCTL_MIDI_GET_CAPABILITIES:
-            Status = SynthGetCaps(pLDI, Irp, IrpStack);
+            Status = SynthGetCaps(LocalInfo, Irp, IrpStack);
             break;
+
         case IOCTL_MIDI_SET_OPL3_MODE:
             if (IrpStack->FileObject->WriteAccess) {
-                SynthReset(pGDI, TRUE);
+                SynthReset(GlobalInfo, TRUE);
             } else {
                 Status = STATUS_ACCESS_DENIED;
             }
+
             break;
+
         default:
             Status = STATUS_INVALID_DEVICE_REQUEST;
             break;
         }
+
         break;
 
     case IRP_MJ_CLEANUP:
         if (IrpStack->FileObject->WriteAccess) {
-            SynthReset(pGDI, FALSE);
-            (*pLDI->DeviceInit->ExclusionRoutine)(pLDI, SoundExcludeClose);
-            pLDI->PreventVolumeSetting = FALSE;
-            pGDI->SynthOpen = FALSE;
-            OutputEngineUpdate(pGDI);
-            OutputLogState(pGDI, "Synthesizer closed");
-            SoundLineNotify(pLDI, 0);
+            SynthReset(GlobalInfo, FALSE);
+            (*LocalInfo->DeviceInit->ExclusionRoutine)(LocalInfo, SoundExcludeClose);
+            LocalInfo->PreventVolumeSetting = FALSE;
+            GlobalInfo->SynthOpen = FALSE;
+            OutputEngineUpdate(GlobalInfo);
+            OutputLogState(GlobalInfo, "Synthesizer closed");
+            SoundLineNotify(LocalInfo, 0);
         }
+
         break;
 
     case IRP_MJ_CLOSE:
@@ -287,5 +343,6 @@ Routine Description:
         Status = STATUS_INVALID_DEVICE_REQUEST;
         break;
     }
+
     return Status;
 }

@@ -35,12 +35,19 @@ Abstract:
 // The strings. 1-31 are synthlib's alerts (SR_ALERT 1, SR_ALERT_NOPATCH 10,
 // SR_ALERT_NORESOURCE 11).
 //
+// The devices: the wave output as it plays, the FM synthesizer (MIDI
+// output) and the mixer.
+//
 
-#define IDS_WAVEOUT_HDMI                100     // the wave output device, as it plays
+#define IDS_WAVEOUT_HDMI                100
 #define IDS_WAVEOUT_JACK                101
 #define IDS_WAVEOUT_SILENT              102
-#define IDS_SYNTH                       103     // the FM synthesizer (MIDI output)
-#define IDS_MIXER                       104     // the mixer device
+#define IDS_SYNTH                       103
+#define IDS_MIXER                       104
+
+//
+// The lines and controls of the mixer.
+//
 
 #define IDS_DEST_SPEAKERS_SHORT         110
 #define IDS_DEST_SPEAKERS_LONG          111

@@ -53,20 +53,23 @@ Environment:
 
 //
 // A command as the card code gives it: the index of the command, its response
-// and its data. Each controller translates it to its own registers.
+// and its data. Each controller translates it to its own registers. A short
+// response has 48 bits (R1, R3, R6, R7), then busy on DAT0 for R1b; a long
+// one 136 bits (R2). R3 is a response without a CRC. An application command
+// has CMD55 first.
 //
 
 #define SD_INDEX_MASK       0x0000003F
 #define SD_RESP_NONE        0x00000000
-#define SD_RESP_SHORT       0x00000100      // 48 bits: R1, R3, R6, R7
-#define SD_RESP_SHORT_BUSY  0x00000200      // 48 bits, then busy on DAT0: R1b
-#define SD_RESP_LONG        0x00000300      // 136 bits: R2
+#define SD_RESP_SHORT       0x00000100
+#define SD_RESP_SHORT_BUSY  0x00000200
+#define SD_RESP_LONG        0x00000300
 #define SD_RESP_MASK        0x00000300
-#define SD_RESP_NO_CRC      0x00000400      // a response without a CRC: R3
+#define SD_RESP_NO_CRC      0x00000400
 #define SD_DATA_READ        0x00001000
 #define SD_DATA_WRITE       0x00002000
 #define SD_DATA_MULTIPLE    0x00004000
-#define SD_APP              0x00008000      // an application command (CMD55 first)
+#define SD_APP              0x00008000
 
 #define CMD(n)              (n)
 #define APP                 SD_APP
@@ -134,68 +137,68 @@ Environment:
 // SDHOST registers and their fields.
 //
 
-#define SDCMD               0x00
-#define SDARG               0x04
-#define SDTOUT              0x08
-#define SDCDIV              0x0C
-#define SDRSP0              0x10
-#define SDRSP1              0x14
-#define SDRSP2              0x18
-#define SDRSP3              0x1C
-#define SDHSTS              0x20
-#define SDVDD               0x30
-#define SDEDM               0x34
-#define SDHCFG              0x38
-#define SDHBCT              0x3C
-#define SDDATA              0x40
-#define SDHBLC              0x50
+#define SDCMD                       0x00
+#define SDARG                       0x04
+#define SDTOUT                      0x08
+#define SDCDIV                      0x0C
+#define SDRSP0                      0x10
+#define SDRSP1                      0x14
+#define SDRSP2                      0x18
+#define SDRSP3                      0x1C
+#define SDHSTS                      0x20
+#define SDVDD                       0x30
+#define SDEDM                       0x34
+#define SDHCFG                      0x38
+#define SDHBCT                      0x3C
+#define SDDATA                      0x40
+#define SDHBLC                      0x50
 
-#define SDCMD_NEW           0x00008000
-#define SDCMD_FAIL          0x00004000
-#define SDCMD_BUSYWAIT      0x00000800
-#define SDCMD_NO_RESPONSE   0x00000400
-#define SDCMD_LONG_RESPONSE 0x00000200
-#define SDCMD_WRITE         0x00000080
-#define SDCMD_READ          0x00000040
+#define SDCMD_NEW                   0x00008000
+#define SDCMD_FAIL                  0x00004000
+#define SDCMD_BUSYWAIT              0x00000800
+#define SDCMD_NO_RESPONSE           0x00000400
+#define SDCMD_LONG_RESPONSE         0x00000200
+#define SDCMD_WRITE                 0x00000080
+#define SDCMD_READ                  0x00000040
 
-#define SDCDIV_MAX          0x7FF
+#define SDCDIV_MAX                  0x7FF
 
-#define SDHSTS_BUSY_IRPT    0x00000400
-#define SDHSTS_BLOCK_IRPT   0x00000200
-#define SDHSTS_SDIO_IRPT    0x00000100
-#define SDHSTS_REW_TIME_OUT 0x00000080
-#define SDHSTS_CMD_TIME_OUT 0x00000040
-#define SDHSTS_CRC16_ERROR  0x00000020
-#define SDHSTS_CRC7_ERROR   0x00000010
-#define SDHSTS_FIFO_ERROR   0x00000008
-#define SDHSTS_DATA_FLAG    0x00000001
-#define SDHSTS_ERRORS       (SDHSTS_REW_TIME_OUT | SDHSTS_CMD_TIME_OUT | SDHSTS_CRC16_ERROR | \
-                             SDHSTS_CRC7_ERROR | SDHSTS_FIFO_ERROR)
-#define SDHSTS_INTERRUPTS   (SDHSTS_BUSY_IRPT | SDHSTS_BLOCK_IRPT | SDHSTS_SDIO_IRPT)
-#define SDHSTS_CLEAR        (SDHSTS_INTERRUPTS | SDHSTS_ERRORS)
+#define SDHSTS_BUSY_IRPT            0x00000400
+#define SDHSTS_BLOCK_IRPT           0x00000200
+#define SDHSTS_SDIO_IRPT            0x00000100
+#define SDHSTS_REW_TIME_OUT         0x00000080
+#define SDHSTS_CMD_TIME_OUT         0x00000040
+#define SDHSTS_CRC16_ERROR          0x00000020
+#define SDHSTS_CRC7_ERROR           0x00000010
+#define SDHSTS_FIFO_ERROR           0x00000008
+#define SDHSTS_DATA_FLAG            0x00000001
+#define SDHSTS_ERRORS               (SDHSTS_REW_TIME_OUT | SDHSTS_CMD_TIME_OUT | SDHSTS_CRC16_ERROR | \
+                                     SDHSTS_CRC7_ERROR | SDHSTS_FIFO_ERROR)
+#define SDHSTS_INTERRUPTS           (SDHSTS_BUSY_IRPT | SDHSTS_BLOCK_IRPT | SDHSTS_SDIO_IRPT)
+#define SDHSTS_CLEAR                (SDHSTS_INTERRUPTS | SDHSTS_ERRORS)
 
-#define SDHCFG_BUSY_IRPT_EN 0x00000400
-#define SDHCFG_BLOCK_IRPT_EN 0x00000100
-#define SDHCFG_SDIO_IRPT_EN 0x00000020
-#define SDHCFG_DATA_IRPT_EN 0x00000010
-#define SDHCFG_SLOW_CARD    0x00000008
-#define SDHCFG_WIDE_EXT_BUS 0x00000004
-#define SDHCFG_WIDE_INT_BUS 0x00000002
+#define SDHCFG_BUSY_IRPT_EN         0x00000400
+#define SDHCFG_BLOCK_IRPT_EN        0x00000100
+#define SDHCFG_SDIO_IRPT_EN         0x00000020
+#define SDHCFG_DATA_IRPT_EN         0x00000010
+#define SDHCFG_SLOW_CARD            0x00000008
+#define SDHCFG_WIDE_EXT_BUS         0x00000004
+#define SDHCFG_WIDE_INT_BUS         0x00000002
 
-#define SDEDM_FSM_MASK      0x0000000F
-#define SDEDM_FSM_READWAIT  0x4
-#define SDEDM_FSM_WRITESTART1 0xA
-#define SDEDM_FIFO_LEVEL(e) (((e) >> 4) & 0x1F)
+#define SDEDM_FSM_MASK              0x0000000F
+#define SDEDM_FSM_READWAIT          0x4
+#define SDEDM_FSM_WRITESTART1       0xA
+#define SDEDM_FIFO_LEVEL(e)         (((e) >> 4) & 0x1F)
 #define SDEDM_WRITE_THRESHOLD_SHIFT 9
-#define SDEDM_READ_THRESHOLD_SHIFT 14
-#define SDEDM_THRESHOLD_MASK 0x1F
-#define SDEDM_FORCE_DATA_MODE 0x00080000
+#define SDEDM_READ_THRESHOLD_SHIFT  14
+#define SDEDM_THRESHOLD_MASK        0x1F
+#define SDEDM_FORCE_DATA_MODE       0x00080000
 
-#define SDVDD_POWER_ON      1
-#define SDHOST_FIFO_WORDS   16
-#define SDHOST_FIFO_THRESHOLD 4
-#define SDHOST_PIO_BURST    8
-#define SDHOST_RESET_TIMEOUT 0xF00000
+#define SDVDD_POWER_ON              1
+#define SDHOST_FIFO_WORDS           16
+#define SDHOST_FIFO_THRESHOLD       4
+#define SDHOST_PIO_BURST            8
+#define SDHOST_RESET_TIMEOUT        0xF00000
 
 //
 // VideoCore mailbox registers and the property channel.
@@ -476,9 +479,11 @@ EmmcCommand(
     case SD_RESP_SHORT:
         Cmdtm |= (Command & SD_RESP_NO_CRC) != 0 ? RSP_48 : (RSP_48 | CMD_CRCCHK | CMD_IXCHK);
         break;
+
     case SD_RESP_SHORT_BUSY:
         Cmdtm |= RSP_48_BUSY | CMD_CRCCHK | CMD_IXCHK;
         break;
+
     case SD_RESP_LONG:
         Cmdtm |= RSP_136 | CMD_CRCCHK;
         break;
@@ -671,9 +676,11 @@ SdhostCommand(
     case SD_RESP_NONE:
         Sdcmd |= SDCMD_NO_RESPONSE;
         break;
+
     case SD_RESP_SHORT_BUSY:
         Sdcmd |= SDCMD_BUSYWAIT;
         break;
+
     case SD_RESP_LONG:
         Sdcmd |= SDCMD_LONG_RESPONSE;
         break;
@@ -1668,7 +1675,6 @@ VOID
 BcmEmmcSetCrashDump(
     VOID
     );
-
 
 ULONG
 DriverEntry(
