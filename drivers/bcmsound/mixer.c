@@ -25,23 +25,25 @@ Abstract:
 #include "bcmsound.h"
 
 //
-// The lines and controls.
+// The lines and controls: the destination, the speakers, then its sources,
+// the wave output (named as the device, whose name is set as it plays) and
+// the FM synthesizer.
 //
 
-static CONST MIXER_DD_LINE_CONFIGURATION_DATA MixerLineInit[MixerLines] = {
-    {   // the destination: the speakers
+static const MIXER_DD_LINE_CONFIGURATION_DATA MixerLineInit[MIXER_LINES] = {
+    {
         0, 0, 2, 2, 2, 0,
         IDS_DEST_SPEAKERS_SHORT, IDS_DEST_SPEAKERS_LONG,
         MIXERLINE_COMPONENTTYPE_DST_SPEAKERS,
         MIXERLINE_TARGETTYPE_UNDEFINED, 0, 0
     },
-    {   // its source 0: the wave output (the name of the device: set as it plays)
+    {
         0, 0, 2, 0, 2, 0,
         IDS_SRC_WAVEOUT_SHORT, IDS_SRC_WAVEOUT_LONG,
         MIXERLINE_COMPONENTTYPE_SRC_WAVEOUT,
         MIXERLINE_TARGETTYPE_WAVEOUT, BCMSOUND_PID_WAVEOUT, IDS_WAVEOUT_SILENT
     },
-    {   // its source 1: the FM synthesizer
+    {
         0, 1, 2, 0, 2, 0,
         IDS_SRC_SYNTH_SHORT, IDS_SRC_SYNTH_LONG,
         MIXERLINE_COMPONENTTYPE_SRC_SYNTHESIZER,
@@ -49,28 +51,56 @@ static CONST MIXER_DD_LINE_CONFIGURATION_DATA MixerLineInit[MixerLines] = {
     }
 };
 
-#define VOLUME_CONTROL(Line, Long)                                              \
-    { MIXERCONTROL_CONTROLTYPE_VOLUME, 0, (Line), 0,                            \
-      IDS_CONTROL_VOLUME_SHORT, (Long), { { 0, 0xFFFF } }, { 32 }, 0 }
-#define MUTE_CONTROL(Line, Long)                                                \
-    { MIXERCONTROL_CONTROLTYPE_MUTE, MIXERCONTROL_CONTROLF_UNIFORM, (Line), 0,  \
-      IDS_CONTROL_MUTE_SHORT, (Long), { { 0, 1 } }, { 0 }, 0 }
+#define VOLUME_CONTROL(Line, Long) \
+    {MIXERCONTROL_CONTROLTYPE_VOLUME, 0, (Line), 0, \
+     IDS_CONTROL_VOLUME_SHORT, (Long), {{0, 0xFFFF}}, {32}, 0}
 
-static CONST MIXER_DD_CONTROL_CONFIGURATION_DATA MixerControlInit[MixerControls] = {
-    VOLUME_CONTROL(LineSpeakers, IDS_CONTROL_VOLUME_LONG),
-    MUTE_CONTROL(LineSpeakers, IDS_CONTROL_MUTE_LONG),
-    VOLUME_CONTROL(LineWaveOut, IDS_CONTROL_WAVEVOLUME_LONG),
-    MUTE_CONTROL(LineWaveOut, IDS_CONTROL_WAVEMUTE_LONG),
-    VOLUME_CONTROL(LineSynth, IDS_CONTROL_SYNTHVOLUME_LONG),
-    MUTE_CONTROL(LineSynth, IDS_CONTROL_SYNTHMUTE_LONG)
+#define MUTE_CONTROL(Line, Long) \
+    {MIXERCONTROL_CONTROLTYPE_MUTE, MIXERCONTROL_CONTROLF_UNIFORM, (Line), 0, \
+     IDS_CONTROL_MUTE_SHORT, (Long), {{0, 1}}, {0}, 0}
+
+static const MIXER_DD_CONTROL_CONFIGURATION_DATA MixerControlInit[MIXER_CONTROLS] = {
+    VOLUME_CONTROL(LINE_SPEAKERS, IDS_CONTROL_VOLUME_LONG),
+    MUTE_CONTROL(LINE_SPEAKERS, IDS_CONTROL_MUTE_LONG),
+    VOLUME_CONTROL(LINE_WAVE_OUT, IDS_CONTROL_WAVEVOLUME_LONG),
+    MUTE_CONTROL(LINE_WAVE_OUT, IDS_CONTROL_WAVEMUTE_LONG),
+    VOLUME_CONTROL(LINE_SYNTH, IDS_CONTROL_SYNTHVOLUME_LONG),
+    MUTE_CONTROL(LINE_SYNTH, IDS_CONTROL_SYNTHMUTE_LONG)
 };
 
-#define IsMute(Control)         (((Control) & 1) != 0)
+#define IS_MUTE(Control)        (((Control) & 1) != 0)
 
-static NTSTATUS HwGetLineFlags(PMIXER_INFO, ULONG, ULONG, PVOID);
-static NTSTATUS HwGetControl(PMIXER_INFO, ULONG, ULONG, PVOID);
-static NTSTATUS HwGetCombinedControl(PMIXER_INFO, ULONG, ULONG, PVOID);
-static NTSTATUS HwSetControl(PMIXER_INFO, ULONG, ULONG, PVOID);
+static NTSTATUS
+MixerGetLineFlags(
+    IN PMIXER_INFO MixerInfo,
+    IN ULONG LineId,
+    IN ULONG Length,
+    OUT PVOID Data
+    );
+
+static NTSTATUS
+MixerGetControl(
+    IN PMIXER_INFO MixerInfo,
+    IN ULONG ControlId,
+    IN ULONG Length,
+    OUT PVOID Data
+    );
+
+static NTSTATUS
+MixerGetCombinedControl(
+    IN PMIXER_INFO MixerInfo,
+    IN ULONG ControlId,
+    IN ULONG Length,
+    OUT PVOID Data
+    );
+
+static NTSTATUS
+MixerSetControl(
+    IN PMIXER_INFO MixerInfo,
+    IN ULONG ControlId,
+    IN ULONG Length,
+    IN PVOID Data
+    );
 
 //
 // The gains of the sources (0-0x10000), from the controls.
@@ -78,15 +108,21 @@ static NTSTATUS HwSetControl(PMIXER_INFO, ULONG, ULONG, PVOID);
 
 static VOID
 MixerUpdateGains(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 {
-    ULONG Channel, Master, Wave, Synth;
+    ULONG Channel;
+    ULONG Master;
+    ULONG Wave;
+    ULONG Synth;
 
     for (Channel = 0; Channel < 2; Channel += 1) {
-        Master = pGDI->MixerValue[ControlMasterMute][0] ? 0 : pGDI->MixerValue[ControlMasterVolume][Channel];
-        Wave = pGDI->MixerValue[ControlWaveMute][0] ? 0 : pGDI->MixerValue[ControlWaveVolume][Channel];
-        Synth = pGDI->MixerValue[ControlSynthMute][0] ? 0 : pGDI->MixerValue[ControlSynthVolume][Channel];
+        Master = GlobalInfo->MixerValue[CONTROL_MASTER_MUTE][0] ? 0 :
+                 GlobalInfo->MixerValue[CONTROL_MASTER_VOLUME][Channel];
+        Wave = GlobalInfo->MixerValue[CONTROL_WAVE_MUTE][0] ? 0 :
+               GlobalInfo->MixerValue[CONTROL_WAVE_VOLUME][Channel];
+        Synth = GlobalInfo->MixerValue[CONTROL_SYNTH_MUTE][0] ? 0 :
+                GlobalInfo->MixerValue[CONTROL_SYNTH_VOLUME][Channel];
 
         //
         // 0xFFFF is full: 0x10000.
@@ -95,18 +131,18 @@ MixerUpdateGains(
         Master += Master >> 15;
         Wave += Wave >> 15;
         Synth += Synth >> 15;
-        pGDI->WaveGain[Channel] = (ULONG)(((ULONGLONG)Master * Wave) >> 16);
-        pGDI->SynthGain[Channel] = (ULONG)(((ULONGLONG)Master * Synth) >> 16);
+        GlobalInfo->WaveGain[Channel] = (ULONG)(((ULONGLONG)Master * Wave) >> 16);
+        GlobalInfo->SynthGain[Channel] = (ULONG)(((ULONGLONG)Master * Synth) >> 16);
     }
 }
 
 static VOID
 MixerSaveSettings(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 {
-    RtlWriteRegistryValue(RTL_REGISTRY_ABSOLUTE, pGDI->DevicePathName, SOUND_MIXER_SETTINGS_NAME, REG_BINARY,
-                          pGDI->MixerValue, sizeof(pGDI->MixerValue));
+    RtlWriteRegistryValue(RTL_REGISTRY_ABSOLUTE, GlobalInfo->DevicePathName, SOUND_MIXER_SETTINGS_NAME, REG_BINARY,
+                          GlobalInfo->MixerValue, sizeof(GlobalInfo->MixerValue));
 }
 
 //
@@ -116,24 +152,24 @@ MixerSaveSettings(
 
 static VOID
 MixerWaveLineChanged(
-    IN PLOCAL_DEVICE_INFO pLDI,
+    IN PLOCAL_DEVICE_INFO LocalInfo,
     IN UCHAR Code
     )
 {
-    PGLOBAL_DEVICE_INFO pGDI = pLDI->pGlobalInfo;
+    PGLOBAL_DEVICE_INFO GlobalInfo = LocalInfo->pGlobalInfo;
 
-    SoundMixerChangedItem(&pGDI->MixerInfo, &pGDI->LineNotification[LineWaveOut]);
+    SoundMixerChangedItem(&GlobalInfo->MixerInfo, &GlobalInfo->LineNotification[LINE_WAVE_OUT]);
 }
 
 static VOID
 MixerSynthLineChanged(
-    IN PLOCAL_DEVICE_INFO pLDI,
+    IN PLOCAL_DEVICE_INFO LocalInfo,
     IN UCHAR Code
     )
 {
-    PGLOBAL_DEVICE_INFO pGDI = pLDI->pGlobalInfo;
+    PGLOBAL_DEVICE_INFO GlobalInfo = LocalInfo->pGlobalInfo;
 
-    SoundMixerChangedItem(&pGDI->MixerInfo, &pGDI->LineNotification[LineSynth]);
+    SoundMixerChangedItem(&GlobalInfo->MixerInfo, &GlobalInfo->LineNotification[LINE_SYNTH]);
 }
 
 static NTSTATUS
@@ -146,17 +182,19 @@ MixerReadSettings(
     IN PVOID EntryContext
     )
 {
-    if (ValueType == REG_BINARY && ValueLength == MixerControls * 2 * sizeof(USHORT)) {
+    if (ValueType == REG_BINARY && ValueLength == MIXER_CONTROLS * 2 * sizeof(USHORT)) {
         RtlCopyMemory(EntryContext, ValueData, ValueLength);
         *(PULONG)Context = ValueLength;
     }
+
     return STATUS_SUCCESS;
 }
 
 VOID
 MixerInitialize(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
+
 /*++
 
 Routine Description:
@@ -166,30 +204,42 @@ Routine Description:
     and those of the lines, and the volumes of the wave output and the
     synthesizer, which are their controls.
 
+Arguments:
+
+    GlobalInfo - Supplies the global device information.
+
+Return Value:
+
+    None.
+
 --*/
+
 {
     RTL_QUERY_REGISTRY_TABLE QueryTable[2];
-    USHORT Saved[MixerControls][2];
-    PLOCAL_DEVICE_INFO pLDI;
-    ULONG Length, Index;
+    USHORT Saved[MIXER_CONTROLS][2];
+    PLOCAL_DEVICE_INFO LocalInfo;
+    ULONG Length;
+    ULONG Index;
 
-    SoundInitMixerInfo(&pGDI->MixerInfo, HwGetLineFlags, HwGetControl, HwGetCombinedControl, HwSetControl);
+    SoundInitMixerInfo(&GlobalInfo->MixerInfo, MixerGetLineFlags, MixerGetControl, MixerGetCombinedControl,
+                       MixerSetControl);
 
-    pLDI = pGDI->DeviceObject[MixerDeviceIndex]->DeviceExtension;
-    pLDI->DeviceType = MIXER_DEVICE;
-    pLDI->DeviceSpecificData = &pGDI->MixerInfo;
-    for (Index = 0; Index < NumberOfDevices; Index += 1) {
-        ((PLOCAL_DEVICE_INFO)pGDI->DeviceObject[Index]->DeviceExtension)->MixerDevice = pLDI;
+    LocalInfo = GlobalInfo->DeviceObject[MIXER_DEVICE_INDEX]->DeviceExtension;
+    LocalInfo->DeviceType = MIXER_DEVICE;
+    LocalInfo->DeviceSpecificData = &GlobalInfo->MixerInfo;
+    for (Index = 0; Index < NUMBER_OF_DEVICES; Index += 1) {
+        ((PLOCAL_DEVICE_INFO)GlobalInfo->DeviceObject[Index]->DeviceExtension)->MixerDevice = LocalInfo;
     }
 
-    for (Index = 0; Index < MixerControls; Index += 1) {
-        pGDI->MixerValue[Index][0] = IsMute(Index) ? 0 : 0xFFFF;
-        pGDI->MixerValue[Index][1] = pGDI->MixerValue[Index][0];
-        SoundInitDataItem(&pGDI->MixerInfo, &pGDI->ControlNotification[Index], (USHORT)MM_MIXM_CONTROL_CHANGE,
-                          (USHORT)Index);
+    for (Index = 0; Index < MIXER_CONTROLS; Index += 1) {
+        GlobalInfo->MixerValue[Index][0] = IS_MUTE(Index) ? 0 : 0xFFFF;
+        GlobalInfo->MixerValue[Index][1] = GlobalInfo->MixerValue[Index][0];
+        SoundInitDataItem(&GlobalInfo->MixerInfo, &GlobalInfo->ControlNotification[Index],
+                          (USHORT)MM_MIXM_CONTROL_CHANGE, (USHORT)Index);
     }
-    for (Index = 0; Index < MixerLines; Index += 1) {
-        SoundInitDataItem(&pGDI->MixerInfo, &pGDI->LineNotification[Index], (USHORT)MM_MIXM_LINE_CHANGE,
+
+    for (Index = 0; Index < MIXER_LINES; Index += 1) {
+        SoundInitDataItem(&GlobalInfo->MixerInfo, &GlobalInfo->LineNotification[Index], (USHORT)MM_MIXM_LINE_CHANGE,
                           (USHORT)Index);
     }
 
@@ -203,57 +253,78 @@ Routine Description:
     QueryTable[0].EntryContext = Saved;
     QueryTable[0].DefaultType = REG_NONE;
     Length = 0;
-    if (NT_SUCCESS(RtlQueryRegistryValues(RTL_REGISTRY_ABSOLUTE, pGDI->DevicePathName, QueryTable, &Length, NULL)) &&
+    if (NT_SUCCESS(RtlQueryRegistryValues(RTL_REGISTRY_ABSOLUTE, GlobalInfo->DevicePathName, QueryTable, &Length,
+                                          NULL)) &&
         Length == sizeof(Saved)) {
-        for (Index = 0; Index < MixerControls; Index += 1) {
-            if (IsMute(Index)) {
+        for (Index = 0; Index < MIXER_CONTROLS; Index += 1) {
+            if (IS_MUTE(Index)) {
                 Saved[Index][0] = Saved[Index][1] = Saved[Index][0] != 0;
             }
-            pGDI->MixerValue[Index][0] = Saved[Index][0];
-            pGDI->MixerValue[Index][1] = Saved[Index][1];
+
+            GlobalInfo->MixerValue[Index][0] = Saved[Index][0];
+            GlobalInfo->MixerValue[Index][1] = Saved[Index][1];
         }
-        BcmSoundLog(pGDI, "Mixer settings: volume %04X/%04X%s, wave %04X/%04X%s, synthesizer %04X/%04X%s",
+
+        BcmSoundLog(GlobalInfo, "Mixer settings: volume %04X/%04X%s, wave %04X/%04X%s, synthesizer %04X/%04X%s",
                     Saved[0][0], Saved[0][1], Saved[1][0] ? " muted" : "",
                     Saved[2][0], Saved[2][1], Saved[3][0] ? " muted" : "",
                     Saved[4][0], Saved[4][1], Saved[5][0] ? " muted" : "");
     }
-    MixerUpdateGains(pGDI);
 
-    SoundSetLineNotify(pGDI->DeviceObject[WaveOutDevice]->DeviceExtension, MixerWaveLineChanged);
-    SoundSetLineNotify(pGDI->DeviceObject[SynthDeviceIndex]->DeviceExtension, MixerSynthLineChanged);
-    SoundSetVolumeControlId(pGDI->DeviceObject[WaveOutDevice]->DeviceExtension, ControlWaveVolume);
-    SoundSetVolumeControlId(pGDI->DeviceObject[SynthDeviceIndex]->DeviceExtension, ControlSynthVolume);
+    MixerUpdateGains(GlobalInfo);
+
+    SoundSetLineNotify(GlobalInfo->DeviceObject[WAVE_OUT_DEVICE]->DeviceExtension, MixerWaveLineChanged);
+    SoundSetLineNotify(GlobalInfo->DeviceObject[SYNTH_DEVICE_INDEX]->DeviceExtension, MixerSynthLineChanged);
+    SoundSetVolumeControlId(GlobalInfo->DeviceObject[WAVE_OUT_DEVICE]->DeviceExtension, CONTROL_WAVE_VOLUME);
+    SoundSetVolumeControlId(GlobalInfo->DeviceObject[SYNTH_DEVICE_INDEX]->DeviceExtension, CONTROL_SYNTH_VOLUME);
 }
 
 VOID
 MixerShutdown(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 {
-    MixerSaveSettings(pGDI);
+    MixerSaveSettings(GlobalInfo);
 }
 
 NTSTATUS
 MixerDumpConfiguration(
-    IN PLOCAL_DEVICE_INFO pLDI,
+    IN PLOCAL_DEVICE_INFO LocalInfo,
     IN OUT PIRP Irp,
     IN PIO_STACK_LOCATION IrpStack
     )
+
 /*++
 
 Routine Description:
 
-    This routine returns the mixer's configuration (IOCTL_MIX_GET_CONFIGURATION):
-    its capabilities, lines and controls, which drvlib names from the strings
-    of the multimedia driver.
+    This routine returns the mixer's configuration
+    (IOCTL_MIX_GET_CONFIGURATION): its capabilities, lines and controls, which
+    drvlib names from the strings of the multimedia driver.
+
+Arguments:
+
+    LocalInfo - Supplies the mixer device.
+
+    Irp - Supplies the request, whose buffer receives the configuration.
+
+    IrpStack - Supplies the stack location of the request.
+
+Return Value:
+
+    STATUS_SUCCESS, also when the buffer holds a part of the configuration
+    (as the sound drivers of NT answer it: drvlib asks for the size first,
+    with a buffer of four bytes, and the DeviceIoControl of NT 3.5 returns no
+    count of bytes with a warning status), or STATUS_INSUFFICIENT_RESOURCES.
 
 --*/
+
 {
-    PGLOBAL_DEVICE_INFO pGDI = pLDI->pGlobalInfo;
+    PGLOBAL_DEVICE_INFO GlobalInfo = LocalInfo->pGlobalInfo;
     struct {
         MIXER_DD_CONFIGURATION_DATA Header;
-        MIXER_DD_LINE_CONFIGURATION_DATA LineData[MixerLines];
-        MIXER_DD_CONTROL_CONFIGURATION_DATA ControlData[MixerControls];
+        MIXER_DD_LINE_CONFIGURATION_DATA LineData[MIXER_LINES];
+        MIXER_DD_CONTROL_CONFIGURATION_DATA ControlData[MIXER_CONTROLS];
     } *Data;
     ULONG Length;
 
@@ -261,10 +332,11 @@ Routine Description:
     if (Data == NULL) {
         return STATUS_INSUFFICIENT_RESOURCES;
     }
+
     RtlZeroMemory(Data, sizeof(*Data));
     Data->Header.cbSize = sizeof(*Data);
-    Data->Header.NumberOfLines = MixerLines;
-    Data->Header.NumberOfControls = MixerControls;
+    Data->Header.NumberOfLines = MIXER_LINES;
+    Data->Header.NumberOfControls = MIXER_CONTROLS;
     Data->Header.DeviceCaps.wMid = MM_MICROSOFT;
     Data->Header.DeviceCaps.wPid = BCMSOUND_PID_MIXER;
     Data->Header.DeviceCaps.vDriverVersion = BCMSOUND_VERSION;
@@ -278,19 +350,12 @@ Routine Description:
     // The wave output is named as it plays (its capabilities).
     //
 
-    Data->LineData[LineWaveOut].PnameStringId = (SHORT)WaveOutNameId(pGDI);
+    Data->LineData[LINE_WAVE_OUT].PnameStringId = (SHORT)WaveOutNameId(GlobalInfo);
 
     Length = min(sizeof(*Data), IrpStack->Parameters.DeviceIoControl.OutputBufferLength);
     RtlCopyMemory(Irp->AssociatedIrp.SystemBuffer, Data, Length);
     Irp->IoStatus.Information = Length;
     ExFreePool(Data);
-
-    //
-    // (as the sound drivers of NT answer it: drvlib asks for the size first,
-    // with a buffer of four bytes, and the DeviceIoControl of NT 3.5 returns
-    // no count of bytes with a warning status)
-    //
-
     return STATUS_SUCCESS;
 }
 
@@ -299,67 +364,75 @@ Routine Description:
 //
 
 static NTSTATUS
-HwGetLineFlags(
+MixerGetLineFlags(
     IN PMIXER_INFO MixerInfo,
     IN ULONG LineId,
     IN ULONG Length,
     OUT PVOID Data
     )
 {
-    PGLOBAL_DEVICE_INFO pGDI = CONTAINING_RECORD(MixerInfo, GLOBAL_DEVICE_INFO, MixerInfo);
+    PGLOBAL_DEVICE_INFO GlobalInfo = CONTAINING_RECORD(MixerInfo, GLOBAL_DEVICE_INFO, MixerInfo);
     PULONG Flags = Data;
 
     if (Length != sizeof(ULONG)) {
         return STATUS_BUFFER_TOO_SMALL;
     }
+
     switch (LineId) {
-    case LineSpeakers:
+    case LINE_SPEAKERS:
         *Flags = MIXERLINE_LINEF_ACTIVE;
         break;
-    case LineWaveOut:
-        *Flags = MIXERLINE_LINEF_SOURCE | (pGDI->DeviceInUse ? MIXERLINE_LINEF_ACTIVE : 0);
+
+    case LINE_WAVE_OUT:
+        *Flags = MIXERLINE_LINEF_SOURCE | (GlobalInfo->DeviceInUse ? MIXERLINE_LINEF_ACTIVE : 0);
         break;
-    case LineSynth:
-        *Flags = MIXERLINE_LINEF_SOURCE | (pGDI->SynthOpen ? MIXERLINE_LINEF_ACTIVE : 0);
+
+    case LINE_SYNTH:
+        *Flags = MIXERLINE_LINEF_SOURCE | (GlobalInfo->SynthOpen ? MIXERLINE_LINEF_ACTIVE : 0);
         break;
+
     default:
         return STATUS_INVALID_PARAMETER;
     }
+
     return STATUS_SUCCESS;
 }
 
 static NTSTATUS
-HwGetControl(
+MixerGetControl(
     IN PMIXER_INFO MixerInfo,
     IN ULONG ControlId,
     IN ULONG Length,
     OUT PVOID Data
     )
 {
-    PGLOBAL_DEVICE_INFO pGDI = CONTAINING_RECORD(MixerInfo, GLOBAL_DEVICE_INFO, MixerInfo);
+    PGLOBAL_DEVICE_INFO GlobalInfo = CONTAINING_RECORD(MixerInfo, GLOBAL_DEVICE_INFO, MixerInfo);
     PULONG Values = Data;
 
-    if (ControlId >= MixerControls) {
+    if (ControlId >= MIXER_CONTROLS) {
         return STATUS_INVALID_PARAMETER;
     }
+
     if (Length == sizeof(ULONG)) {
-        Values[0] = max(pGDI->MixerValue[ControlId][0], pGDI->MixerValue[ControlId][1]);
+        Values[0] = max(GlobalInfo->MixerValue[ControlId][0], GlobalInfo->MixerValue[ControlId][1]);
     } else if (Length == 2 * sizeof(ULONG)) {
-        Values[0] = pGDI->MixerValue[ControlId][0];
-        Values[1] = pGDI->MixerValue[ControlId][1];
+        Values[0] = GlobalInfo->MixerValue[ControlId][0];
+        Values[1] = GlobalInfo->MixerValue[ControlId][1];
     } else {
         return STATUS_BUFFER_TOO_SMALL;
     }
+
     return STATUS_SUCCESS;
 }
 
 static NTSTATUS
-HwGetCombinedControl(
+MixerGetCombinedControl(
     IN PMIXER_INFO MixerInfo,
     IN ULONG ControlId,
     IN ULONG Length,
     OUT PVOID Data
     )
+
 /*++
 
 Routine Description:
@@ -369,34 +442,52 @@ Routine Description:
     levels of its notes): always full, since the output applies the volumes
     of the mixer to what it mixes.
 
+Arguments:
+
+    MixerInfo - Not used.
+
+    ControlId - Not used.
+
+    Length - Supplies the length of the buffer.
+
+    Data - Receives the left and right volumes.
+
+Return Value:
+
+    STATUS_SUCCESS, or STATUS_BUFFER_TOO_SMALL.
+
 --*/
+
 {
     PULONG Values = Data;
 
     if (Length < 2 * sizeof(ULONG)) {
         return STATUS_BUFFER_TOO_SMALL;
     }
+
     Values[0] = 0xFFFF;
     Values[1] = 0xFFFF;
     return STATUS_SUCCESS;
 }
 
 static NTSTATUS
-HwSetControl(
+MixerSetControl(
     IN PMIXER_INFO MixerInfo,
     IN ULONG ControlId,
     IN ULONG Length,
     IN PVOID Data
     )
 {
-    PGLOBAL_DEVICE_INFO pGDI = CONTAINING_RECORD(MixerInfo, GLOBAL_DEVICE_INFO, MixerInfo);
+    PGLOBAL_DEVICE_INFO GlobalInfo = CONTAINING_RECORD(MixerInfo, GLOBAL_DEVICE_INFO, MixerInfo);
     PULONG Values = Data;
-    ULONG Value[2], Channel;
+    ULONG Value[2];
+    ULONG Channel;
     BOOLEAN Changed = FALSE;
 
-    if (ControlId >= MixerControls) {
+    if (ControlId >= MIXER_CONTROLS) {
         return STATUS_INVALID_PARAMETER;
     }
+
     if (Length == sizeof(ULONG)) {
         Value[0] = Value[1] = Values[0];
     } else if (Length == 2 * sizeof(ULONG)) {
@@ -405,24 +496,29 @@ HwSetControl(
     } else {
         return STATUS_BUFFER_TOO_SMALL;
     }
-    if (IsMute(ControlId)) {
+
+    if (IS_MUTE(ControlId)) {
         Value[0] = Value[1] = (Value[0] != 0 || Value[1] != 0);
     }
+
     for (Channel = 0; Channel < 2; Channel += 1) {
         if (Value[Channel] > 0xFFFF) {
             return STATUS_INVALID_PARAMETER;
         }
     }
+
     for (Channel = 0; Channel < 2; Channel += 1) {
-        if (pGDI->MixerValue[ControlId][Channel] != (USHORT)Value[Channel]) {
-            pGDI->MixerValue[ControlId][Channel] = (USHORT)Value[Channel];
+        if (GlobalInfo->MixerValue[ControlId][Channel] != (USHORT)Value[Channel]) {
+            GlobalInfo->MixerValue[ControlId][Channel] = (USHORT)Value[Channel];
             Changed = TRUE;
         }
     }
+
     if (Changed) {
-        MixerUpdateGains(pGDI);
-        SoundMixerChangedItem(MixerInfo, &pGDI->ControlNotification[ControlId]);
-        MixerSaveSettings(pGDI);
+        MixerUpdateGains(GlobalInfo);
+        SoundMixerChangedItem(MixerInfo, &GlobalInfo->ControlNotification[ControlId]);
+        MixerSaveSettings(GlobalInfo);
     }
+
     return STATUS_SUCCESS;
 }

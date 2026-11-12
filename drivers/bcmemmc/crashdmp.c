@@ -23,6 +23,10 @@ Abstract:
     (CRASHDUMP=256, in megabytes): the kernel of NT 3.5 exports nothing a
     driver could ask for the size of memory, so the pagefile is sized from it.
 
+Environment:
+
+    kernel mode only
+
 --*/
 
 #include <ntddk.h>
@@ -47,7 +51,8 @@ ReadValue(
     IN PWSTR Name
     )
 {
-    UNICODE_STRING KeyName, ValueName;
+    UNICODE_STRING KeyName;
+    UNICODE_STRING ValueName;
     OBJECT_ATTRIBUTES Attributes;
     PKEY_VALUE_PARTIAL_INFORMATION Value = NULL;
     HANDLE Key;
@@ -109,7 +114,8 @@ CrashDumpOption(
     )
 {
     PKEY_VALUE_PARTIAL_INFORMATION Value = ReadValue(CONTROL_PATH, L"SystemStartOptions");
-    PWCHAR Text, Word;
+    PWCHAR Text;
+    PWCHAR Word;
     BOOLEAN Found = FALSE;
     ULONG Index;
 
@@ -124,13 +130,16 @@ CrashDumpOption(
             while (*Text == L' ' || *Text == L'/') {
                 Text += 1;
             }
+
             Word = Text;
             while (*Text != 0 && *Text != L' ') {
                 Text += 1;
             }
+
             if (Text - Word >= 9) {
                 for (Index = 0; Index < 9 && RtlUpcaseUnicodeChar(Word[Index]) == L"CRASHDUMP"[Index]; Index += 1) {
                 }
+
                 if (Index == 9 && Text - Word == 9) {
                     Found = TRUE;
                 } else if (Index == 9 && Word[9] == L'=') {
@@ -160,12 +169,23 @@ Routine Description:
     load option, before the I/O system reads Control\CrashControl (right after
     the boot drivers) and the session manager the pagefiles.
 
+Arguments:
+
+    None.
+
+Return Value:
+
+    None.
+
 --*/
 
 {
-    PKEY_VALUE_PARTIAL_INFORMATION Current, Saved;
+    PKEY_VALUE_PARTIAL_INFORMATION Current;
+    PKEY_VALUE_PARTIAL_INFORMATION Saved;
     WCHAR PagingFiles[64];
-    ULONG Enabled, Megabytes, Length;
+    ULONG Enabled;
+    ULONG Megabytes;
+    ULONG Length;
     BOOLEAN Dump = CrashDumpOption(&Megabytes);
 
     Enabled = Dump ? 1 : 0;
@@ -173,6 +193,7 @@ Routine Description:
     if (!SameValue(Current, &Enabled, sizeof(Enabled))) {
         WriteValue(CRASH_CONTROL_PATH, L"CrashDumpEnabled", REG_DWORD, &Enabled, sizeof(Enabled));
     }
+
     if (Current != NULL) {
         ExFreePool(Current);
     }
@@ -197,9 +218,9 @@ Routine Description:
             if (Saved == NULL && Current != NULL) {
                 WriteValue(CRASH_CONTROL_PATH, SAVED_PAGING_FILES, Current->Type, Current->Data, Current->DataLength);
             }
+
             WriteValue(MEMORY_PATH, L"PagingFiles", REG_MULTI_SZ, PagingFiles, Length);
         }
-
     } else if (Saved != NULL) {
 
         //
@@ -213,6 +234,7 @@ Routine Description:
     if (Current != NULL) {
         ExFreePool(Current);
     }
+
     if (Saved != NULL) {
         ExFreePool(Saved);
     }

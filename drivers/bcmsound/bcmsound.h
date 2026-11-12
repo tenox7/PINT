@@ -33,34 +33,51 @@ Abstract:
 #include "bcmsndid.h"
 #include "opl3.h"
 
-#define BCMSOUND_KEY            (*(ULONG *)"BcmS")
+#define BCMSOUND_KEY                    (*(ULONG *)"BcmS")
+
+//
+// The registers, and the barrier around what the VideoCore reads or writes
+// in shared memory.
+//
+
+#define MEMORY_BARRIER()                    __dsb(_ARM_BARRIER_SY)
+
+#define READ_REGISTER(Base, Offset)         READ_REGISTER_ULONG((PULONG)((Base) + (Offset)))
+#define WRITE_REGISTER(Base, Offset, Value) WRITE_REGISTER_ULONG((PULONG)((Base) + (Offset)), (Value))
 
 //
 // The devices, and the lines and controls of the mixer.
 //
 
-#define WaveOutDevice           0
-#define MixerDeviceIndex        1
-#define SynthDeviceIndex        2
-#define NumberOfDevices         3
+#define WAVE_OUT_DEVICE                 0
+#define MIXER_DEVICE_INDEX              1
+#define SYNTH_DEVICE_INDEX              2
+#define NUMBER_OF_DEVICES               3
 
-enum { LineSpeakers, LineWaveOut, LineSynth, MixerLines };
-enum {
-    ControlMasterVolume, ControlMasterMute,
-    ControlWaveVolume, ControlWaveMute,
-    ControlSynthVolume, ControlSynthMute,
-    MixerControls
-};
+#define LINE_SPEAKERS                   0
+#define LINE_WAVE_OUT                   1
+#define LINE_SYNTH                      2
+#define MIXER_LINES                     3
+
+#define CONTROL_MASTER_VOLUME           0
+#define CONTROL_MASTER_MUTE             1
+#define CONTROL_WAVE_VOLUME             2
+#define CONTROL_WAVE_MUTE               3
+#define CONTROL_SYNTH_VOLUME            4
+#define CONTROL_SYNTH_MUTE              5
+#define MIXER_CONTROLS                  6
 
 //
-// The outputs.
+// The outputs: none (silent: the time of the sounds alone), the 3.5 mm jack
+// (the PWM) and HDMI audio; and the setting that chooses among them,
+// sound_output=AUTO (the default).
 //
 
-#define OUTPUT_NONE             0       // silent: the time of the sounds alone
-#define OUTPUT_JACK             1       // the 3.5 mm jack (PWM)
-#define OUTPUT_HDMI             2       // HDMI audio
+#define OUTPUT_NONE                     0
+#define OUTPUT_JACK                     1
+#define OUTPUT_HDMI                     2
 
-#define SETTING_AUTO            0xFF    // sound_output=AUTO (the default)
+#define SETTING_AUTO                    0xFF
 
 //
 // The formats of the wave output: PCM, 8 or 16 bits, mono or stereo, at
@@ -68,50 +85,51 @@ enum {
 //
 // The buffers: soundlib's holds an eighth of a second (it is told of each
 // half played), at most 48 kHz, 16-bit stereo; a half of the ring holds
-// RING_FRAMES frames of the output, each two 32-bit words (21 ms).
+// RING_FRAMES frames of the output, each two 32-bit words (21 ms), its time
+// in units of 100 ns.
 //
 
-#define OUTPUT_RATE             48000
-#define SOUND_BUFFER_SIZE       (48000 * 4 / 8)
-#define RING_FRAMES             1024
-#define RING_FRAME_SIZE         8
-#define RING_HALF_SIZE          (RING_FRAMES * RING_FRAME_SIZE)
-#define RING_HALF_TIME          (RING_FRAMES * 10000000 / OUTPUT_RATE)     // 100 ns units
+#define OUTPUT_RATE                     48000
+#define SOUND_BUFFER_SIZE               (48000 * 4 / 8)
+#define RING_FRAMES                     1024
+#define RING_FRAME_SIZE                 8
+#define RING_HALF_SIZE                  (RING_FRAMES * RING_FRAME_SIZE)
+#define RING_HALF_TIME                  (RING_FRAMES * 10000000 / OUTPUT_RATE)
 
 //
 // The BCM2835 DMA controller: a channel's registers and its control blocks.
 //
 
-#define DMA_OFFSET              0x7000
-#define DMA_CHANNEL_SIZE        0x100
-#define DMA_ENABLE              0xFF0
+#define DMA_OFFSET                      0x7000
+#define DMA_CHANNEL_SIZE                0x100
+#define DMA_ENABLE                      0xFF0
 
-#define DMA_CS                  0x00
-#define DMA_CONBLK_AD           0x04
-#define DMA_TI                  0x08
-#define DMA_SOURCE_AD           0x0C
-#define DMA_DEST_AD             0x10
-#define DMA_TXFR_LEN            0x14
-#define DMA_DEBUG               0x20
+#define DMA_CS                          0x00
+#define DMA_CONBLK_AD                   0x04
+#define DMA_TI                          0x08
+#define DMA_SOURCE_AD                   0x0C
+#define DMA_DEST_AD                     0x10
+#define DMA_TXFR_LEN                    0x14
+#define DMA_DEBUG                       0x20
 
-#define DMA_CS_ACTIVE           0x00000001
-#define DMA_CS_END              0x00000002
-#define DMA_CS_INT              0x00000004
-#define DMA_CS_ERROR            0x00000100
-#define DMA_CS_PRIORITY(x)      ((x) << 16)
-#define DMA_CS_PANIC_PRIORITY(x) ((x) << 20)
-#define DMA_CS_WAIT_WRITES      0x10000000
-#define DMA_CS_ABORT            0x40000000
-#define DMA_CS_RESET            0x80000000
+#define DMA_CS_ACTIVE                   0x00000001
+#define DMA_CS_END                      0x00000002
+#define DMA_CS_INT                      0x00000004
+#define DMA_CS_ERROR                    0x00000100
+#define DMA_CS_PRIORITY(Level)          ((Level) << 16)
+#define DMA_CS_PANIC_PRIORITY(Level)    ((Level) << 20)
+#define DMA_CS_WAIT_WRITES              0x10000000
+#define DMA_CS_ABORT                    0x40000000
+#define DMA_CS_RESET                    0x80000000
 
-#define DMA_TI_INTEN            0x00000001
-#define DMA_TI_WAIT_RESP        0x00000008
-#define DMA_TI_DEST_DREQ        0x00000040
-#define DMA_TI_SRC_INC          0x00000100
-#define DMA_TI_SRC_WIDTH        0x00000200
-#define DMA_TI_PERMAP(x)        ((x) << 16)
+#define DMA_TI_INTEN                    0x00000001
+#define DMA_TI_WAIT_RESP                0x00000008
+#define DMA_TI_DEST_DREQ                0x00000040
+#define DMA_TI_SRC_INC                  0x00000100
+#define DMA_TI_SRC_WIDTH                0x00000200
+#define DMA_TI_PERMAP(Peripheral)       ((Peripheral) << 16)
 
-#define DMA_DEBUG_ERRORS        0x00000007
+#define DMA_DEBUG_ERRORS                0x00000007
 
 typedef struct _DMA_CONTROL_BLOCK {
     ULONG TransferInformation;
@@ -127,7 +145,7 @@ typedef struct _DMA_CONTROL_BLOCK {
 // The VideoCore bus address of a peripheral, which the DMA controller uses.
 //
 
-#define BUS_PERIPHERAL_BASE     0x7E000000
+#define BUS_PERIPHERAL_BASE             0x7E000000
 
 //
 // The global device information.
@@ -137,7 +155,7 @@ typedef struct _GLOBAL_DEVICE_INFO {
     ULONG Key;
     PDRIVER_OBJECT DriverObject;
     PWSTR RegistryPathName;
-    PDEVICE_OBJECT DeviceObject[NumberOfDevices];
+    PDEVICE_OBJECT DeviceObject[NUMBER_OF_DEVICES];
     KMUTEX WaveMutex;
     BOOLEAN DeviceInUse;
     BOOLEAN ShutdownRegistered;
@@ -217,12 +235,13 @@ typedef struct _GLOBAL_DEVICE_INFO {
     LONG WaveCurrent[2];
 
     //
-    // The synthesizer: open for writing, the chip, the register selected and
-    // a half of its frames.
+    // The synthesizer: open for writing, the frames left of the self-test
+    // of debug_sound (output.c), the chip, the register selected and a half
+    // of its frames.
     //
 
     BOOLEAN SynthOpen;
-    ULONG ToneFrames;           // the frames left of the self-test of debug_sound (output.c)
+    ULONG SelfTestFrames;
     OPL3 Synth;
     ULONG SynthAddress;
     SHORT SynthFrames[RING_FRAMES * 2];
@@ -235,9 +254,9 @@ typedef struct _GLOBAL_DEVICE_INFO {
     //
 
     MIXER_INFO MixerInfo;
-    USHORT MixerValue[MixerControls][2];
-    MIXER_DATA_ITEM ControlNotification[MixerControls];
-    MIXER_DATA_ITEM LineNotification[MixerLines];
+    USHORT MixerValue[MIXER_CONTROLS][2];
+    MIXER_DATA_ITEM ControlNotification[MIXER_CONTROLS];
+    MIXER_DATA_ITEM LineNotification[MIXER_LINES];
     ULONG WaveGain[2];
     ULONG SynthGain[2];
     PWSTR DevicePathName;
@@ -257,14 +276,14 @@ typedef struct _GLOBAL_DEVICE_INFO {
 
 VOID
 BcmSoundLog(
-    IN PGLOBAL_DEVICE_INFO pGDI,
+    IN PGLOBAL_DEVICE_INFO GlobalInfo,
     IN PCHAR Format,
     ...
     );
 
 ULONG
 WaveOutNameId(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     );
 
 //
@@ -273,33 +292,33 @@ WaveOutNameId(
 
 BOOLEAN
 OutputInitialize(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     );
 
 VOID
 OutputShutdown(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     );
 
 VOID
 OutputEngineUpdate(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     );
 
 VOID
 OutputLogState(
-    IN PGLOBAL_DEVICE_INFO pGDI,
+    IN PGLOBAL_DEVICE_INFO GlobalInfo,
     IN PCHAR Event
     );
 
 VOID
 OutputSelfTest(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     );
 
 ULONG
 OutputTakeCrossings(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     );
 
 WAVE_INTERFACE_ROUTINE OutputSetFormat;
@@ -308,7 +327,7 @@ WAVE_INTERFACE_ROUTINE OutputStop;
 
 BOOLEAN
 OutputInterrupt(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     );
 
 //
@@ -317,12 +336,12 @@ OutputInterrupt(
 
 VOID
 MixerInitialize(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     );
 
 VOID
 MixerShutdown(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     );
 
 SOUND_DISPATCH_ROUTINE MixerDumpConfiguration;
@@ -340,43 +359,43 @@ SOUND_DISPATCH_ROUTINE SynthGetCaps;
 
 BOOLEAN
 HdmiInitialize(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     );
 
 BOOLEAN
 HdmiSinkHasAudio(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     );
 
 BOOLEAN
 HdmiStart(
-    IN PGLOBAL_DEVICE_INFO pGDI,
+    IN PGLOBAL_DEVICE_INFO GlobalInfo,
     IN ULONG Rate
     );
 
 VOID
 HdmiEnable(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     );
 
 VOID
 HdmiStop(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     );
 
 ULONG
 HdmiFifoBus(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     );
 
 ULONG
 HdmiDreq(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     );
 
 VOID
 HdmiEncode(
-    IN PGLOBAL_DEVICE_INFO pGDI,
+    IN PGLOBAL_DEVICE_INFO GlobalInfo,
     OUT PULONG Words,
     IN LONG Left,
     IN LONG Right
@@ -384,17 +403,17 @@ HdmiEncode(
 
 ULONG
 HdmiReadControl(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     );
 
 VOID
 HdmiResetFrames(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     );
 
 VOID
 HdmiLogState(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     );
 
 #endif // _BCMSOUND_

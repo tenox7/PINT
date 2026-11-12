@@ -20,19 +20,26 @@ Abstract:
 #define BCMSOUND_ID             "BCM2835-AUDIO"
 
 //
-// Flags.
+// The flags: a BCM2711 (Raspberry Pi 4, 400, CM4), and QEMU, whose DMA
+// ignores the DREQs.
 //
 
-#define BCMSOUND_BCM2711        0x00000001  // a BCM2711 (Raspberry Pi 4, 400, CM4)
-#define BCMSOUND_EMULATED       0x00000002  // QEMU: its DMA ignores the DREQs
+#define BCMSOUND_BCM2711        0x00000001
+#define BCMSOUND_EMULATED       0x00000002
+
+//
+// The revision code of the board, the ARM physical address of the
+// peripherals, the DMA channel of the outputs, the channels the VideoCore
+// left to the ARM and the flags.
+//
 
 typedef struct _CM_BCMSOUND_DEVICE_DATA {
     USHORT Version;
     USHORT Revision;
-    ULONG BoardRevision;        // the revision code of the board
-    ULONG PeripheralBase;       // ARM physical address of the peripherals
-    ULONG DmaChannel;           // the DMA channel of the outputs
-    ULONG DmaChannelMask;       // the channels the VideoCore left to the ARM
+    ULONG BoardRevision;
+    ULONG PeripheralBase;
+    ULONG DmaChannel;
+    ULONG DmaChannelMask;
     ULONG Flags;
 } CM_BCMSOUND_DEVICE_DATA, *PCM_BCMSOUND_DEVICE_DATA;
 

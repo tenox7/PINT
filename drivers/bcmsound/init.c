@@ -18,6 +18,10 @@ Abstract:
     AUTO is HDMI when the display takes sound, else the jack of a board that
     has one, else nothing (the sounds keep their time, silent).
 
+Environment:
+
+    kernel mode only
+
 --*/
 
 #include "bcmsound.h"
@@ -40,7 +44,7 @@ BcmSoundDeferred(
 // multimedia driver finds them in Parameters\Device0\Devices).
 //
 
-static CONST SOUND_DEVICE_INIT DeviceInit[NumberOfDevices] = {
+static const SOUND_DEVICE_INIT DeviceInit[NUMBER_OF_DEVICES] = {
     {
         NULL, NULL,
         0,
@@ -115,6 +119,20 @@ Routine Description:
     last component, and the file. The driver starts with the system, before
     the drive letters are assigned, so C: does not name the partition yet.
 
+Arguments:
+
+    Name - Receives the name of the file.
+
+    Buffer - Supplies the buffer of the name.
+
+    BufferLength - Supplies the size of the buffer, in bytes.
+
+    File - Supplies the file in the root directory.
+
+Return Value:
+
+    TRUE when the file is named.
+
 --*/
 
 {
@@ -154,7 +172,7 @@ Routine Description:
 
 static VOID
 BcmSoundOpenLog(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 {
     UNICODE_STRING Name;
@@ -163,21 +181,21 @@ BcmSoundOpenLog(
     IO_STATUS_BLOCK Iosb;
 
     if (!BcmSoundRootFile(&Name, NameBuffer, sizeof(NameBuffer), L"SOUND.LOG")) {
-        pGDI->LogFile = NULL;
+        GlobalInfo->LogFile = NULL;
         return;
     }
 
     InitializeObjectAttributes(&Attributes, &Name, OBJ_CASE_INSENSITIVE, NULL, NULL);
-    if (!NT_SUCCESS(ZwCreateFile(&pGDI->LogFile, FILE_APPEND_DATA | SYNCHRONIZE, &Attributes, &Iosb, NULL,
+    if (!NT_SUCCESS(ZwCreateFile(&GlobalInfo->LogFile, FILE_APPEND_DATA | SYNCHRONIZE, &Attributes, &Iosb, NULL,
                                  FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ, FILE_OVERWRITE_IF,
                                  FILE_SYNCHRONOUS_IO_NONALERT | FILE_NON_DIRECTORY_FILE, NULL, 0))) {
-        pGDI->LogFile = NULL;
+        GlobalInfo->LogFile = NULL;
     }
 }
 
 VOID
 BcmSoundLog(
-    IN PGLOBAL_DEVICE_INFO pGDI,
+    IN PGLOBAL_DEVICE_INFO GlobalInfo,
     IN PCHAR Format,
     ...
     )
@@ -192,6 +210,17 @@ Routine Description:
     processes, which a handle of the start's would not reach), each line opens
     it to append and closes it again.
 
+Arguments:
+
+    GlobalInfo - Supplies the global device information.
+
+    Format - Supplies the format of the line, as printf takes it, and its
+        arguments after it.
+
+Return Value:
+
+    None.
+
 --*/
 
 {
@@ -200,27 +229,27 @@ Routine Description:
     va_list Arguments;
     ULONG Length;
     BOOLEAN Reopened = FALSE;
+    UNICODE_STRING Name;
+    WCHAR NameBuffer[160];
+    OBJECT_ATTRIBUTES Attributes;
 
-    if (!pGDI->Debug || KeGetCurrentIrql() != PASSIVE_LEVEL || pGDI->LogLines >= 2000) {
+    if (!GlobalInfo->Debug || KeGetCurrentIrql() != PASSIVE_LEVEL || GlobalInfo->LogLines >= 2000) {
         return;
     }
 
-    if (pGDI->LogFile == NULL) {
-        UNICODE_STRING Name;
-        WCHAR NameBuffer[160];
-        OBJECT_ATTRIBUTES Attributes;
-
+    if (GlobalInfo->LogFile == NULL) {
         if (!BcmSoundRootFile(&Name, NameBuffer, sizeof(NameBuffer), L"SOUND.LOG")) {
-        return;
-    }
-
-        InitializeObjectAttributes(&Attributes, &Name, OBJ_CASE_INSENSITIVE, NULL, NULL);
-        if (!NT_SUCCESS(ZwCreateFile(&pGDI->LogFile, FILE_APPEND_DATA | SYNCHRONIZE, &Attributes, &Iosb, NULL,
-                                     FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ | FILE_SHARE_WRITE, FILE_OPEN_IF,
-                                     FILE_SYNCHRONOUS_IO_NONALERT | FILE_NON_DIRECTORY_FILE, NULL, 0))) {
-            pGDI->LogFile = NULL;
             return;
         }
+
+        InitializeObjectAttributes(&Attributes, &Name, OBJ_CASE_INSENSITIVE, NULL, NULL);
+        if (!NT_SUCCESS(ZwCreateFile(&GlobalInfo->LogFile, FILE_APPEND_DATA | SYNCHRONIZE, &Attributes, &Iosb, NULL,
+                                     FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ | FILE_SHARE_WRITE, FILE_OPEN_IF,
+                                     FILE_SYNCHRONOUS_IO_NONALERT | FILE_NON_DIRECTORY_FILE, NULL, 0))) {
+            GlobalInfo->LogFile = NULL;
+            return;
+        }
+
         Reopened = TRUE;
     }
 
@@ -233,11 +262,11 @@ Routine Description:
 
     Line[Length++] = '\r';
     Line[Length++] = '\n';
-    pGDI->LogLines += 1;
-    ZwWriteFile(pGDI->LogFile, NULL, NULL, NULL, &Iosb, Line, Length, NULL, NULL);
+    GlobalInfo->LogLines += 1;
+    ZwWriteFile(GlobalInfo->LogFile, NULL, NULL, NULL, &Iosb, Line, Length, NULL, NULL);
     if (Reopened) {
-        ZwClose(pGDI->LogFile);
-        pGDI->LogFile = NULL;
+        ZwClose(GlobalInfo->LogFile);
+        GlobalInfo->LogFile = NULL;
     }
 }
 
@@ -394,7 +423,7 @@ BcmSoundParseBoolean(
 
 static VOID
 BcmSoundReadSettingsFile(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 {
     UNICODE_STRING Name;
@@ -404,7 +433,11 @@ BcmSoundReadSettingsFile(
     FILE_STANDARD_INFORMATION Information;
     HANDLE File;
     PCHAR Text = NULL;
-    PCHAR Line, End, Last, Equal, Value;
+    PCHAR Line;
+    PCHAR End;
+    PCHAR Last;
+    PCHAR Equal;
+    PCHAR Value;
     ULONG Length = 0;
 
     if (!BcmSoundRootFile(&Name, NameBuffer, sizeof(NameBuffer), L"CONFIG.TXT")) {
@@ -476,9 +509,9 @@ BcmSoundReadSettingsFile(
         }
 
         if (Equal - Line == 12 && _strnicmp(Line, "SOUND_OUTPUT", 12) == 0) {
-            pGDI->Setting = BcmSoundParseOutput(Value, Last - Value);
+            GlobalInfo->Setting = BcmSoundParseOutput(Value, Last - Value);
         } else if (Equal - Line == 11 && _strnicmp(Line, "DEBUG_SOUND", 11) == 0) {
-            pGDI->Debug = BcmSoundParseBoolean(Value, Last - Value);
+            GlobalInfo->Debug = BcmSoundParseBoolean(Value, Last - Value);
         }
     }
 
@@ -487,7 +520,7 @@ BcmSoundReadSettingsFile(
 
 static VOID
 BcmSoundReadSettings(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 {
     RTL_QUERY_REGISTRY_TABLE QueryTable[2];
@@ -495,18 +528,18 @@ BcmSoundReadSettings(
     ANSI_STRING Text;
     WCHAR Path[256];
 
-    pGDI->Setting = SETTING_AUTO;
-    BcmSoundReadSettingsFile(pGDI);
+    GlobalInfo->Setting = SETTING_AUTO;
+    BcmSoundReadSettingsFile(GlobalInfo);
 
     //
     // The Parameters of the service (soundlib's registry path).
     //
 
-    if (wcslen(pGDI->RegistryPathName) >= sizeof(Path) / sizeof(WCHAR)) {
+    if (wcslen(GlobalInfo->RegistryPathName) >= sizeof(Path) / sizeof(WCHAR)) {
         return;
     }
 
-    wcscpy(Path, pGDI->RegistryPathName);
+    wcscpy(Path, GlobalInfo->RegistryPathName);
     RtlZeroMemory(QueryTable, sizeof(QueryTable));
     RtlZeroMemory(&Value, sizeof(Value));
     QueryTable[0].Flags = RTL_QUERY_REGISTRY_DIRECT;
@@ -516,7 +549,7 @@ BcmSoundReadSettings(
     if (NT_SUCCESS(RtlQueryRegistryValues(RTL_REGISTRY_ABSOLUTE, Path, QueryTable, NULL, NULL)) &&
         Value.Buffer != NULL) {
         if (NT_SUCCESS(RtlUnicodeStringToAnsiString(&Text, &Value, TRUE))) {
-            pGDI->Setting = BcmSoundParseOutput(Text.Buffer, Text.Length);
+            GlobalInfo->Setting = BcmSoundParseOutput(Text.Buffer, Text.Length);
             RtlFreeAnsiString(&Text);
         }
 
@@ -531,11 +564,11 @@ BcmSoundReadSettings(
 
 static BOOLEAN
 BcmSoundExclude(
-    IN PLOCAL_DEVICE_INFO pLDI,
+    IN PLOCAL_DEVICE_INFO LocalInfo,
     IN SOUND_EXCLUDE_CODE Code
     )
 {
-    PGLOBAL_DEVICE_INFO pGDI = pLDI->pGlobalInfo;
+    PGLOBAL_DEVICE_INFO GlobalInfo = LocalInfo->pGlobalInfo;
 
     //
     // One mutex for all the devices (the mixer is entered from the others);
@@ -544,37 +577,40 @@ BcmSoundExclude(
 
     switch (Code) {
     case SoundExcludeOpen:
-        if (pLDI->DeviceIndex == WaveOutDevice) {
-            if (pGDI->DeviceInUse) {
+        if (LocalInfo->DeviceIndex == WAVE_OUT_DEVICE) {
+            if (GlobalInfo->DeviceInUse) {
                 return FALSE;
             }
-            pGDI->DeviceInUse = TRUE;
-            OutputLogState(pGDI, "Wave output opened");
-        } else if (pLDI->DeviceIndex == SynthDeviceIndex) {
-            if (pGDI->SynthOpen) {
+
+            GlobalInfo->DeviceInUse = TRUE;
+            OutputLogState(GlobalInfo, "Wave output opened");
+        } else if (LocalInfo->DeviceIndex == SYNTH_DEVICE_INDEX) {
+            if (GlobalInfo->SynthOpen) {
                 return FALSE;
             }
         }
+
         return TRUE;
 
     case SoundExcludeClose:
-        if (pLDI->DeviceIndex == WaveOutDevice) {
-            pGDI->DeviceInUse = FALSE;
-            OutputLogState(pGDI, "Wave output closed");
+        if (LocalInfo->DeviceIndex == WAVE_OUT_DEVICE) {
+            GlobalInfo->DeviceInUse = FALSE;
+            OutputLogState(GlobalInfo, "Wave output closed");
         }
+
         return TRUE;
 
     case SoundExcludeEnter:
-        KeWaitForSingleObject(&pGDI->WaveMutex, Executive, KernelMode, FALSE, NULL);
+        KeWaitForSingleObject(&GlobalInfo->WaveMutex, Executive, KernelMode, FALSE, NULL);
         return TRUE;
 
     case SoundExcludeLeave:
-        KeReleaseMutex(&pGDI->WaveMutex, FALSE);
+        KeReleaseMutex(&GlobalInfo->WaveMutex, FALSE);
         return TRUE;
 
     case SoundExcludeQueryOpen:
-        return pLDI->DeviceIndex == WaveOutDevice ? pGDI->DeviceInUse :
-               pLDI->DeviceIndex == SynthDeviceIndex ? pGDI->SynthOpen : FALSE;
+        return LocalInfo->DeviceIndex == WAVE_OUT_DEVICE ? GlobalInfo->DeviceInUse :
+               LocalInfo->DeviceIndex == SYNTH_DEVICE_INDEX ? GlobalInfo->SynthOpen : FALSE;
     }
 
     return FALSE;
@@ -582,21 +618,21 @@ BcmSoundExclude(
 
 ULONG
 WaveOutNameId(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 {
-    return pGDI->Output == OUTPUT_HDMI ? IDS_WAVEOUT_HDMI :
-           pGDI->Output == OUTPUT_JACK ? IDS_WAVEOUT_JACK : IDS_WAVEOUT_SILENT;
+    return GlobalInfo->Output == OUTPUT_HDMI ? IDS_WAVEOUT_HDMI :
+           GlobalInfo->Output == OUTPUT_JACK ? IDS_WAVEOUT_JACK : IDS_WAVEOUT_SILENT;
 }
 
 static NTSTATUS
 BcmSoundWaveOutGetCaps(
-    IN PLOCAL_DEVICE_INFO pLDI,
+    IN PLOCAL_DEVICE_INFO LocalInfo,
     IN OUT PIRP Irp,
     IN PIO_STACK_LOCATION IrpStack
     )
 {
-    PGLOBAL_DEVICE_INFO pGDI = pLDI->pGlobalInfo;
+    PGLOBAL_DEVICE_INFO GlobalInfo = LocalInfo->pGlobalInfo;
     WAVEOUTCAPSW Caps;
 
     //
@@ -614,7 +650,7 @@ BcmSoundWaveOutGetCaps(
                      WAVE_FORMAT_4M08 | WAVE_FORMAT_4S08 | WAVE_FORMAT_4M16 | WAVE_FORMAT_4S16;
     Caps.wChannels = 2;
     Caps.dwSupport = WAVECAPS_VOLUME | WAVECAPS_LRVOLUME;
-    *(PULONG)Caps.szPname = WaveOutNameId(pGDI);
+    *(PULONG)Caps.szPname = WaveOutNameId(GlobalInfo);
     Irp->IoStatus.Information = min(sizeof(Caps), IrpStack->Parameters.DeviceIoControl.OutputBufferLength);
     RtlCopyMemory(Irp->AssociatedIrp.SystemBuffer, &Caps, Irp->IoStatus.Information);
     return STATUS_SUCCESS;
@@ -622,7 +658,7 @@ BcmSoundWaveOutGetCaps(
 
 static NTSTATUS
 BcmSoundQueryFormat(
-    IN PLOCAL_DEVICE_INFO pLDI,
+    IN PLOCAL_DEVICE_INFO LocalInfo,
     IN PPCMWAVEFORMAT Format
     )
 {
@@ -658,7 +694,6 @@ BcmSoundQueryFormat(
     return STATUS_SUCCESS;
 }
 
-
 //
 // The interrupt of the DMA channel (the end of a half of the ring), or the
 // timer of the silent output, and the deferred routine that follows soundlib's.
@@ -689,16 +724,30 @@ Routine Description:
     each half of its buffer the reading has passed (output.c); each run
     programs the next half (OutputStart, which goes on reading).
 
+Arguments:
+
+    Dpc - Supplies the deferred procedure call of the device.
+
+    DeviceObject - Supplies the wave output device.
+
+    Irp - Not used.
+
+    Context - Not used.
+
+Return Value:
+
+    None.
+
 --*/
 
 {
-    PLOCAL_DEVICE_INFO pLDI = DeviceObject->DeviceExtension;
-    PGLOBAL_DEVICE_INFO pGDI = pLDI->pGlobalInfo;
+    PLOCAL_DEVICE_INFO LocalInfo = DeviceObject->DeviceExtension;
+    PGLOBAL_DEVICE_INFO GlobalInfo = LocalInfo->pGlobalInfo;
 
-    while (OutputTakeCrossings(pGDI) != 0) {
-        pGDI->InWaveDeferred = TRUE;
+    while (OutputTakeCrossings(GlobalInfo) != 0) {
+        GlobalInfo->InWaveDeferred = TRUE;
         SoundWaveDeferred(Dpc, DeviceObject, Irp, Context);
-        pGDI->InWaveDeferred = FALSE;
+        GlobalInfo->InWaveDeferred = FALSE;
     }
 }
 
@@ -708,27 +757,29 @@ Routine Description:
 
 static NTSTATUS
 BcmSoundCreateDeviceKey(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 {
     UNICODE_STRING Name;
     OBJECT_ATTRIBUTES Attributes;
     HANDLE Key;
     NTSTATUS Status;
-    ULONG Length = (wcslen(pGDI->RegistryPathName) + 9) * sizeof(WCHAR);
+    ULONG Length = (wcslen(GlobalInfo->RegistryPathName) + 9) * sizeof(WCHAR);
 
-    pGDI->DevicePathName = ExAllocatePool(PagedPool, Length);
-    if (pGDI->DevicePathName == NULL) {
+    GlobalInfo->DevicePathName = ExAllocatePool(PagedPool, Length);
+    if (GlobalInfo->DevicePathName == NULL) {
         return STATUS_INSUFFICIENT_RESOURCES;
     }
-    wcscpy(pGDI->DevicePathName, pGDI->RegistryPathName);
-    wcscat(pGDI->DevicePathName, L"\\Device0");
-    RtlInitUnicodeString(&Name, pGDI->DevicePathName);
+
+    wcscpy(GlobalInfo->DevicePathName, GlobalInfo->RegistryPathName);
+    wcscat(GlobalInfo->DevicePathName, L"\\Device0");
+    RtlInitUnicodeString(&Name, GlobalInfo->DevicePathName);
     InitializeObjectAttributes(&Attributes, &Name, OBJ_CASE_INSENSITIVE, NULL, NULL);
     Status = ZwCreateKey(&Key, KEY_ALL_ACCESS, &Attributes, 0, NULL, REG_OPTION_NON_VOLATILE, NULL);
     if (NT_SUCCESS(Status)) {
         ZwClose(Key);
     }
+
     return Status;
 }
 
@@ -742,10 +793,10 @@ BcmSoundShutdown(
     IN PIRP Irp
     )
 {
-    PLOCAL_DEVICE_INFO pLDI = DeviceObject->DeviceExtension;
+    PLOCAL_DEVICE_INFO LocalInfo = DeviceObject->DeviceExtension;
 
-    MixerShutdown(pLDI->pGlobalInfo);
-    OutputShutdown(pLDI->pGlobalInfo);
+    MixerShutdown(LocalInfo->pGlobalInfo);
+    OutputShutdown(LocalInfo->pGlobalInfo);
     Irp->IoStatus.Status = STATUS_SUCCESS;
     Irp->IoStatus.Information = 0;
     IoCompleteRequest(Irp, IO_NO_INCREMENT);
@@ -763,67 +814,79 @@ DriverEntry(
 Routine Description:
 
     This routine finds the sound hardware the firmware described, chooses
-    the output, and makes the wave output device \Device\WaveOut0 (which the
-    multimedia driver mmdrv.dll opens as \\.\WaveOut0).
+    the output, and makes the wave output, mixer and synthesizer devices
+    (\Device\BcmWaveOut, BcmMixer and BcmSynth), which the multimedia driver
+    bcmsnd32.dll opens.
+
+Arguments:
+
+    DriverObject - Supplies the driver object.
+
+    RegistryPath - Supplies the key of the service in the registry.
+
+Return Value:
+
+    STATUS_SUCCESS, or why the driver could not start.
 
 --*/
 
 {
-    PGLOBAL_DEVICE_INFO pGDI;
+    PGLOBAL_DEVICE_INFO GlobalInfo;
     SOUND_HARDWARE Hardware;
     DEVICE_DESCRIPTION Description;
-    PLOCAL_DEVICE_INFO pLDI;
+    PLOCAL_DEVICE_INFO LocalInfo;
     NTSTATUS Status;
-    ULONG Vector, Index;
+    ULONG Vector;
+    ULONG Index;
     KIRQL Irql;
     KAFFINITY Affinity;
 
-    pGDI = ExAllocatePool(NonPagedPool, sizeof(GLOBAL_DEVICE_INFO));
-    if (pGDI == NULL) {
+    GlobalInfo = ExAllocatePool(NonPagedPool, sizeof(GLOBAL_DEVICE_INFO));
+    if (GlobalInfo == NULL) {
         return STATUS_INSUFFICIENT_RESOURCES;
     }
 
-    RtlZeroMemory(pGDI, sizeof(GLOBAL_DEVICE_INFO));
-    pGDI->Key = BCMSOUND_KEY;
-    pGDI->DriverObject = DriverObject;
-    Status = SoundSaveRegistryPath(RegistryPath, &pGDI->RegistryPathName);
+    RtlZeroMemory(GlobalInfo, sizeof(GLOBAL_DEVICE_INFO));
+    GlobalInfo->Key = BCMSOUND_KEY;
+    GlobalInfo->DriverObject = DriverObject;
+    Status = SoundSaveRegistryPath(RegistryPath, &GlobalInfo->RegistryPathName);
     if (!NT_SUCCESS(Status)) {
         goto Fail;
     }
 
-    BcmSoundReadSettings(pGDI);
-    if (pGDI->Debug) {
-        BcmSoundOpenLog(pGDI);
+    BcmSoundReadSettings(GlobalInfo);
+    if (GlobalInfo->Debug) {
+        BcmSoundOpenLog(GlobalInfo);
     }
 
-    BcmSoundLog(pGDI, "Raspberry Pi sound driver, built " __DATE__ " " __TIME__);
-    BcmSoundLog(pGDI, "sound_output=%s",
-                pGDI->Setting == OUTPUT_HDMI ? "HDMI" : pGDI->Setting == OUTPUT_JACK ? "JACK" :
-                pGDI->Setting == OUTPUT_NONE ? "NONE" : "AUTO");
+    BcmSoundLog(GlobalInfo, "Raspberry Pi sound driver, built " __DATE__ " " __TIME__);
+    BcmSoundLog(GlobalInfo, "sound_output=%s",
+                GlobalInfo->Setting == OUTPUT_HDMI ? "HDMI" : GlobalInfo->Setting == OUTPUT_JACK ? "JACK" :
+                GlobalInfo->Setting == OUTPUT_NONE ? "NONE" : "AUTO");
 
     if (!BcmSoundReadHardware(&Hardware)) {
-        BcmSoundLog(pGDI, "The firmware describes no sound hardware");
+        BcmSoundLog(GlobalInfo, "The firmware describes no sound hardware");
         Status = STATUS_NO_SUCH_DEVICE;
         goto Fail;
     }
 
-    pGDI->Hardware = Hardware.Data;
-    pGDI->InterruptVector = Hardware.InterruptVector;
-    pGDI->InterruptLevel = Hardware.InterruptLevel;
-    BcmSoundLog(pGDI, "Board %08X, peripherals at %08X, DMA channel %u (mask %04X), vector %u",
-                pGDI->Hardware.BoardRevision, pGDI->Hardware.PeripheralBase, pGDI->Hardware.DmaChannel,
-                pGDI->Hardware.DmaChannelMask, pGDI->InterruptVector);
+    GlobalInfo->Hardware = Hardware.Data;
+    GlobalInfo->InterruptVector = Hardware.InterruptVector;
+    GlobalInfo->InterruptLevel = Hardware.InterruptLevel;
+    BcmSoundLog(GlobalInfo, "Board %08X, peripherals at %08X, DMA channel %u (mask %04X), vector %u",
+                GlobalInfo->Hardware.BoardRevision, GlobalInfo->Hardware.PeripheralBase,
+                GlobalInfo->Hardware.DmaChannel, GlobalInfo->Hardware.DmaChannelMask, GlobalInfo->InterruptVector);
 
-    KeInitializeMutex(&pGDI->WaveMutex, 2);
+    KeInitializeMutex(&GlobalInfo->WaveMutex, 2);
 
     //
     // Parameters\Device0, the card's key (as the WSS's), where the devices
     // are listed for the multimedia driver and the mixer keeps its settings.
     //
 
-    Status = BcmSoundCreateDeviceKey(pGDI);
+    Status = BcmSoundCreateDeviceKey(GlobalInfo);
     if (!NT_SUCCESS(Status)) {
-        BcmSoundLog(pGDI, "No key Parameters\\Device0 (%08X)", Status);
+        BcmSoundLog(GlobalInfo, "No key Parameters\\Device0 (%08X)", Status);
         goto Fail;
     }
 
@@ -832,10 +895,10 @@ Routine Description:
     // (output.c).
     //
 
-    SoundInitializeWaveInfo(&pGDI->WaveInfo, SoundReprogramOnInterruptDMA, BcmSoundQueryFormat, pGDI);
-    pGDI->WaveInfo.HwSetupDMA = OutputStart;
-    pGDI->WaveInfo.HwStopDMA = OutputStop;
-    pGDI->WaveInfo.HwSetWaveFormat = OutputSetFormat;
+    SoundInitializeWaveInfo(&GlobalInfo->WaveInfo, SoundReprogramOnInterruptDMA, BcmSoundQueryFormat, GlobalInfo);
+    GlobalInfo->WaveInfo.HwSetupDMA = OutputStart;
+    GlobalInfo->WaveInfo.HwStopDMA = OutputStop;
+    GlobalInfo->WaveInfo.HwSetWaveFormat = OutputSetFormat;
 
     //
     // Soundlib's buffer, of a bus master of the internal bus (the HAL maps
@@ -849,13 +912,13 @@ Routine Description:
     Description.InterfaceType = Internal;
     Description.BusNumber = 0;
     Description.MaximumLength = ROUND_TO_PAGES(SOUND_BUFFER_SIZE);
-    Status = SoundGetCommonBuffer(&Description, &pGDI->WaveInfo.DMABuf);
+    Status = SoundGetCommonBuffer(&Description, &GlobalInfo->WaveInfo.DMABuf);
     if (!NT_SUCCESS(Status)) {
-        BcmSoundLog(pGDI, "No sound buffer (%08X)", Status);
+        BcmSoundLog(GlobalInfo, "No sound buffer (%08X)", Status);
         goto Fail;
     }
 
-    if (!OutputInitialize(pGDI)) {
+    if (!OutputInitialize(GlobalInfo)) {
         Status = STATUS_INSUFFICIENT_RESOURCES;
         goto Fail;
     }
@@ -864,34 +927,36 @@ Routine Description:
     // The devices.
     //
 
-    for (Index = 0; Index < NumberOfDevices; Index += 1) {
-        Status = SoundCreateDevice(&DeviceInit[Index], 0, DriverObject, pGDI,
-                                   Index == WaveOutDevice ? &pGDI->WaveInfo : NULL, pGDI, Index,
-                                   &pGDI->DeviceObject[Index]);
+    for (Index = 0; Index < NUMBER_OF_DEVICES; Index += 1) {
+        Status = SoundCreateDevice(&DeviceInit[Index], 0, DriverObject, GlobalInfo,
+                                   Index == WAVE_OUT_DEVICE ? &GlobalInfo->WaveInfo : NULL, GlobalInfo, Index,
+                                   &GlobalInfo->DeviceObject[Index]);
         if (!NT_SUCCESS(Status)) {
-            BcmSoundLog(pGDI, "No device %u (%08X)", Index, Status);
+            BcmSoundLog(GlobalInfo, "No device %u (%08X)", Index, Status);
             goto Fail;
         }
-        pLDI = pGDI->DeviceObject[Index]->DeviceExtension;
-        Status = SoundSaveDeviceName(pGDI->DevicePathName, pLDI);
+
+        LocalInfo = GlobalInfo->DeviceObject[Index]->DeviceExtension;
+        Status = SoundSaveDeviceName(GlobalInfo->DevicePathName, LocalInfo);
         if (!NT_SUCCESS(Status)) {
-            BcmSoundLog(pGDI, "Cannot list device %u (%08X)", Index, Status);
+            BcmSoundLog(GlobalInfo, "Cannot list device %u (%08X)", Index, Status);
             goto Fail;
         }
     }
 
-    MixerInitialize(pGDI);
+    MixerInitialize(GlobalInfo);
 
-    Vector = HalGetInterruptVector(Internal, 0, pGDI->InterruptLevel, pGDI->InterruptVector, &Irql, &Affinity);
-    Status = IoConnectInterrupt(&pGDI->WaveInfo.Interrupt, BcmSoundIsr, pGDI, NULL, Vector, Irql, Irql,
+    Vector = HalGetInterruptVector(Internal, 0, GlobalInfo->InterruptLevel, GlobalInfo->InterruptVector, &Irql,
+                                   &Affinity);
+    Status = IoConnectInterrupt(&GlobalInfo->WaveInfo.Interrupt, BcmSoundIsr, GlobalInfo, NULL, Vector, Irql, Irql,
                                 LevelSensitive, FALSE, Affinity, FALSE);
     if (!NT_SUCCESS(Status)) {
-        BcmSoundLog(pGDI, "No interrupt %u (%08X)", pGDI->InterruptVector, Status);
+        BcmSoundLog(GlobalInfo, "No interrupt %u (%08X)", GlobalInfo->InterruptVector, Status);
         goto Fail;
     }
 
-    if (NT_SUCCESS(IoRegisterShutdownNotification(pGDI->DeviceObject[WaveOutDevice]))) {
-        pGDI->ShutdownRegistered = TRUE;
+    if (NT_SUCCESS(IoRegisterShutdownNotification(GlobalInfo->DeviceObject[WAVE_OUT_DEVICE]))) {
+        GlobalInfo->ShutdownRegistered = TRUE;
     }
 
     DriverObject->MajorFunction[IRP_MJ_CREATE] = SoundDispatch;
@@ -902,27 +967,28 @@ Routine Description:
     DriverObject->MajorFunction[IRP_MJ_CLEANUP] = SoundDispatch;
     DriverObject->MajorFunction[IRP_MJ_SHUTDOWN] = BcmSoundShutdown;
 
-    BcmSoundGlobal = pGDI;
+    BcmSoundGlobal = GlobalInfo;
 
     //
     // With debug_sound=1, a silent self-test and the state of the hardware.
     //
 
-    if (pGDI->Debug) {
-        OutputSelfTest(pGDI);
+    if (GlobalInfo->Debug) {
+        OutputSelfTest(GlobalInfo);
     }
 
     //
     // HDMI audio runs from the start (silence until a sound plays).
     //
 
-    OutputEngineUpdate(pGDI);
+    OutputEngineUpdate(GlobalInfo);
 
-    BcmSoundLog(pGDI, "Ready: wave output, mixer and FM synthesizer on %s",
-                pGDI->Output == OUTPUT_HDMI ? "HDMI" : pGDI->Output == OUTPUT_JACK ? "the jack" : "no output (silent)");
-    if (pGDI->LogFile != NULL) {
-        ZwClose(pGDI->LogFile);
-        pGDI->LogFile = NULL;
+    BcmSoundLog(GlobalInfo, "Ready: wave output, mixer and FM synthesizer on %s",
+                GlobalInfo->Output == OUTPUT_HDMI ? "HDMI" : GlobalInfo->Output == OUTPUT_JACK ? "the jack" :
+                "no output (silent)");
+    if (GlobalInfo->LogFile != NULL) {
+        ZwClose(GlobalInfo->LogFile);
+        GlobalInfo->LogFile = NULL;
     }
 
     return STATUS_SUCCESS;
@@ -934,36 +1000,37 @@ Fail:
     // the system unloads a driver that fails its start.
     //
 
-    if (pGDI->LogFile != NULL) {
-        ZwClose(pGDI->LogFile);
-        pGDI->LogFile = NULL;
+    if (GlobalInfo->LogFile != NULL) {
+        ZwClose(GlobalInfo->LogFile);
+        GlobalInfo->LogFile = NULL;
     }
 
-    if (pGDI->WaveInfo.Interrupt != NULL) {
-        IoDisconnectInterrupt(pGDI->WaveInfo.Interrupt);
+    if (GlobalInfo->WaveInfo.Interrupt != NULL) {
+        IoDisconnectInterrupt(GlobalInfo->WaveInfo.Interrupt);
     }
 
-    for (Index = 0; Index < NumberOfDevices; Index += 1) {
-        if (pGDI->DeviceObject[Index] != NULL) {
-            SoundFreeDevice(pGDI->DeviceObject[Index]);
+    for (Index = 0; Index < NUMBER_OF_DEVICES; Index += 1) {
+        if (GlobalInfo->DeviceObject[Index] != NULL) {
+            SoundFreeDevice(GlobalInfo->DeviceObject[Index]);
         }
     }
 
-    if (pGDI->Output == OUTPUT_JACK) {
-        OutputShutdown(pGDI);
+    if (GlobalInfo->Output == OUTPUT_JACK) {
+        OutputShutdown(GlobalInfo);
     }
 
-    if (pGDI->WaveInfo.DMABuf.VirtualAddress != NULL) {
-        SoundFreeCommonBuffer(&pGDI->WaveInfo.DMABuf);
+    if (GlobalInfo->WaveInfo.DMABuf.VirtualAddress != NULL) {
+        SoundFreeCommonBuffer(&GlobalInfo->WaveInfo.DMABuf);
     }
 
-    if (pGDI->DevicePathName != NULL) {
-        ExFreePool(pGDI->DevicePathName);
-    }
-    if (pGDI->RegistryPathName != NULL) {
-        ExFreePool(pGDI->RegistryPathName);
+    if (GlobalInfo->DevicePathName != NULL) {
+        ExFreePool(GlobalInfo->DevicePathName);
     }
 
-    ExFreePool(pGDI);
+    if (GlobalInfo->RegistryPathName != NULL) {
+        ExFreePool(GlobalInfo->RegistryPathName);
+    }
+
+    ExFreePool(GlobalInfo);
     return Status;
 }

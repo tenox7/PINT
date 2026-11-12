@@ -32,73 +32,76 @@ OutputEngineDeferred(
     IN PVOID Argument2
     );
 
-#define MEMORY_BARRIER()        __dsb(_ARM_BARRIER_SY)
-
-#define READ_REGISTER(Base, Offset)         READ_REGISTER_ULONG((PULONG)((Base) + (Offset)))
-#define WRITE_REGISTER(Base, Offset, Value) WRITE_REGISTER_ULONG((PULONG)((Base) + (Offset)), (Value))
-
 //
-// The PWM, its clock and its pins.
+// The PWM, its clock and its pins. The jack's PWM of a BCM2711 is PWM1.
 //
 
-#define PWM_OFFSET              0x20C000
-#define PWM1_OFFSET             0x20C800        // the jack's PWM of a BCM2711
-#define PWM_SIZE                0x28
-#define PWM_CTL                 0x00
-#define PWM_STA                 0x04
-#define PWM_DMAC                0x08
-#define PWM_RNG1                0x10
-#define PWM_DAT1                0x14
-#define PWM_FIF1                0x18
-#define PWM_RNG2                0x20
-#define PWM_DAT2                0x24
+#define PWM_OFFSET                  0x20C000
+#define PWM1_OFFSET                 0x20C800
+#define PWM_SIZE                    0x28
+#define PWM_CTL                     0x00
+#define PWM_STA                     0x04
+#define PWM_DMAC                    0x08
+#define PWM_RNG1                    0x10
+#define PWM_DAT1                    0x14
+#define PWM_FIF1                    0x18
+#define PWM_RNG2                    0x20
+#define PWM_DAT2                    0x24
 
-#define PWM_CTL_PWEN1           0x00000001
-#define PWM_CTL_RPTL1           0x00000004
-#define PWM_CTL_USEF1           0x00000020
-#define PWM_CTL_MSEN1           0x00000080
-#define PWM_CTL_CLRF1           0x00000040
-#define PWM_CTL_PWEN2           0x00000100
-#define PWM_CTL_RPTL2           0x00000400
-#define PWM_CTL_USEF2           0x00002000
-#define PWM_CTL_MSEN2           0x00008000
-#define PWM_STA_ERRORS          0x0000010C
-#define PWM_DMAC_ENAB           0x80000000
-#define PWM_DMAC_PANIC(x)       ((x) << 8)
-#define PWM_DMAC_DREQ(x)        (x)
+#define PWM_CTL_PWEN1               0x00000001
+#define PWM_CTL_RPTL1               0x00000004
+#define PWM_CTL_USEF1               0x00000020
+#define PWM_CTL_MSEN1               0x00000080
+#define PWM_CTL_CLRF1               0x00000040
+#define PWM_CTL_PWEN2               0x00000100
+#define PWM_CTL_RPTL2               0x00000400
+#define PWM_CTL_USEF2               0x00002000
+#define PWM_CTL_MSEN2               0x00008000
+#define PWM_STA_ERRORS              0x0000010C
+#define PWM_DMAC_ENAB               0x80000000
+#define PWM_DMAC_PANIC(Threshold)   ((Threshold) << 8)
+#define PWM_DMAC_DREQ(Threshold)    (Threshold)
 
-#define PWM_RUN                 (PWM_CTL_PWEN1 | PWM_CTL_USEF1 | PWM_CTL_MSEN1 | PWM_CTL_RPTL1 | \
-                                 PWM_CTL_PWEN2 | PWM_CTL_USEF2 | PWM_CTL_MSEN2 | PWM_CTL_RPTL2)
+#define PWM_RUN                     (PWM_CTL_PWEN1 | PWM_CTL_USEF1 | PWM_CTL_MSEN1 | PWM_CTL_RPTL1 | \
+                                     PWM_CTL_PWEN2 | PWM_CTL_USEF2 | PWM_CTL_MSEN2 | PWM_CTL_RPTL2)
 
-#define PWM_DREQ                5               // PWM (of a BCM2835-7)
-#define PWM1_DREQ               1               // PWM1 (of a BCM2711)
+//
+// The DREQs of the PWM (of a BCM2835-7) and of PWM1 (of a BCM2711).
+//
 
-#define CLOCK_OFFSET            0x101000
-#define CLOCK_SIZE              0x100
-#define CM_PWMCTL               0xA0
-#define CM_PWMDIV               0xA4
-#define CM_PASSWORD             0x5A000000
-#define CM_SRC_PLLD             6
-#define CM_ENAB                 0x00000010
-#define CM_BUSY                 0x00000080
+#define PWM_DREQ                    5
+#define PWM1_DREQ                   1
 
-#define PWM_CLOCK               250000000
-#define PWM_CLOCK_BCM2711       125000000
-#define PLLD_RATE               500000000       // of a BCM2835-7
-#define PLLD_RATE_BCM2711       750000000
+#define CLOCK_OFFSET                0x101000
+#define CLOCK_SIZE                  0x100
+#define CM_PWMCTL                   0xA0
+#define CM_PWMDIV                   0xA4
+#define CM_PASSWORD                 0x5A000000
+#define CM_SRC_PLLD                 6
+#define CM_ENAB                     0x00000010
+#define CM_BUSY                     0x00000080
 
-#define GPIO_OFFSET             0x200000
-#define GPIO_SIZE               0x100
-#define GPIO_GPFSEL4            0x10
-#define GPIO_ALT0               4
-#define BOARD_PI2               0x04
+//
+// The clock of the PWM and the rate of PLLD, of a BCM2835-7 and of a BCM2711.
+//
+
+#define PWM_CLOCK                   250000000
+#define PWM_CLOCK_BCM2711           125000000
+#define PLLD_RATE                   500000000
+#define PLLD_RATE_BCM2711           750000000
+
+#define GPIO_OFFSET                 0x200000
+#define GPIO_SIZE                   0x100
+#define GPIO_GPFSEL4                0x10
+#define GPIO_ALT0                   4
+#define BOARD_PI2                   0x04
 
 //
 // The boards: the type field of a revision code (new style), and those
 // with a 3.5 mm jack (2B, 3B, 3B+, 3A+, 4B).
 //
 
-#define BOARD_TYPE(Revision)    (((Revision) & 0x00800000) != 0 ? ((Revision) >> 4) & 0xFF : 0)
+#define BOARD_TYPE(Revision)        (((Revision) & 0x00800000) != 0 ? ((Revision) >> 4) & 0xFF : 0)
 
 static BOOLEAN
 BoardHasJack(
@@ -141,7 +144,7 @@ StallUntil(
 
 static BOOLEAN
 JackPresent(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 
 /*++
@@ -151,21 +154,29 @@ Routine Description:
     This routine tells whether the PWM answers: a range written reads back.
     In QEMU, which has no PWM, it reads 0.
 
+Arguments:
+
+    GlobalInfo - Supplies the global device information.
+
+Return Value:
+
+    TRUE if the PWM answers.
+
 --*/
 
 {
-    ULONG Saved = READ_REGISTER(pGDI->Pwm, PWM_RNG2);
+    ULONG Saved = READ_REGISTER(GlobalInfo->Pwm, PWM_RNG2);
     BOOLEAN Present;
 
-    WRITE_REGISTER(pGDI->Pwm, PWM_RNG2, 0x1234);
-    Present = READ_REGISTER(pGDI->Pwm, PWM_RNG2) == 0x1234;
-    WRITE_REGISTER(pGDI->Pwm, PWM_RNG2, Saved);
+    WRITE_REGISTER(GlobalInfo->Pwm, PWM_RNG2, 0x1234);
+    Present = READ_REGISTER(GlobalInfo->Pwm, PWM_RNG2) == 0x1234;
+    WRITE_REGISTER(GlobalInfo->Pwm, PWM_RNG2, Saved);
     return Present;
 }
 
 static VOID
 JackInitialize(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 
 /*++
@@ -177,47 +188,55 @@ Routine Description:
     channels from the FIFO at the middle level of a 48 kHz range, which they
     repeat until the DMA channel feeds them.
 
+Arguments:
+
+    GlobalInfo - Supplies the global device information.
+
+Return Value:
+
+    None.
+
 --*/
 
 {
-    BOOLEAN Bcm2711 = (pGDI->Hardware.Flags & BCMSOUND_BCM2711) != 0;
+    BOOLEAN Bcm2711 = (GlobalInfo->Hardware.Flags & BCMSOUND_BCM2711) != 0;
     ULONG Plld = Bcm2711 ? PLLD_RATE_BCM2711 : PLLD_RATE;
     ULONG Rate = Bcm2711 ? PWM_CLOCK_BCM2711 : PWM_CLOCK;
     ULONG Select;
 
-    WRITE_REGISTER(pGDI->Pwm, PWM_CTL, 0);
-    WRITE_REGISTER(pGDI->Pwm, PWM_DMAC, 0);
-    WRITE_REGISTER(pGDI->Clock, CM_PWMCTL, CM_PASSWORD | CM_SRC_PLLD);
-    StallUntil(pGDI->Clock, CM_PWMCTL, CM_BUSY, 0);
-    WRITE_REGISTER(pGDI->Clock, CM_PWMDIV, CM_PASSWORD | ((Plld / Rate) << 12));
-    WRITE_REGISTER(pGDI->Clock, CM_PWMCTL, CM_PASSWORD | CM_SRC_PLLD | CM_ENAB);
-    StallUntil(pGDI->Clock, CM_PWMCTL, CM_BUSY, CM_BUSY);
-    pGDI->PwmClock = Rate;
+    WRITE_REGISTER(GlobalInfo->Pwm, PWM_CTL, 0);
+    WRITE_REGISTER(GlobalInfo->Pwm, PWM_DMAC, 0);
+    WRITE_REGISTER(GlobalInfo->Clock, CM_PWMCTL, CM_PASSWORD | CM_SRC_PLLD);
+    StallUntil(GlobalInfo->Clock, CM_PWMCTL, CM_BUSY, 0);
+    WRITE_REGISTER(GlobalInfo->Clock, CM_PWMDIV, CM_PASSWORD | ((Plld / Rate) << 12));
+    WRITE_REGISTER(GlobalInfo->Clock, CM_PWMCTL, CM_PASSWORD | CM_SRC_PLLD | CM_ENAB);
+    StallUntil(GlobalInfo->Clock, CM_PWMCTL, CM_BUSY, CM_BUSY);
+    GlobalInfo->PwmClock = Rate;
 
-    Select = READ_REGISTER(pGDI->Gpio, GPIO_GPFSEL4);
-    if (pGDI->BoardType == BOARD_PI2) {
+    Select = READ_REGISTER(GlobalInfo->Gpio, GPIO_GPFSEL4);
+    if (GlobalInfo->BoardType == BOARD_PI2) {
         Select = (Select & ~(7 | (7 << 15))) | GPIO_ALT0 | (GPIO_ALT0 << 15);
     } else {
         Select = (Select & ~0x3F) | GPIO_ALT0 | (GPIO_ALT0 << 3);
     }
 
-    WRITE_REGISTER(pGDI->Gpio, GPIO_GPFSEL4, Select);
+    WRITE_REGISTER(GlobalInfo->Gpio, GPIO_GPFSEL4, Select);
 
-    pGDI->PwmRange = (Rate + 24000) / 48000;
-    WRITE_REGISTER(pGDI->Pwm, PWM_RNG1, pGDI->PwmRange);
-    WRITE_REGISTER(pGDI->Pwm, PWM_RNG2, pGDI->PwmRange);
-    WRITE_REGISTER(pGDI->Pwm, PWM_STA, PWM_STA_ERRORS);
-    WRITE_REGISTER(pGDI->Pwm, PWM_CTL, PWM_CTL_CLRF1);
+    GlobalInfo->PwmRange = (Rate + 24000) / 48000;
+    WRITE_REGISTER(GlobalInfo->Pwm, PWM_RNG1, GlobalInfo->PwmRange);
+    WRITE_REGISTER(GlobalInfo->Pwm, PWM_RNG2, GlobalInfo->PwmRange);
+    WRITE_REGISTER(GlobalInfo->Pwm, PWM_STA, PWM_STA_ERRORS);
+    WRITE_REGISTER(GlobalInfo->Pwm, PWM_CTL, PWM_CTL_CLRF1);
     KeStallExecutionProcessor(10);
-    WRITE_REGISTER(pGDI->Pwm, PWM_FIF1, pGDI->PwmRange / 2);
-    WRITE_REGISTER(pGDI->Pwm, PWM_FIF1, pGDI->PwmRange / 2);
-    WRITE_REGISTER(pGDI->Pwm, PWM_DMAC, PWM_DMAC_ENAB | PWM_DMAC_PANIC(7) | PWM_DMAC_DREQ(7));
-    WRITE_REGISTER(pGDI->Pwm, PWM_CTL, PWM_RUN);
+    WRITE_REGISTER(GlobalInfo->Pwm, PWM_FIF1, GlobalInfo->PwmRange / 2);
+    WRITE_REGISTER(GlobalInfo->Pwm, PWM_FIF1, GlobalInfo->PwmRange / 2);
+    WRITE_REGISTER(GlobalInfo->Pwm, PWM_DMAC, PWM_DMAC_ENAB | PWM_DMAC_PANIC(7) | PWM_DMAC_DREQ(7));
+    WRITE_REGISTER(GlobalInfo->Pwm, PWM_CTL, PWM_RUN);
 }
 
 BOOLEAN
 OutputInitialize(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 
 /*++
@@ -226,84 +245,96 @@ Routine Description:
 
     This routine maps the registers, chooses the output and makes the ring.
 
+Arguments:
+
+    GlobalInfo - Supplies the global device information.
+
+Return Value:
+
+    TRUE, or FALSE if the registers cannot be mapped.
+
 --*/
 
 {
-    ULONG Base = pGDI->Hardware.PeripheralBase;
-    BOOLEAN Bcm2711 = (pGDI->Hardware.Flags & BCMSOUND_BCM2711) != 0;
-    BOOLEAN Jack = FALSE, Hdmi = FALSE, HdmiAudio = FALSE;
+    ULONG Base = GlobalInfo->Hardware.PeripheralBase;
+    BOOLEAN Bcm2711 = (GlobalInfo->Hardware.Flags & BCMSOUND_BCM2711) != 0;
+    BOOLEAN Jack = FALSE;
+    BOOLEAN Hdmi = FALSE;
+    BOOLEAN HdmiAudio = FALSE;
     DEVICE_DESCRIPTION Description;
     PHYSICAL_ADDRESS Logical;
-    ULONG MapRegisters_;
+    ULONG MapRegisterCount;
 
-    pGDI->BoardType = BOARD_TYPE(pGDI->Hardware.BoardRevision);
-    pGDI->HasJack = BoardHasJack(pGDI->BoardType);
-    pGDI->DmaChannel = MapRegisters(Base + DMA_OFFSET + pGDI->Hardware.DmaChannel * DMA_CHANNEL_SIZE, DMA_CHANNEL_SIZE);
-    pGDI->DmaEnable = MapRegisters(Base + DMA_OFFSET + DMA_ENABLE, sizeof(ULONG));
-    pGDI->Pwm = MapRegisters(Base + (Bcm2711 ? PWM1_OFFSET : PWM_OFFSET), PWM_SIZE);
-    pGDI->Clock = MapRegisters(Base + CLOCK_OFFSET, CLOCK_SIZE);
-    pGDI->Gpio = MapRegisters(Base + GPIO_OFFSET, GPIO_SIZE);
-    if (pGDI->DmaChannel == NULL || pGDI->DmaEnable == NULL || pGDI->Pwm == NULL || pGDI->Clock == NULL ||
-        pGDI->Gpio == NULL) {
-        BcmSoundLog(pGDI, "Cannot map the registers");
+    GlobalInfo->BoardType = BOARD_TYPE(GlobalInfo->Hardware.BoardRevision);
+    GlobalInfo->HasJack = BoardHasJack(GlobalInfo->BoardType);
+    GlobalInfo->DmaChannel = MapRegisters(Base + DMA_OFFSET + GlobalInfo->Hardware.DmaChannel * DMA_CHANNEL_SIZE,
+                                          DMA_CHANNEL_SIZE);
+    GlobalInfo->DmaEnable = MapRegisters(Base + DMA_OFFSET + DMA_ENABLE, sizeof(ULONG));
+    GlobalInfo->Pwm = MapRegisters(Base + (Bcm2711 ? PWM1_OFFSET : PWM_OFFSET), PWM_SIZE);
+    GlobalInfo->Clock = MapRegisters(Base + CLOCK_OFFSET, CLOCK_SIZE);
+    GlobalInfo->Gpio = MapRegisters(Base + GPIO_OFFSET, GPIO_SIZE);
+    if (GlobalInfo->DmaChannel == NULL || GlobalInfo->DmaEnable == NULL || GlobalInfo->Pwm == NULL ||
+        GlobalInfo->Clock == NULL || GlobalInfo->Gpio == NULL) {
+        BcmSoundLog(GlobalInfo, "Cannot map the registers");
         return FALSE;
     }
 
-    pGDI->PwmFifoBus = BUS_PERIPHERAL_BASE + (Bcm2711 ? PWM1_OFFSET : PWM_OFFSET) + PWM_FIF1;
-    pGDI->PwmDreq = Bcm2711 ? PWM1_DREQ : PWM_DREQ;
+    GlobalInfo->PwmFifoBus = BUS_PERIPHERAL_BASE + (Bcm2711 ? PWM1_OFFSET : PWM_OFFSET) + PWM_FIF1;
+    GlobalInfo->PwmDreq = Bcm2711 ? PWM1_DREQ : PWM_DREQ;
 
-    if ((pGDI->Hardware.Flags & BCMSOUND_EMULATED) != 0) {
-        BcmSoundLog(pGDI, "Emulated board (QEMU): no output, silent");
-        pGDI->Setting = OUTPUT_NONE;
-    } else if (pGDI->HasJack) {
-        Jack = JackPresent(pGDI);
-        BcmSoundLog(pGDI, "Board type %02X has a jack; the PWM %s", pGDI->BoardType,
+    if ((GlobalInfo->Hardware.Flags & BCMSOUND_EMULATED) != 0) {
+        BcmSoundLog(GlobalInfo, "Emulated board (QEMU): no output, silent");
+        GlobalInfo->Setting = OUTPUT_NONE;
+    } else if (GlobalInfo->HasJack) {
+        Jack = JackPresent(GlobalInfo);
+        BcmSoundLog(GlobalInfo, "Board type %02X has a jack; the PWM %s", GlobalInfo->BoardType,
                     Jack ? "answers" : "does not answer (QEMU?)");
     } else {
-        BcmSoundLog(pGDI, "Board type %02X has no jack", pGDI->BoardType);
+        BcmSoundLog(GlobalInfo, "Board type %02X has no jack", GlobalInfo->BoardType);
     }
 
-    Hdmi = pGDI->Setting != OUTPUT_NONE && HdmiInitialize(pGDI);
+    Hdmi = GlobalInfo->Setting != OUTPUT_NONE && HdmiInitialize(GlobalInfo);
     if (Hdmi) {
-        HdmiAudio = HdmiSinkHasAudio(pGDI);
-        BcmSoundLog(pGDI, "HDMI: the display %s sound", HdmiAudio ? "takes" : "does not say it takes");
+        HdmiAudio = HdmiSinkHasAudio(GlobalInfo);
+        BcmSoundLog(GlobalInfo, "HDMI: the display %s sound", HdmiAudio ? "takes" : "does not say it takes");
     }
 
-    switch (pGDI->Setting) {
+    switch (GlobalInfo->Setting) {
     case OUTPUT_HDMI:
-        pGDI->Output = Hdmi ? OUTPUT_HDMI : OUTPUT_NONE;
+        GlobalInfo->Output = Hdmi ? OUTPUT_HDMI : OUTPUT_NONE;
         break;
 
     case OUTPUT_JACK:
-        pGDI->Output = Jack ? OUTPUT_JACK : OUTPUT_NONE;
+        GlobalInfo->Output = Jack ? OUTPUT_JACK : OUTPUT_NONE;
         break;
 
     case OUTPUT_NONE:
-        pGDI->Output = OUTPUT_NONE;
+        GlobalInfo->Output = OUTPUT_NONE;
         break;
 
     default:
-        pGDI->Output = Hdmi && (HdmiAudio || !Jack) ? OUTPUT_HDMI : Jack ? OUTPUT_JACK : OUTPUT_NONE;
+        GlobalInfo->Output = Hdmi && (HdmiAudio || !Jack) ? OUTPUT_HDMI : Jack ? OUTPUT_JACK : OUTPUT_NONE;
         break;
     }
 
-    BcmSoundLog(pGDI, "Setting %s: output %s",
-                pGDI->Setting == OUTPUT_HDMI ? "HDMI" : pGDI->Setting == OUTPUT_JACK ? "JACK" :
-                pGDI->Setting == OUTPUT_NONE ? "NONE" : "AUTO",
-                pGDI->Output == OUTPUT_HDMI ? "HDMI" : pGDI->Output == OUTPUT_JACK ? "jack" : "none (silent)");
+    BcmSoundLog(GlobalInfo, "Setting %s: output %s",
+                GlobalInfo->Setting == OUTPUT_HDMI ? "HDMI" : GlobalInfo->Setting == OUTPUT_JACK ? "JACK" :
+                GlobalInfo->Setting == OUTPUT_NONE ? "NONE" : "AUTO",
+                GlobalInfo->Output == OUTPUT_HDMI ? "HDMI" : GlobalInfo->Output == OUTPUT_JACK ? "jack" :
+                "none (silent)");
 
     //
     // The engine: its lock, its deferred routine (the end of a half), the
     // timer of the silent output and the synthesizer, at the output's rate.
     //
 
-    KeInitializeSpinLock(&pGDI->EngineLock);
-    KeInitializeDpc(&pGDI->EngineDpc, OutputEngineDeferred, pGDI);
-    KeInitializeTimer(&pGDI->Timer);
-    KeInitializeDpc(&pGDI->TimerDpc, OutputEngineDeferred, pGDI);
-    Opl3Init(&pGDI->Synth, OUTPUT_RATE);
+    KeInitializeSpinLock(&GlobalInfo->EngineLock);
+    KeInitializeDpc(&GlobalInfo->EngineDpc, OutputEngineDeferred, GlobalInfo);
+    KeInitializeTimer(&GlobalInfo->Timer);
+    KeInitializeDpc(&GlobalInfo->TimerDpc, OutputEngineDeferred, GlobalInfo);
+    Opl3Init(&GlobalInfo->Synth, OUTPUT_RATE);
 
-    if (pGDI->Output == OUTPUT_NONE) {
+    if (GlobalInfo->Output == OUTPUT_NONE) {
         return TRUE;
     }
 
@@ -318,24 +349,24 @@ Routine Description:
     Description.Dma32BitAddresses = TRUE;
     Description.InterfaceType = Internal;
     Description.MaximumLength = 2 * RING_HALF_SIZE + PAGE_SIZE;
-    pGDI->RingAdapter = HalGetAdapter(&Description, &MapRegisters_);
-    if (pGDI->RingAdapter != NULL) {
-        pGDI->Ring = HalAllocateCommonBuffer(pGDI->RingAdapter, Description.MaximumLength, &Logical, FALSE);
+    GlobalInfo->RingAdapter = HalGetAdapter(&Description, &MapRegisterCount);
+    if (GlobalInfo->RingAdapter != NULL) {
+        GlobalInfo->Ring = HalAllocateCommonBuffer(GlobalInfo->RingAdapter, Description.MaximumLength, &Logical, FALSE);
     }
 
-    if (pGDI->Ring == NULL) {
-        BcmSoundLog(pGDI, "No ring for the DMA channel: silent");
-        pGDI->Output = OUTPUT_NONE;
+    if (GlobalInfo->Ring == NULL) {
+        BcmSoundLog(GlobalInfo, "No ring for the DMA channel: silent");
+        GlobalInfo->Output = OUTPUT_NONE;
         return TRUE;
     }
 
-    pGDI->RingBus = Logical.LowPart;
-    pGDI->ControlBlocks = (PDMA_CONTROL_BLOCK)(pGDI->Ring + 2 * RING_HALF_SIZE);
-    pGDI->ControlBlocksBus = pGDI->RingBus + 2 * RING_HALF_SIZE;
-    BcmSoundLog(pGDI, "Ring at bus address %08X", pGDI->RingBus);
+    GlobalInfo->RingBus = Logical.LowPart;
+    GlobalInfo->ControlBlocks = (PDMA_CONTROL_BLOCK)(GlobalInfo->Ring + 2 * RING_HALF_SIZE);
+    GlobalInfo->ControlBlocksBus = GlobalInfo->RingBus + 2 * RING_HALF_SIZE;
+    BcmSoundLog(GlobalInfo, "Ring at bus address %08X", GlobalInfo->RingBus);
 
-    if (pGDI->Output == OUTPUT_JACK) {
-        JackInitialize(pGDI);
+    if (GlobalInfo->Output == OUTPUT_JACK) {
+        JackInitialize(GlobalInfo);
     }
 
     return TRUE;
@@ -355,23 +386,23 @@ Routine Description:
 
 static VOID
 EncodeFrame(
-    IN PGLOBAL_DEVICE_INFO pGDI,
+    IN PGLOBAL_DEVICE_INFO GlobalInfo,
     OUT PULONG Words,
     IN LONG Left,
     IN LONG Right
     )
 {
-    if (pGDI->Output == OUTPUT_JACK) {
-        Words[0] = ((ULONG)(Right + 32768) * pGDI->PwmRange) >> 16;
-        Words[1] = ((ULONG)(Left + 32768) * pGDI->PwmRange) >> 16;
+    if (GlobalInfo->Output == OUTPUT_JACK) {
+        Words[0] = ((ULONG)(Right + 32768) * GlobalInfo->PwmRange) >> 16;
+        Words[1] = ((ULONG)(Left + 32768) * GlobalInfo->PwmRange) >> 16;
     } else {
-        HdmiEncode(pGDI, Words, Left, Right);
+        HdmiEncode(GlobalInfo, Words, Left, Right);
     }
 }
 
 static VOID
 ReadWaveFrame(
-    IN PGLOBAL_DEVICE_INFO pGDI,
+    IN PGLOBAL_DEVICE_INFO GlobalInfo,
     OUT PLONG Frame
     )
 
@@ -382,31 +413,41 @@ Routine Description:
     This routine reads the next frame of soundlib's buffer, as 16-bit left
     and right, and notes when the reading passes into the other half.
 
+Arguments:
+
+    GlobalInfo - Supplies the global device information.
+
+    Frame - Receives the left and right samples of the frame.
+
+Return Value:
+
+    None.
+
 --*/
 
 {
-    PUCHAR Source = (PUCHAR)pGDI->WaveInfo.DMABuf.VirtualAddress + pGDI->WaveOffset;
+    PUCHAR Source = (PUCHAR)GlobalInfo->WaveInfo.DMABuf.VirtualAddress + GlobalInfo->WaveOffset;
 
-    if (pGDI->Bits == 8) {
+    if (GlobalInfo->Bits == 8) {
         Frame[0] = ((LONG)Source[0] - 128) << 8;
-        Frame[1] = pGDI->Channels == 2 ? ((LONG)Source[1] - 128) << 8 : Frame[0];
+        Frame[1] = GlobalInfo->Channels == 2 ? ((LONG)Source[1] - 128) << 8 : Frame[0];
     } else {
         Frame[0] = (SHORT)(Source[0] | (Source[1] << 8));
-        Frame[1] = pGDI->Channels == 2 ? (SHORT)(Source[2] | (Source[3] << 8)) : Frame[0];
+        Frame[1] = GlobalInfo->Channels == 2 ? (SHORT)(Source[2] | (Source[3] << 8)) : Frame[0];
     }
 
-    pGDI->WaveOffset += pGDI->FrameSize;
-    if (pGDI->WaveOffset >= pGDI->BufferSize) {
-        pGDI->WaveOffset = 0;
-        pGDI->WaveCrossed += 1;
-    } else if (pGDI->WaveOffset == pGDI->BufferSize / 2) {
-        pGDI->WaveCrossed += 1;
+    GlobalInfo->WaveOffset += GlobalInfo->FrameSize;
+    if (GlobalInfo->WaveOffset >= GlobalInfo->BufferSize) {
+        GlobalInfo->WaveOffset = 0;
+        GlobalInfo->WaveCrossed += 1;
+    } else if (GlobalInfo->WaveOffset == GlobalInfo->BufferSize / 2) {
+        GlobalInfo->WaveCrossed += 1;
     }
 }
 
 static VOID
 MixHalf(
-    IN PGLOBAL_DEVICE_INFO pGDI,
+    IN PGLOBAL_DEVICE_INFO GlobalInfo,
     IN ULONG Half
     )
 
@@ -419,27 +460,41 @@ Routine Description:
     the synthesizer all the same, in time). It is called holding the lock of
     the engine.
 
+Arguments:
+
+    GlobalInfo - Supplies the global device information.
+
+    Half - Supplies the half of the ring to mix, 0 or 1.
+
+Return Value:
+
+    None.
+
 --*/
 
 {
-    PULONG Words = pGDI->Ring == NULL ? NULL : (PULONG)(pGDI->Ring + Half * RING_HALF_SIZE);
+    PULONG Words = GlobalInfo->Ring == NULL ? NULL : (PULONG)(GlobalInfo->Ring + Half * RING_HALF_SIZE);
     BOOLEAN Wave;
-    BOOLEAN Synth = pGDI->SynthOpen;
-    LONG Mix[2], Interpolated;
-    ULONG Frame, Channel, Phase;
+    BOOLEAN Synth = GlobalInfo->SynthOpen;
+    LONG Mix[2];
+    LONG Interpolated;
+    ULONG Frame;
+    ULONG Channel;
+    ULONG Phase;
 
     //
     // Soundlib may end the playing of its buffer without a stop (the last
     // of the sound played): the reading ends with it.
     //
 
-    if (pGDI->WaveActive && !pGDI->WaveInfo.DMABusy) {
-        pGDI->WaveActive = FALSE;
+    if (GlobalInfo->WaveActive && !GlobalInfo->WaveInfo.DMABusy) {
+        GlobalInfo->WaveActive = FALSE;
     }
-    Wave = pGDI->WaveActive;
+
+    Wave = GlobalInfo->WaveActive;
 
     if (Synth) {
-        Opl3Render(&pGDI->Synth, pGDI->SynthFrames, RING_FRAMES);
+        Opl3Render(&GlobalInfo->Synth, GlobalInfo->SynthFrames, RING_FRAMES);
     }
 
     for (Frame = 0; Frame < RING_FRAMES; Frame += 1) {
@@ -453,24 +508,27 @@ Routine Description:
         //
 
         if (Wave) {
-            pGDI->WavePhase += pGDI->WaveStep;
-            while (pGDI->WavePhase >= 0x10000) {
-                pGDI->WavePhase -= 0x10000;
-                pGDI->WavePrevious[0] = pGDI->WaveCurrent[0];
-                pGDI->WavePrevious[1] = pGDI->WaveCurrent[1];
-                ReadWaveFrame(pGDI, pGDI->WaveCurrent);
+            GlobalInfo->WavePhase += GlobalInfo->WaveStep;
+            while (GlobalInfo->WavePhase >= 0x10000) {
+                GlobalInfo->WavePhase -= 0x10000;
+                GlobalInfo->WavePrevious[0] = GlobalInfo->WaveCurrent[0];
+                GlobalInfo->WavePrevious[1] = GlobalInfo->WaveCurrent[1];
+                ReadWaveFrame(GlobalInfo, GlobalInfo->WaveCurrent);
             }
-            Phase = pGDI->WavePhase >> 2;
+
+            Phase = GlobalInfo->WavePhase >> 2;
             for (Channel = 0; Channel < 2; Channel += 1) {
-                Interpolated = pGDI->WavePrevious[Channel] +
-                               (((pGDI->WaveCurrent[Channel] - pGDI->WavePrevious[Channel]) * (LONG)Phase) >> 14);
-                Mix[Channel] += (Interpolated * (LONG)pGDI->WaveGain[Channel]) >> 16;
+                Interpolated = GlobalInfo->WavePrevious[Channel] +
+                               (((GlobalInfo->WaveCurrent[Channel] - GlobalInfo->WavePrevious[Channel]) *
+                                 (LONG)Phase) >> 14);
+                Mix[Channel] += (Interpolated * (LONG)GlobalInfo->WaveGain[Channel]) >> 16;
             }
         }
 
         if (Synth) {
             for (Channel = 0; Channel < 2; Channel += 1) {
-                Mix[Channel] += ((LONG)pGDI->SynthFrames[2 * Frame + Channel] * (LONG)pGDI->SynthGain[Channel]) >> 16;
+                Mix[Channel] += ((LONG)GlobalInfo->SynthFrames[2 * Frame + Channel] *
+                                 (LONG)GlobalInfo->SynthGain[Channel]) >> 16;
             }
         }
 
@@ -479,8 +537,8 @@ Routine Description:
         // playing silence.
         //
 
-        if (pGDI->ToneFrames != 0) {
-            pGDI->ToneFrames -= 1;
+        if (GlobalInfo->SelfTestFrames != 0) {
+            GlobalInfo->SelfTestFrames -= 1;
         }
 
         if (Words != NULL) {
@@ -491,7 +549,8 @@ Routine Description:
                     Mix[Channel] = -32768;
                 }
             }
-            EncodeFrame(pGDI, Words, Mix[0], Mix[1]);
+
+            EncodeFrame(GlobalInfo, Words, Mix[0], Mix[1]);
             Words += 2;
         }
     }
@@ -503,29 +562,29 @@ Routine Description:
 
 static ULONG
 PlayingHalf(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 {
-    return READ_REGISTER(pGDI->DmaChannel, DMA_CONBLK_AD) == pGDI->ControlBlocksBus + sizeof(DMA_CONTROL_BLOCK) ?
-           1 : 0;
+    return READ_REGISTER(GlobalInfo->DmaChannel, DMA_CONBLK_AD) ==
+           GlobalInfo->ControlBlocksBus + sizeof(DMA_CONTROL_BLOCK) ? 1 : 0;
 }
 
 static VOID
 DmaStop(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 {
-    WRITE_REGISTER(pGDI->DmaChannel, DMA_CS, 0);
-    StallUntil(pGDI->DmaChannel, DMA_CS, DMA_CS_ACTIVE, 0);
-    WRITE_REGISTER(pGDI->DmaChannel, DMA_CS, DMA_CS_RESET);
+    WRITE_REGISTER(GlobalInfo->DmaChannel, DMA_CS, 0);
+    StallUntil(GlobalInfo->DmaChannel, DMA_CS, DMA_CS_ACTIVE, 0);
+    WRITE_REGISTER(GlobalInfo->DmaChannel, DMA_CS, DMA_CS_RESET);
     KeStallExecutionProcessor(10);
-    WRITE_REGISTER(pGDI->DmaChannel, DMA_CS, DMA_CS_INT | DMA_CS_END);
-    WRITE_REGISTER(pGDI->DmaChannel, DMA_DEBUG, DMA_DEBUG_ERRORS);
+    WRITE_REGISTER(GlobalInfo->DmaChannel, DMA_CS, DMA_CS_INT | DMA_CS_END);
+    WRITE_REGISTER(GlobalInfo->DmaChannel, DMA_DEBUG, DMA_DEBUG_ERRORS);
 }
 
 static VOID
 DmaStart(
-    IN PGLOBAL_DEVICE_INFO pGDI,
+    IN PGLOBAL_DEVICE_INFO GlobalInfo,
     IN ULONG TransferInformation,
     IN ULONG Destination
     )
@@ -538,29 +597,43 @@ Routine Description:
     a half, each ending in an interrupt and leading to the other; it starts
     with half 0.
 
+Arguments:
+
+    GlobalInfo - Supplies the global device information.
+
+    TransferInformation - Supplies the transfer information of the control
+        blocks.
+
+    Destination - Supplies the bus address of the FIFO the channel feeds.
+
+Return Value:
+
+    None.
+
 --*/
 
 {
     ULONG Half;
 
     for (Half = 0; Half < 2; Half += 1) {
-        pGDI->ControlBlocks[Half].TransferInformation = TransferInformation;
-        pGDI->ControlBlocks[Half].SourceAddress = pGDI->RingBus + Half * RING_HALF_SIZE;
-        pGDI->ControlBlocks[Half].DestinationAddress = Destination;
-        pGDI->ControlBlocks[Half].TransferLength = RING_HALF_SIZE;
-        pGDI->ControlBlocks[Half].Stride = 0;
-        pGDI->ControlBlocks[Half].NextControlBlock = pGDI->ControlBlocksBus + (1 - Half) * sizeof(DMA_CONTROL_BLOCK);
-        pGDI->ControlBlocks[Half].Reserved[0] = 0;
-        pGDI->ControlBlocks[Half].Reserved[1] = 0;
+        GlobalInfo->ControlBlocks[Half].TransferInformation = TransferInformation;
+        GlobalInfo->ControlBlocks[Half].SourceAddress = GlobalInfo->RingBus + Half * RING_HALF_SIZE;
+        GlobalInfo->ControlBlocks[Half].DestinationAddress = Destination;
+        GlobalInfo->ControlBlocks[Half].TransferLength = RING_HALF_SIZE;
+        GlobalInfo->ControlBlocks[Half].Stride = 0;
+        GlobalInfo->ControlBlocks[Half].NextControlBlock = GlobalInfo->ControlBlocksBus +
+                                                           (1 - Half) * sizeof(DMA_CONTROL_BLOCK);
+        GlobalInfo->ControlBlocks[Half].Reserved[0] = 0;
+        GlobalInfo->ControlBlocks[Half].Reserved[1] = 0;
     }
 
     MEMORY_BARRIER();
-    WRITE_REGISTER(pGDI->DmaEnable, 0,
-                   READ_REGISTER(pGDI->DmaEnable, 0) | (1 << pGDI->Hardware.DmaChannel));
-    DmaStop(pGDI);
-    WRITE_REGISTER(pGDI->DmaChannel, DMA_CONBLK_AD, pGDI->ControlBlocksBus);
-    WRITE_REGISTER(pGDI->DmaChannel, DMA_CS, DMA_CS_ACTIVE | DMA_CS_PRIORITY(8) | DMA_CS_PANIC_PRIORITY(15) |
-                                             DMA_CS_WAIT_WRITES);
+    WRITE_REGISTER(GlobalInfo->DmaEnable, 0,
+                   READ_REGISTER(GlobalInfo->DmaEnable, 0) | (1 << GlobalInfo->Hardware.DmaChannel));
+    DmaStop(GlobalInfo);
+    WRITE_REGISTER(GlobalInfo->DmaChannel, DMA_CONBLK_AD, GlobalInfo->ControlBlocksBus);
+    WRITE_REGISTER(GlobalInfo->DmaChannel, DMA_CS, DMA_CS_ACTIVE | DMA_CS_PRIORITY(8) | DMA_CS_PANIC_PRIORITY(15) |
+                                                   DMA_CS_WAIT_WRITES);
 }
 
 //
@@ -569,74 +642,78 @@ Routine Description:
 
 static BOOLEAN
 EngineStart(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 {
     LARGE_INTEGER Due;
-    ULONG TransferInformation, Destination;
+    ULONG TransferInformation;
+    ULONG Destination;
 
-    pGDI->IdleHalves = 0;
-    pGDI->HalvesDone = 0;
+    GlobalInfo->IdleHalves = 0;
+    GlobalInfo->HalvesDone = 0;
 
-    if (pGDI->Output == OUTPUT_NONE) {
+    if (GlobalInfo->Output == OUTPUT_NONE) {
         Due.QuadPart = -(LONGLONG)RING_HALF_TIME;
-        KeSetTimer(&pGDI->Timer, Due, &pGDI->TimerDpc);
-        pGDI->Running = TRUE;
+        KeSetTimer(&GlobalInfo->Timer, Due, &GlobalInfo->TimerDpc);
+        GlobalInfo->Running = TRUE;
         return TRUE;
     }
 
-    if (pGDI->Output == OUTPUT_HDMI) {
-        HdmiResetFrames(pGDI);
-        if (!HdmiStart(pGDI, OUTPUT_RATE)) {
+    if (GlobalInfo->Output == OUTPUT_HDMI) {
+        HdmiResetFrames(GlobalInfo);
+        if (!HdmiStart(GlobalInfo, OUTPUT_RATE)) {
             return FALSE;
         }
+
         TransferInformation = DMA_TI_INTEN | DMA_TI_WAIT_RESP | DMA_TI_DEST_DREQ | DMA_TI_SRC_INC | DMA_TI_SRC_WIDTH |
-                              DMA_TI_PERMAP(HdmiDreq(pGDI));
-        Destination = HdmiFifoBus(pGDI);
+                              DMA_TI_PERMAP(HdmiDreq(GlobalInfo));
+        Destination = HdmiFifoBus(GlobalInfo);
     } else {
-        WRITE_REGISTER(pGDI->Pwm, PWM_STA, PWM_STA_ERRORS);
+        WRITE_REGISTER(GlobalInfo->Pwm, PWM_STA, PWM_STA_ERRORS);
         TransferInformation = DMA_TI_INTEN | DMA_TI_WAIT_RESP | DMA_TI_DEST_DREQ | DMA_TI_SRC_INC |
-                              DMA_TI_PERMAP(pGDI->PwmDreq);
-        Destination = pGDI->PwmFifoBus;
+                              DMA_TI_PERMAP(GlobalInfo->PwmDreq);
+        Destination = GlobalInfo->PwmFifoBus;
     }
 
-    MixHalf(pGDI, 0);
-    MixHalf(pGDI, 1);
-    pGDI->Running = TRUE;
-    DmaStart(pGDI, TransferInformation, Destination);
-    if (pGDI->Output == OUTPUT_HDMI) {
-        HdmiEnable(pGDI);
+    MixHalf(GlobalInfo, 0);
+    MixHalf(GlobalInfo, 1);
+    GlobalInfo->Running = TRUE;
+    DmaStart(GlobalInfo, TransferInformation, Destination);
+    if (GlobalInfo->Output == OUTPUT_HDMI) {
+        HdmiEnable(GlobalInfo);
     }
+
     return TRUE;
 }
 
 static VOID
 EngineStop(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 {
-    if (pGDI->Output == OUTPUT_NONE) {
-        KeCancelTimer(&pGDI->Timer);
+    if (GlobalInfo->Output == OUTPUT_NONE) {
+        KeCancelTimer(&GlobalInfo->Timer);
     } else {
-        DmaStop(pGDI);
-        if (pGDI->Output == OUTPUT_HDMI) {
-            HdmiStop(pGDI);
+        DmaStop(GlobalInfo);
+        if (GlobalInfo->Output == OUTPUT_HDMI) {
+            HdmiStop(GlobalInfo);
         } else {
 
             //
             // The jack keeps the last level: the middle one.
             //
 
-            WRITE_REGISTER(pGDI->Pwm, PWM_FIF1, pGDI->PwmRange / 2);
-            WRITE_REGISTER(pGDI->Pwm, PWM_FIF1, pGDI->PwmRange / 2);
+            WRITE_REGISTER(GlobalInfo->Pwm, PWM_FIF1, GlobalInfo->PwmRange / 2);
+            WRITE_REGISTER(GlobalInfo->Pwm, PWM_FIF1, GlobalInfo->PwmRange / 2);
         }
     }
-    pGDI->Running = FALSE;
+
+    GlobalInfo->Running = FALSE;
 }
 
 VOID
 OutputEngineUpdate(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 
 /*++
@@ -648,16 +725,26 @@ Routine Description:
     others stop by themselves, a ring after their last sound
     (OutputEngineDeferred).
 
+Arguments:
+
+    GlobalInfo - Supplies the global device information.
+
+Return Value:
+
+    None.
+
 --*/
 
 {
     KIRQL Irql;
 
-    KeAcquireSpinLock(&pGDI->EngineLock, &Irql);
-    if (!pGDI->Running && (pGDI->WaveActive || pGDI->SynthOpen || pGDI->Output == OUTPUT_HDMI)) {
-        EngineStart(pGDI);
+    KeAcquireSpinLock(&GlobalInfo->EngineLock, &Irql);
+    if (!GlobalInfo->Running &&
+        (GlobalInfo->WaveActive || GlobalInfo->SynthOpen || GlobalInfo->Output == OUTPUT_HDMI)) {
+        EngineStart(GlobalInfo);
     }
-    KeReleaseSpinLock(&pGDI->EngineLock, Irql);
+
+    KeReleaseSpinLock(&GlobalInfo->EngineLock, Irql);
 }
 
 //
@@ -677,15 +764,24 @@ Routine Description:
     buffer the reading has passed (BcmSoundDeferred calls it once for each),
     synchronized with the interrupt as soundlib's flag of a queued call is.
 
+Arguments:
+
+    Context - Supplies the global device information.
+
+Return Value:
+
+    TRUE.
+
 --*/
 
 {
-    PGLOBAL_DEVICE_INFO pGDI = Context;
+    PGLOBAL_DEVICE_INFO GlobalInfo = Context;
 
-    if (pGDI->WaveInfo.DMABusy && !pGDI->WaveInfo.DpcQueued) {
-        pGDI->WaveInfo.DpcQueued = TRUE;
-        IoRequestDpc(pGDI->WaveInfo.DeviceObject, NULL, NULL);
+    if (GlobalInfo->WaveInfo.DMABusy && !GlobalInfo->WaveInfo.DpcQueued) {
+        GlobalInfo->WaveInfo.DpcQueued = TRUE;
+        IoRequestDpc(GlobalInfo->WaveInfo.DeviceObject, NULL, NULL);
     }
+
     return TRUE;
 }
 
@@ -706,16 +802,28 @@ Routine Description:
     routine when the wave output passed into the other half of its buffer,
     and stops the engine when nothing has played for a whole ring.
 
+Arguments:
+
+    Dpc - Not used.
+
+    Context - Supplies the global device information.
+
+    Argument1, Argument2 - Not used.
+
+Return Value:
+
+    None.
+
 --*/
 
 {
-    PGLOBAL_DEVICE_INFO pGDI = Context;
+    PGLOBAL_DEVICE_INFO GlobalInfo = Context;
     ULONG Crossed;
     ULONG Half;
 
-    KeAcquireSpinLockAtDpcLevel(&pGDI->EngineLock);
-    if (!pGDI->Running) {
-        KeReleaseSpinLockFromDpcLevel(&pGDI->EngineLock);
+    KeAcquireSpinLockAtDpcLevel(&GlobalInfo->EngineLock);
+    if (!GlobalInfo->Running) {
+        KeReleaseSpinLockFromDpcLevel(&GlobalInfo->EngineLock);
         return;
     }
 
@@ -725,17 +833,17 @@ Routine Description:
     // (EngineStop cancels it).
     //
 
-    if (pGDI->Output == OUTPUT_NONE) {
+    if (GlobalInfo->Output == OUTPUT_NONE) {
         LARGE_INTEGER Due;
 
         Due.QuadPart = -(LONGLONG)RING_HALF_TIME;
-        KeSetTimer(&pGDI->Timer, Due, &pGDI->TimerDpc);
+        KeSetTimer(&GlobalInfo->Timer, Due, &GlobalInfo->TimerDpc);
     }
 
-    if (pGDI->WaveActive || pGDI->SynthOpen || pGDI->ToneFrames != 0) {
-        pGDI->IdleHalves = 0;
+    if (GlobalInfo->WaveActive || GlobalInfo->SynthOpen || GlobalInfo->SelfTestFrames != 0) {
+        GlobalInfo->IdleHalves = 0;
     } else {
-        pGDI->IdleHalves += 1;
+        GlobalInfo->IdleHalves += 1;
     }
 
     //
@@ -744,58 +852,61 @@ Routine Description:
     // each sound, or a short sound whole.
     //
 
-    if (pGDI->IdleHalves > 2 && pGDI->Output != OUTPUT_HDMI) {
-        EngineStop(pGDI);
-        KeReleaseSpinLockFromDpcLevel(&pGDI->EngineLock);
+    if (GlobalInfo->IdleHalves > 2 && GlobalInfo->Output != OUTPUT_HDMI) {
+        EngineStop(GlobalInfo);
+        KeReleaseSpinLockFromDpcLevel(&GlobalInfo->EngineLock);
         return;
     }
 
-    Half = pGDI->Output == OUTPUT_NONE ? 0 : PlayingHalf(pGDI) ^ 1;
-    MixHalf(pGDI, Half);
-    Crossed = pGDI->WaveCrossed;
-    KeReleaseSpinLockFromDpcLevel(&pGDI->EngineLock);
+    Half = GlobalInfo->Output == OUTPUT_NONE ? 0 : PlayingHalf(GlobalInfo) ^ 1;
+    MixHalf(GlobalInfo, Half);
+    Crossed = GlobalInfo->WaveCrossed;
+    KeReleaseSpinLockFromDpcLevel(&GlobalInfo->EngineLock);
 
-    if (Crossed != 0 && pGDI->WaveInfo.Interrupt != NULL) {
-        KeSynchronizeExecution(pGDI->WaveInfo.Interrupt, RequestWaveDeferred, pGDI);
+    if (Crossed != 0 && GlobalInfo->WaveInfo.Interrupt != NULL) {
+        KeSynchronizeExecution(GlobalInfo->WaveInfo.Interrupt, RequestWaveDeferred, GlobalInfo);
     }
 }
 
 BOOLEAN
 OutputInterrupt(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 {
     ULONG Status;
 
-    if (pGDI->Output == OUTPUT_NONE) {
+    if (GlobalInfo->Output == OUTPUT_NONE) {
         return FALSE;
     }
-    Status = READ_REGISTER(pGDI->DmaChannel, DMA_CS);
+
+    Status = READ_REGISTER(GlobalInfo->DmaChannel, DMA_CS);
     if ((Status & DMA_CS_INT) == 0) {
         return FALSE;
     }
-    WRITE_REGISTER(pGDI->DmaChannel, DMA_CS, Status & ~(DMA_CS_ABORT | DMA_CS_RESET));
-    pGDI->HalvesDone += 1;
-    KeInsertQueueDpc(&pGDI->EngineDpc, NULL, NULL);
+
+    WRITE_REGISTER(GlobalInfo->DmaChannel, DMA_CS, Status & ~(DMA_CS_ABORT | DMA_CS_RESET));
+    GlobalInfo->HalvesDone += 1;
+    KeInsertQueueDpc(&GlobalInfo->EngineDpc, NULL, NULL);
     return TRUE;
 }
 
 VOID
 OutputShutdown(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 {
     KIRQL Irql;
 
-    KeAcquireSpinLock(&pGDI->EngineLock, &Irql);
-    pGDI->WaveActive = FALSE;
-    pGDI->SynthOpen = FALSE;
-    if (pGDI->Running) {
-        EngineStop(pGDI);
+    KeAcquireSpinLock(&GlobalInfo->EngineLock, &Irql);
+    GlobalInfo->WaveActive = FALSE;
+    GlobalInfo->SynthOpen = FALSE;
+    if (GlobalInfo->Running) {
+        EngineStop(GlobalInfo);
     }
-    KeReleaseSpinLock(&pGDI->EngineLock, Irql);
-    if (pGDI->Output == OUTPUT_JACK) {
-        WRITE_REGISTER(pGDI->Pwm, PWM_DMAC, 0);
+
+    KeReleaseSpinLock(&GlobalInfo->EngineLock, Irql);
+    if (GlobalInfo->Output == OUTPUT_JACK) {
+        WRITE_REGISTER(GlobalInfo->Pwm, PWM_DMAC, 0);
     }
 }
 
@@ -818,13 +929,13 @@ OutputSetFormat(
     IN PWAVE_INFO WaveInfo
     )
 {
-    PGLOBAL_DEVICE_INFO pGDI = WaveInfo->HwContext;
+    PGLOBAL_DEVICE_INFO GlobalInfo = WaveInfo->HwContext;
 
-    pGDI->Rate = WaveInfo->SamplesPerSec;
-    pGDI->Bits = WaveInfo->BitsPerSample;
-    pGDI->Channels = WaveInfo->Channels;
-    pGDI->FrameSize = pGDI->Bits / 8 * pGDI->Channels;
-    pGDI->WaveStep = (ULONG)(((ULONGLONG)pGDI->Rate << 16) / OUTPUT_RATE);
+    GlobalInfo->Rate = WaveInfo->SamplesPerSec;
+    GlobalInfo->Bits = WaveInfo->BitsPerSample;
+    GlobalInfo->Channels = WaveInfo->Channels;
+    GlobalInfo->FrameSize = GlobalInfo->Bits / 8 * GlobalInfo->Channels;
+    GlobalInfo->WaveStep = (ULONG)(((ULONGLONG)GlobalInfo->Rate << 16) / OUTPUT_RATE);
     return TRUE;
 }
 
@@ -841,28 +952,37 @@ Routine Description:
     the engine if it is not running. A half programmed from soundlib's
     deferred routine (BcmSoundDeferred) continues the reading.
 
+Arguments:
+
+    WaveInfo - Supplies soundlib's wave information of the device.
+
+Return Value:
+
+    TRUE, or FALSE if the engine could not start.
+
 --*/
 
 {
-    PGLOBAL_DEVICE_INFO pGDI = WaveInfo->HwContext;
+    PGLOBAL_DEVICE_INFO GlobalInfo = WaveInfo->HwContext;
     BOOLEAN Started = TRUE;
 
-    if (pGDI->InWaveDeferred && pGDI->WaveActive) {
+    if (GlobalInfo->InWaveDeferred && GlobalInfo->WaveActive) {
         return TRUE;
     }
 
-    KeAcquireSpinLockAtDpcLevel(&pGDI->EngineLock);
-    pGDI->BufferSize = WaveInfo->DoubleBuffer.BufferSize;
-    pGDI->WaveOffset = 0;
-    pGDI->WavePhase = 0;
-    pGDI->WaveCrossed = 0;
-    pGDI->WavePrevious[0] = pGDI->WavePrevious[1] = 0;
-    pGDI->WaveCurrent[0] = pGDI->WaveCurrent[1] = 0;
-    pGDI->WaveActive = TRUE;
-    if (!pGDI->Running) {
-        Started = EngineStart(pGDI);
+    KeAcquireSpinLockAtDpcLevel(&GlobalInfo->EngineLock);
+    GlobalInfo->BufferSize = WaveInfo->DoubleBuffer.BufferSize;
+    GlobalInfo->WaveOffset = 0;
+    GlobalInfo->WavePhase = 0;
+    GlobalInfo->WaveCrossed = 0;
+    GlobalInfo->WavePrevious[0] = GlobalInfo->WavePrevious[1] = 0;
+    GlobalInfo->WaveCurrent[0] = GlobalInfo->WaveCurrent[1] = 0;
+    GlobalInfo->WaveActive = TRUE;
+    if (!GlobalInfo->Running) {
+        Started = EngineStart(GlobalInfo);
     }
-    KeReleaseSpinLockFromDpcLevel(&pGDI->EngineLock);
+
+    KeReleaseSpinLockFromDpcLevel(&GlobalInfo->EngineLock);
     return Started;
 }
 
@@ -879,22 +999,30 @@ Routine Description:
     on (at most a ring), and the engine stops by itself when nothing more
     plays.
 
+Arguments:
+
+    WaveInfo - Supplies soundlib's wave information of the device.
+
+Return Value:
+
+    TRUE.
+
 --*/
 
 {
-    PGLOBAL_DEVICE_INFO pGDI = WaveInfo->HwContext;
+    PGLOBAL_DEVICE_INFO GlobalInfo = WaveInfo->HwContext;
     KIRQL Irql;
 
-    KeAcquireSpinLock(&pGDI->EngineLock, &Irql);
-    pGDI->WaveActive = FALSE;
-    pGDI->WaveCrossed = 0;
-    KeReleaseSpinLock(&pGDI->EngineLock, Irql);
+    KeAcquireSpinLock(&GlobalInfo->EngineLock, &Irql);
+    GlobalInfo->WaveActive = FALSE;
+    GlobalInfo->WaveCrossed = 0;
+    KeReleaseSpinLock(&GlobalInfo->EngineLock, Irql);
     return TRUE;
 }
 
 VOID
 OutputLogState(
-    IN PGLOBAL_DEVICE_INFO pGDI,
+    IN PGLOBAL_DEVICE_INFO GlobalInfo,
     IN PCHAR Event
     )
 
@@ -907,30 +1035,44 @@ Routine Description:
     interrupts), the format of the wave output and where its buffer is read,
     the gains, and the registers of the DMA channel and of the output.
 
+Arguments:
+
+    GlobalInfo - Supplies the global device information.
+
+    Event - Supplies the text of the event.
+
+Return Value:
+
+    None.
+
 --*/
 
 {
-    if (!pGDI->Debug) {
+    if (!GlobalInfo->Debug) {
         return;
     }
 
-    BcmSoundLog(pGDI, "%s: output %s, %u halves; wave %s %u Hz %u-bit %u ch, read at %u of %u; synth %s; gains wave %u/%u synth %u/%u",
-                Event, pGDI->Running ? "running" : "stopped", pGDI->HalvesDone,
-                pGDI->WaveActive ? "active" : "idle", pGDI->Rate, pGDI->Bits, pGDI->Channels,
-                pGDI->WaveOffset, pGDI->BufferSize, pGDI->SynthOpen ? "open" : "closed",
-                pGDI->WaveGain[0], pGDI->WaveGain[1], pGDI->SynthGain[0], pGDI->SynthGain[1]);
-    if (pGDI->Output != OUTPUT_NONE) {
-        BcmSoundLog(pGDI, "    DMA CS %08X CONBLK %08X LEN %08X DEBUG %08X; %s %08X",
-                    READ_REGISTER(pGDI->DmaChannel, DMA_CS), READ_REGISTER(pGDI->DmaChannel, DMA_CONBLK_AD),
-                    READ_REGISTER(pGDI->DmaChannel, DMA_TXFR_LEN), READ_REGISTER(pGDI->DmaChannel, DMA_DEBUG),
-                    pGDI->Output == OUTPUT_HDMI ? "MAI_CTL" : "PWM STA",
-                    pGDI->Output == OUTPUT_HDMI ? HdmiReadControl(pGDI) : READ_REGISTER(pGDI->Pwm, PWM_STA));
+    BcmSoundLog(GlobalInfo,
+                "%s: output %s, %u halves; wave %s %u Hz %u-bit %u ch, read at %u of %u; synth %s; "
+                "gains wave %u/%u synth %u/%u",
+                Event, GlobalInfo->Running ? "running" : "stopped", GlobalInfo->HalvesDone,
+                GlobalInfo->WaveActive ? "active" : "idle", GlobalInfo->Rate, GlobalInfo->Bits, GlobalInfo->Channels,
+                GlobalInfo->WaveOffset, GlobalInfo->BufferSize, GlobalInfo->SynthOpen ? "open" : "closed",
+                GlobalInfo->WaveGain[0], GlobalInfo->WaveGain[1], GlobalInfo->SynthGain[0], GlobalInfo->SynthGain[1]);
+    if (GlobalInfo->Output != OUTPUT_NONE) {
+        BcmSoundLog(GlobalInfo, "    DMA CS %08X CONBLK %08X LEN %08X DEBUG %08X; %s %08X",
+                    READ_REGISTER(GlobalInfo->DmaChannel, DMA_CS), READ_REGISTER(GlobalInfo->DmaChannel, DMA_CONBLK_AD),
+                    READ_REGISTER(GlobalInfo->DmaChannel, DMA_TXFR_LEN),
+                    READ_REGISTER(GlobalInfo->DmaChannel, DMA_DEBUG),
+                    GlobalInfo->Output == OUTPUT_HDMI ? "MAI_CTL" : "PWM STA",
+                    GlobalInfo->Output == OUTPUT_HDMI ? HdmiReadControl(GlobalInfo) :
+                    READ_REGISTER(GlobalInfo->Pwm, PWM_STA));
     }
 }
 
 VOID
 OutputSelfTest(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 
 /*++
@@ -938,9 +1080,17 @@ OutputSelfTest(
 Routine Description:
 
     This routine (debug_sound=1, at the start) runs the output for two
-    seconds, silent, and logs what the hardware did in its first 400 ms: the halves played (the interrupts
-    of the DMA channel), the state of the DMA channel and, for HDMI, of the
-    MAI. It is called at PASSIVE_LEVEL.
+    seconds, silent, and logs what the hardware did in its first 400 ms: the
+    halves played (the interrupts of the DMA channel), the state of the DMA
+    channel and, for HDMI, of the MAI. It is called at PASSIVE_LEVEL.
+
+Arguments:
+
+    GlobalInfo - Supplies the global device information.
+
+Return Value:
+
+    None.
 
 --*/
 
@@ -950,36 +1100,44 @@ Routine Description:
     ULONG Step;
     BOOLEAN Started;
 
-    KeAcquireSpinLock(&pGDI->EngineLock, &Irql);
-    pGDI->ToneFrames = OUTPUT_RATE * 2;
-    Started = pGDI->Running || EngineStart(pGDI);
-    KeReleaseSpinLock(&pGDI->EngineLock, Irql);
+    KeAcquireSpinLock(&GlobalInfo->EngineLock, &Irql);
+    GlobalInfo->SelfTestFrames = OUTPUT_RATE * 2;
+    Started = GlobalInfo->Running || EngineStart(GlobalInfo);
+    KeReleaseSpinLock(&GlobalInfo->EngineLock, Irql);
     if (!Started) {
-        BcmSoundLog(pGDI, "Self-test: the output did not start");
-        pGDI->ToneFrames = 0;
+        BcmSoundLog(GlobalInfo, "Self-test: the output did not start");
+        GlobalInfo->SelfTestFrames = 0;
         return;
     }
 
     for (Step = 0; Step < 4; Step += 1) {
-        Delay.QuadPart = -1000000;      // 100 ms
+
+        //
+        // 100 ms.
+        //
+
+        Delay.QuadPart = -1000000;
         KeDelayExecutionThread(KernelMode, FALSE, &Delay);
-        if (pGDI->Output == OUTPUT_NONE) {
-            BcmSoundLog(pGDI, "Self-test +%u ms: %u halves", (Step + 1) * 100, pGDI->HalvesDone);
+        if (GlobalInfo->Output == OUTPUT_NONE) {
+            BcmSoundLog(GlobalInfo, "Self-test +%u ms: %u halves", (Step + 1) * 100, GlobalInfo->HalvesDone);
         } else {
-            BcmSoundLog(pGDI, "Self-test +%u ms: %u halves (interrupts); DMA CS %08X CONBLK %08X LEN %08X DEBUG %08X",
-                        (Step + 1) * 100, pGDI->HalvesDone,
-                        READ_REGISTER(pGDI->DmaChannel, DMA_CS), READ_REGISTER(pGDI->DmaChannel, DMA_CONBLK_AD),
-                        READ_REGISTER(pGDI->DmaChannel, DMA_TXFR_LEN), READ_REGISTER(pGDI->DmaChannel, DMA_DEBUG));
-            if (pGDI->Output == OUTPUT_HDMI) {
-                BcmSoundLog(pGDI, "    MAI_CTL %08X", HdmiReadControl(pGDI));
+            BcmSoundLog(GlobalInfo,
+                        "Self-test +%u ms: %u halves (interrupts); DMA CS %08X CONBLK %08X LEN %08X DEBUG %08X",
+                        (Step + 1) * 100, GlobalInfo->HalvesDone,
+                        READ_REGISTER(GlobalInfo->DmaChannel, DMA_CS),
+                        READ_REGISTER(GlobalInfo->DmaChannel, DMA_CONBLK_AD),
+                        READ_REGISTER(GlobalInfo->DmaChannel, DMA_TXFR_LEN),
+                        READ_REGISTER(GlobalInfo->DmaChannel, DMA_DEBUG));
+            if (GlobalInfo->Output == OUTPUT_HDMI) {
+                BcmSoundLog(GlobalInfo, "    MAI_CTL %08X", HdmiReadControl(GlobalInfo));
             } else {
-                BcmSoundLog(pGDI, "    PWM STA %08X", READ_REGISTER(pGDI->Pwm, PWM_STA));
+                BcmSoundLog(GlobalInfo, "    PWM STA %08X", READ_REGISTER(GlobalInfo->Pwm, PWM_STA));
             }
         }
     }
 
-    if (pGDI->Output == OUTPUT_HDMI) {
-        HdmiLogState(pGDI);
+    if (GlobalInfo->Output == OUTPUT_HDMI) {
+        HdmiLogState(GlobalInfo);
     }
 
     //
@@ -989,7 +1147,7 @@ Routine Description:
 
 ULONG
 OutputTakeCrossings(
-    IN PGLOBAL_DEVICE_INFO pGDI
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
     )
 
 /*++
@@ -999,17 +1157,26 @@ Routine Description:
     This routine takes one of the halves the reading has passed, for a call
     of soundlib's deferred routine; it returns 0 when there is none.
 
+Arguments:
+
+    GlobalInfo - Supplies the global device information.
+
+Return Value:
+
+    1 if a half was taken, else 0.
+
 --*/
 
 {
     ULONG Taken = 0;
     KIRQL Irql;
 
-    KeAcquireSpinLock(&pGDI->EngineLock, &Irql);
-    if (pGDI->WaveCrossed != 0) {
-        pGDI->WaveCrossed -= 1;
+    KeAcquireSpinLock(&GlobalInfo->EngineLock, &Irql);
+    if (GlobalInfo->WaveCrossed != 0) {
+        GlobalInfo->WaveCrossed -= 1;
         Taken = 1;
     }
-    KeReleaseSpinLock(&pGDI->EngineLock, Irql);
+
+    KeReleaseSpinLock(&GlobalInfo->EngineLock, Irql);
     return Taken;
 }

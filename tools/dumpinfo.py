@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Read an NT crash dump of PINT (ARM): C:\\WINNT\\MEMORY.DMP, which savedump writes at the
-start after a STOP screen (crash_dump=1 and total_mem= in config.txt), copied off the card; or
-C:\\pagefile.sys before that start.
+"""dumpinfo.py DUMP [ADDRESS...]: read an NT crash dump of PINT (ARM), C:\\WINNT\\MEMORY.DMP,
+which savedump writes at the start after a STOP screen (crash_dump=1 and total_mem= in
+config.txt), copied off the card; or C:\\pagefile.sys before that start.
 
 It prints the STOP code and its parameters, the registers at the bug check, the loaded
 drivers (from PsLoadedModuleList, through the page tables of the dump), and the driver
@@ -124,7 +124,7 @@ def place(mods, value):
 
 def main():
     if len(sys.argv) < 2:
-        sys.exit(__doc__)
+        sys.exit('usage: dumpinfo.py DUMP [ADDRESS...]')
     d = Dump(sys.argv[1])
     code, *params = d.bugcheck
     print('STOP 0x%08X (0x%08X, 0x%08X, 0x%08X, 0x%08X)' % (code, *params))

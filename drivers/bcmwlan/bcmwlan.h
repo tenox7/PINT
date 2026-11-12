@@ -20,14 +20,6 @@ Abstract:
 #include <stdarg.h>
 #include "bcmwlanhw.h"
 
-//
-// NdisFillMemory is not in the ndis.h of NT 3.5.
-//
-
-#ifndef NdisFillMemory
-#define NdisFillMemory(Destination, Length, Fill) RtlFillMemory(Destination, Length, Fill)
-#endif
-
 #define BCMWLAN_NDIS_MAJOR_VERSION  3
 #define BCMWLAN_NDIS_MINOR_VERSION  0
 
@@ -49,8 +41,16 @@ Abstract:
 #define SLOT_SIZE                   2048
 
 //
-// The security of the network to join (wifi_security= of config.txt, or the registry
-// value Security).
+// NdisFillMemory is not in the ndis.h of NT 3.5.
+//
+
+#ifndef NdisFillMemory
+#define NdisFillMemory(Destination, Length, Fill) RtlFillMemory(Destination, Length, Fill)
+#endif
+
+//
+// The security of the network to join (wifi_security= of config.txt, or the
+// registry value Security).
 //
 
 #define SECURITY_OPEN               0
