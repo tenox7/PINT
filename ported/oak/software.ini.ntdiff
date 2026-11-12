@@ -14,12 +14,62 @@
 +                            bindform = "Bcmeth1" yes yes container
 +                            class = REG_MULTI_SZ "bcmethAdapter basic"
 +                            InfOption = BCMETH
++                    2
++                        ServiceName = Bcmwlan1
++                        Manufacturer = Microsoft
++                        Title = [2] Raspberry Pi Wireless Adapter
++                        Description = Raspberry Pi Wireless Adapter
++                        ProductName = Bcmwlan
+=1 876 1 8
++                        NetRules
++                            InfName = OEMNADBW.INF
++                            type = bcmwlan bcmwlanAdapter
++                            bindform = "Bcmwlan1" yes yes container
++                            class = REG_MULTI_SZ "bcmwlanAdapter basic"
++                            InfOption = BCMWLAN
 +#endif // defined(_RASPI_) && !defined(_NETIDW_SETUP_)
 =1 881 365
 +#if defined(_RASPI_)
 +                    Taskman=taskman.exe /tasklist
 +#endif // defined(_RASPI_)
-=1 1246 526
+=1 1246 162
++#if defined(_RASPI_)
++                    bcmsnd32.dll = Raspberry Pi Sound
++#endif
+=1 1408 8
++#if defined(_RASPI_)
++                    //
++                    // The Raspberry Pi's sound driver (bcmsound.sys) and its multimedia driver,
++                    // as the Windows Sound System's sndsys32.dll is installed: wave, mixer, aux
++                    // and MIDI (its FM synthesizer); mmdrv.dll's devices are those of drivers
++                    // named for it (\Device\WaveOut0), which the port has none of.
++                    //
++                    wave=bcmsnd32.dll
++                    midi=bcmsnd32.dll
++                    aux=bcmsnd32.dll
++                    mixer=bcmsnd32.dll
++#else
+=1 1416 3
++#endif
+=1 1419 338
++#if defined(_RASPI_) && !defined(_NETIDW_SETUP_)
++                        //
++                        // The Server Manager extension of the FTP Server (OEMNSVFT.INF).
++                        //
++                        ftpsmx = ftpsmx.dll
++#endif // defined(_RASPI_) && !defined(_NETIDW_SETUP_)
+=1 1757 5
++#if defined(_RASPI_)
++                    //
++                    // The setup of the MIDI Mapper (through which Media Player plays MIDI files):
++                    // that of the Raspberry Pi's FM synthesizer in MIDIMAP.CFG, which the build
++                    // makes from the Windows Sound System's (tools/midimap.pl).
++                    //
++                    Mapping Name=Raspberry Pi
++#else
+=1 1762 1
++#endif
+=1 1763 9
 +#if defined(_RASPI_) && !defined(_NETIDW_SETUP_)
 +                ncacn_nb_tcp0 = REG_DWORD 0x00000000
 +#endif // defined(_RASPI_) && !defined(_NETIDW_SETUP_)
@@ -61,6 +111,24 @@
 +                    class = REG_MULTI_SZ "bcmethDriver basic"
 +                    bindable = REG_MULTI_SZ "bcmethDriver bcmethAdapter non exclusive 100"
 +                    InfOption = BCMETH
++        Bcmwlan
++            CurrentVersion
++                ServiceName = Bcmwlan
++                RefCount = REG_DWORD 0x00000001
++                SoftwareType = driver
++                MajorVersion = REG_DWORD 0x00000003
++                MinorVersion = REG_DWORD 0x00000005
++                Title = Raspberry Pi Wireless Adapter Driver
++                Description = Raspberry Pi Wireless Adapter Driver
+=1 876 1
++                NetRules
++                    InfName = OEMNADBW.INF
++                    type = bcmwlanSys ndisDriver bcmwlanDriver
++                    use = driver
++                    bindform = "BcmwlanSys" yes no container
++                    class = REG_MULTI_SZ "bcmwlanDriver basic"
++                    bindable = REG_MULTI_SZ "bcmwlanDriver bcmwlanAdapter non exclusive 100"
++                    InfOption = BCMWLAN
 +        Browser
 +            CurrentVersion
 +                ServiceName = Browser
@@ -74,6 +142,23 @@
 +                NetRules
 +                    InfName = OEMNSVWK.INF
 +                    InfOption = BROWSER
++        //
++        // The FTP Server (ftpsvc.dll, in tcpsvcs.exe) as OEMNSVFT.INF installs it (Network in
++        // Control Panel, Add Software, TCP/IP Protocol): its service is in SYSTEM.INI.
++        //
++        FTPSVC
++            CurrentVersion
++                ServiceName = FTPSVC
++                RefCount = REG_DWORD 0x00000000
++                SoftwareType = service
++                MajorVersion = REG_DWORD 0x00000003
++                MinorVersion = REG_DWORD 0x00000005
++                Title = FTP Server
++                Description = FTP Server
+=1 876 1
++                NetRules
++                    InfName = OEMNSVFT.INF
++                    InfOption = FTPD
 +        LanmanServer
 +            CurrentVersion
 +                ServiceName = LanmanServer

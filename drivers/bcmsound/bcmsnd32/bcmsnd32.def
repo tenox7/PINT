@@ -1,0 +1,11 @@
+LIBRARY BCMSND32
+
+DESCRIPTION 'Raspberry Pi Sound'
+
+EXPORTS
+    DriverProc
+    mxdMessage
+    auxMessage
+    wodMessage
+    widMessage
+    modMessage = modSynthMessage

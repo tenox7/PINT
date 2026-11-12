@@ -158,6 +158,66 @@
 +                        IPAddress = REG_MULTI_SZ "0.0.0.0" 
 +                        DefaultGateway = REG_MULTI_SZ 
 +                        SubnetMask = REG_MULTI_SZ "0.0.0.0" 
++            //
++            // The sound driver (bcmsound: a wave output, a mixer and an FM synthesizer, which it
++            // lists in Parameters\Device0\Devices for its multimedia driver bcmsnd32.dll, as
++            // the Windows Sound System's does), playing through HDMI or the 3.5 mm jack as
++            // sound_output of C:\CONFIG.TXT says. A board whose firmware describes no sound
++            // hardware fails it quietly. It starts with the system, as the sound drivers NT
++            // installs do: Winlogon counts the wave devices when it starts, before the service
++            // controller starts the automatic drivers, and without one plays no logon or
++            // logoff sound.
++            //
++            Bcmsound
++                Type = REG_DWORD 0x00000001
++                Start = REG_DWORD 0x00000001
++                ErrorControl = REG_DWORD 0x00000000
++                ImagePath = REG_EXPAND_SZ \SystemRoot\System32\drivers\bcmsound.sys
++                DisplayName = Raspberry Pi Sound Driver
++                Group = Base
++                Parameters
++                    Device0
++
++            //
++            // The on-board wireless adapter (bcmwlan, adapter Bcmwlan1), bound like the
++            // Ethernet adapter to TCP/IP with DHCP, NetBIOS over TCP/IP and the server and
++            // workstation services. A board without the chip fails it quietly (ErrorControl
++            // Ignore): the firmware describes no wireless controller there.
++            //
++            Bcmwlan
++                Type = REG_DWORD 0x00000001
++                Start = REG_DWORD 0x00000003
++                ErrorControl = REG_DWORD 0x00000000
++                ImagePath = REG_EXPAND_SZ \SystemRoot\System32\drivers\bcmwlan.sys
++                DisplayName = Raspberry Pi Wireless Adapter Driver
++                Group = NDIS
++                Linkage
++                    Bind = REG_MULTI_SZ "\Device\Bcmwlan1"
++                    Export = REG_MULTI_SZ "\Device\Bcmwlan1"
++                    Disabled
++                        Bind = REG_MULTI_SZ
++                        Export = REG_MULTI_SZ
++                        Route = REG_MULTI_SZ
++                Parameters
++
++            Bcmwlan1
++                Type = REG_DWORD 0x00000004
++                Start = REG_DWORD 0x00000003
++                ErrorControl = REG_DWORD 0x00000000
++                Linkage
++                    Disabled
++                Parameters
+=1 3042 1
++                    BusType = REG_DWORD 0x00000000
+=1 3039 1
++                    AdapterType = REG_DWORD 0x00000002
++                    Tcpip
++                        EnableDHCP = REG_DWORD 0x00000001
++                        UseZeroBroadcast = REG_DWORD 0x00000000
++                        IPAddress = REG_MULTI_SZ "0.0.0.0"
++                        DefaultGateway = REG_MULTI_SZ
++                        SubnetMask = REG_MULTI_SZ "0.0.0.0"
++
 +            Browser
 +                Type = REG_DWORD 0x00000020
 +                Start = REG_DWORD 0x00000002
@@ -223,6 +283,45 @@
 +                        0x00000225  0x00000201  0x00180000  0x000201fd  0x00000101  0x05000000  0x00000012  0x00000225  
 +                        0x00000101  0x05000000  0x00000012  0x00000101  0x05000000  0x00000012  
 +
++            //
++            // The FTP Server of NT 3.5 (ftpsvc.dll, in tcpsvcs.exe) as OEMNSVFT.INF installs it,
++            // with these differences: it starts on demand (Services in Control Panel, or NET
++            // START FTPSVC), anonymous logons are allowed beside those of the accounts of the
++            // machine, and every drive is read and written (the masks have a bit for each drive
++            // letter; setup leaves them 0, no drive), to bring files to the machine. The home
++            // directory is the service's default, the root of C: (no HomeDirectory value). The
++            // anonymous user is FTP_RASPI, which the first boot makes (REGISTRY.INI) with the
++            // LSA secret that holds its password (FTPANON), without which the service allows
++            // no anonymous logon. Directories are listed as ls -l does, which every client
++            // reads; the MS-DOS style of the default prints the year 2026 as 126. The FTP
++            // Server applet of Control Panel changes these.
++            //
++            FTPSVC
++                Type = REG_DWORD 0x00000020
++                Start = REG_DWORD 0x00000003
++                ErrorControl = REG_DWORD 0x00000001
++                ImagePath = REG_EXPAND_SZ %SystemRoot%\System32\tcpsvcs.exe
++                DisplayName = FTP Server
++                DependOnService = REG_MULTI_SZ "Tcpip" "Afd"
++                DependOnGroup = REG_MULTI_SZ
++                ObjectName = LocalSystem
++                Linkage
++                    Disabled
++                Parameters
++                    MaxConnections = REG_DWORD 20
++                    AllowAnonymous = REG_DWORD 1
++                    AnonymousUsername = FTP_RASPI
++                    AnonymousOnly = REG_DWORD 0
++                    ReadAccessMask = REG_DWORD 0x03FFFFFF
++                    WriteAccessMask = REG_DWORD 0x03FFFFFF
++                    ConnectionTimeout = REG_DWORD 600
++                    MsdosDirOutput = REG_DWORD 0
++                Performance
++                    Library = ftpctrs.dll
++                    Open = OpenFtpPerformanceData
++                    Close = CloseFtpPerformanceData
++                    Collect = CollectFtpPerformanceData
++
 +            LanmanServer
 +                Type = REG_DWORD 0x00000020
 +                Start = REG_DWORD 0x00000002
@@ -234,8 +333,8 @@
 +                DependOnGroup = REG_MULTI_SZ "TDI" 
 +                AutotunedParameters
 +                Linkage
-+                    Bind = REG_MULTI_SZ "\Device\NetBT_Bcmeth1" 
-+                    Export = REG_MULTI_SZ "\Device\LanmanServer\NetBT_Bcmeth1" 
++                    Bind = REG_MULTI_SZ "\Device\NetBT_Bcmeth1" "\Device\NetBT_Bcmwlan1"
++                    Export = REG_MULTI_SZ "\Device\LanmanServer\NetBT_Bcmeth1" "\Device\LanmanServer\NetBT_Bcmwlan1"
 +                    Disabled
 +                        Bind = REG_MULTI_SZ 
 +                        Export = REG_MULTI_SZ 
@@ -273,8 +372,8 @@
 +                DependOnGroup = REG_MULTI_SZ "TDI" 
 +                Linkage
 +                    OtherDependencies = REG_MULTI_SZ "Mup" 
-+                    Bind = REG_MULTI_SZ "\Device\NetBT_Bcmeth1" 
-+                    Export = REG_MULTI_SZ "\Device\LanmanWorkstation\NetBT_Bcmeth1" 
++                    Bind = REG_MULTI_SZ "\Device\NetBT_Bcmeth1" "\Device\NetBT_Bcmwlan1"
++                    Export = REG_MULTI_SZ "\Device\LanmanWorkstation\NetBT_Bcmeth1" "\Device\LanmanWorkstation\NetBT_Bcmwlan1"
 +                    Disabled
 +                        Bind = REG_MULTI_SZ 
 +                        Export = REG_MULTI_SZ 
@@ -413,10 +512,11 @@
 +                DependOnGroup = REG_MULTI_SZ "NDIS" 
 +                Adapters
 +                    Bcmeth1
++                    Bcmwlan1
 +                Linkage
 +                    OtherDependencies = REG_MULTI_SZ "Tcpip" 
-+                    Bind = REG_MULTI_SZ "\Device\Bcmeth1" 
-+                    Export = REG_MULTI_SZ "\Device\NetBT_Bcmeth1" 
++                    Bind = REG_MULTI_SZ "\Device\Bcmeth1" "\Device\Bcmwlan1"
++                    Export = REG_MULTI_SZ "\Device\NetBT_Bcmeth1" "\Device\NetBT_Bcmwlan1"
 +                    Disabled
 +                        Bind = REG_MULTI_SZ 
 +                        Export = REG_MULTI_SZ 
@@ -614,8 +714,8 @@
 +                DependOnService = REG_MULTI_SZ 
 +                DependOnGroup = REG_MULTI_SZ "NDIS" 
 +                Linkage
-+                    Bind = REG_MULTI_SZ "\Device\Bcmeth1" 
-+                    Export = REG_MULTI_SZ "\Device\Tcpip\Bcmeth1" 
++                    Bind = REG_MULTI_SZ "\Device\Bcmeth1" "\Device\Bcmwlan1"
++                    Export = REG_MULTI_SZ "\Device\Tcpip\Bcmeth1" "\Device\Tcpip\Bcmwlan1"
 +                    Disabled
 +                        Bind = REG_MULTI_SZ 
 +                        Export = REG_MULTI_SZ 
@@ -690,7 +790,13 @@
 =1 1490 6
 +                  Bcmeth
 =1 1503 2
-=1 1496 3
++                  Bcmsound
+=1 1503 2
++                  Bcmwlan
+=1 1503 2
++                  FTPSVC
++                    EventMessageFile = REG_EXPAND_SZ %SystemRoot%\System32\ftpsvc.dll
+=1 1495 4
 +                  Browser
 =1 1503 2
 +                  DHCP

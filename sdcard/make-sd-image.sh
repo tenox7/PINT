@@ -35,6 +35,27 @@ for f in bootcode.bin start.elf fixup.dat bcm2709-rpi-2-b.dtb start4.elf fixup4.
   [[ -s "$FWCACHE/$f" ]] || { echo ">> fetching $f"; curl -fsSL -o "$FWCACHE/$f" "$base/$f"; }
 done
 
+# The firmware, NVRAM and regulatory (CLM) files of the on-board wireless chips, which the
+# wireless miniport (drivers/bcmwlan) loads from \WINNT\System32\Drivers\BCMWLAN: Raspberry
+# Pi OS's (RPi-Distro/firmware-nonfree, pinned), which may be used only with Raspberry Pi
+# hardware, so they are fetched here and never committed. 8.3 names: 43430 (BCM43430 A1, Pi
+# 3B), 43436 (CYW43436, a Zero 2 W), 43436S (the other Zero 2 W module), 43455 (CYW43455,
+# Pi 3B+, 3A+, 4: the "minimal" firmware, which has the in-chip WPA2 supplicant the "standard"
+# one lacks), 43456 (CYW43456, Pi 400, CM4).
+WL=root/WINNT/System32/Drivers/BCMWLAN
+WLREV=5d2295b633d94641253e16ba90fc847436fc9d4a
+wlbase="https://raw.githubusercontent.com/RPi-Distro/firmware-nonfree/$WLREV/debian/added-firmware"
+mkdir -p "$WL"
+for m in 43430.BIN:cypress/cyfmac43430-sdio.bin 43430.CLM:cypress/cyfmac43430-sdio.clm_blob \
+         43430.TXT:brcm/brcmfmac43430-sdio.txt 43436.BIN:brcm/brcmfmac43436-sdio.bin \
+         43436.CLM:brcm/brcmfmac43436-sdio.clm_blob 43436.TXT:brcm/brcmfmac43436-sdio.txt \
+         43436S.BIN:brcm/brcmfmac43436s-sdio.bin 43436S.TXT:brcm/brcmfmac43436s-sdio.txt \
+         43455.BIN:cypress/cyfmac43455-sdio-minimal.bin 43455.CLM:cypress/cyfmac43455-sdio.clm_blob \
+         43455.TXT:brcm/brcmfmac43455-sdio.txt 43456.BIN:brcm/brcmfmac43456-sdio.bin \
+         43456.CLM:brcm/brcmfmac43456-sdio.clm_blob 43456.TXT:brcm/brcmfmac43456-sdio.txt; do
+  [[ -s "$WL/${m%%:*}" ]] || { echo ">> fetching ${m#*:}"; curl -fsSL -o "$WL/${m%%:*}" "$wlbase/${m#*:}"; }
+done
+
 if [[ "${1:-}" = -u && -f "$IMG" && -f "$STAMP" && -z "$(find ../obj/gen/hives ../ported/oak make-sd-image.sh -newer "$STAMP" -print -quit)" ]]; then
   new=$(cd .. && find sdcard/root sdcard/config.txt sdcard/firmware obj/arcfw.bin -type f -newer obj/stamp/sd-image)
   echo ">> updating $IMG: $(echo $new | wc -w | tr -d ' ') files"
@@ -94,6 +115,11 @@ for h in WINHELP/HLP/WINHELP SHELL/PROGMAN/PROGMAN SHELL/WINFILE/WINFILE SHELL/C
 done
 cp /nt/PRIVATE/UTILS/FDISK/DISKMAN.HLP /tmp/sd/WINNT/System32/WINDISK.HLP
 cp /nt/PRIVATE/UTILS/REGEDIT/SRC/REGEDIT.HLP /tmp/sd/WINNT/System32/REGEDT32.HLP
+# the setups of the MIDI Mapper, with one for the FM synthesizer of the sound driver of the Pi (the one the registry
+# names, Midimap of software.ini), and the sounds and the MIDI file of the Windows options of Setup, in the system root
+perl ../tools/midimap.pl /nt/PRIVATE/WINDOWS/SHELL/CONTROL/MIDI/MIDIMAP.CFG /tmp/sd/WINNT/System32/MIDIMAP.CFG \
+    "Sound System" "Raspberry Pi" "Raspberry Pi FM Synthesizer" "Raspberry Pi FM Synthesizer"
+cp /nt/PRIVATE/WINDOWS/MEDIA/SOUNDS/{CHIMES,CHORD,DING,TADA}.WAV /nt/PRIVATE/WINDOWS/MEDIA/SOUNDS/CANYON.MID /tmp/sd/WINNT/
 # the names and explanations of the performance counters (Perflib, Performance Monitor)
 cp /nt/PRIVATE/SDKTOOLS/CNTRTEXT/PERFINI/PERFC009.DAT /nt/PRIVATE/SDKTOOLS/CNTRTEXT/PERFINI/PERFH009.DAT /tmp/sd/WINNT/System32/
 

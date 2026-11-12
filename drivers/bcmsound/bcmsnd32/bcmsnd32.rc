@@ -1,0 +1,60 @@
+#include <windows.h>
+#include <ntverp.h>
+#include "bcmsndid.h"
+
+#define VER_FILETYPE                VFT_DLL
+#define VER_FILESUBTYPE             VFT2_DRV_INSTALLABLE
+#define VER_FILEDESCRIPTION_STR     "Raspberry Pi Sound"
+#define VER_INTERNALNAME_STR        "bcmsnd32.dll"
+#define VER_ORIGINALFILENAME_STR    "bcmsnd32.dll"
+
+#include "common.ver"
+
+//
+// synthlib's alerts and patches (the FM patches of the Windows Sound System,
+// from NT's sndsys32).
+//
+
+#define SR_ALERT                1
+#define SR_ALERT_NOPATCH        10
+#define SR_ALERT_NORESOURCE     11
+#define DATA_FMPATCHES          1234
+#define RT_BINARY               256
+
+DATA_FMPATCHES RT_BINARY PRELOAD DISCARDABLE fmsynth.bin
+
+STRINGTABLE
+{
+    SR_ALERT,                       "Raspberry Pi Sound"
+    SR_ALERT_NOPATCH,               "The synthesizer's patches cannot be found. MIDI will not play."
+    SR_ALERT_NORESOURCE,            "The synthesizer's patches cannot be loaded. MIDI will not play."
+
+    //
+    // The devices (at most 31 characters).
+    //
+
+    IDS_WAVEOUT_HDMI,               "Raspberry Pi HDMI Audio"
+    IDS_WAVEOUT_JACK,               "Raspberry Pi Headphones"
+    IDS_WAVEOUT_SILENT,             "Raspberry Pi Audio (silent)"
+    IDS_SYNTH,                      "Raspberry Pi FM Synthesizer"
+    IDS_MIXER,                      "Raspberry Pi Mixer"
+
+    //
+    // The mixer's lines and controls (short names at most 15 characters).
+    //
+
+    IDS_DEST_SPEAKERS_SHORT,        "Vol"
+    IDS_DEST_SPEAKERS_LONG,         "Volume Control"
+    IDS_SRC_WAVEOUT_SHORT,          "Wave"
+    IDS_SRC_WAVEOUT_LONG,           "Wave"
+    IDS_SRC_SYNTH_SHORT,            "Synth"
+    IDS_SRC_SYNTH_LONG,             "Synthesizer"
+    IDS_CONTROL_VOLUME_SHORT,       "Volume"
+    IDS_CONTROL_VOLUME_LONG,        "Volume"
+    IDS_CONTROL_MUTE_SHORT,         "Mute"
+    IDS_CONTROL_MUTE_LONG,          "Mute"
+    IDS_CONTROL_WAVEVOLUME_LONG,    "Wave Volume"
+    IDS_CONTROL_WAVEMUTE_LONG,      "Wave Mute"
+    IDS_CONTROL_SYNTHVOLUME_LONG,   "Synthesizer Volume"
+    IDS_CONTROL_SYNTHMUTE_LONG,     "Synthesizer Mute"
+}

@@ -3,6 +3,10 @@
 # makefile.def gives a RISC machine. Sourced by the build scripts in the
 # container; the ARM gates of the sources come from ntsrc().
 export MSVC_ENV=0 WINEDEBUG=-all
+# LIB and LINK hold every input open: libc.lib takes some 490 objects, which with Wine's
+# own descriptors pass the soft limit of 1024 open files Docker gives a container on
+# Linux (LNK1104 on an object that is there). Raise it to the hard limit.
+ulimit -n "$(ulimit -Hn)" 2>/dev/null || true
 wineserver -p 2>/dev/null
 
 K=/work/RASPI/kernel B=/work/RASPI/build

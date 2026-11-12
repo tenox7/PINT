@@ -1,0 +1,32 @@
+#
+#   bcmsnd32.dll: the multimedia driver of the Raspberry Pi's sound driver
+#   (bcmsound.sys), as sndsys32.dll is the Windows Sound System's: NT's
+#   drvlib (wave, mixer, aux) and synthlib (MIDI on the FM synthesizer).
+#
+
+MAJORCOMP=windows
+MINORCOMP=bcmsnd32
+
+TARGETNAME=bcmsnd32
+TARGETPATH=obj
+TARGETTYPE=DYNLINK
+UMTYPE=windows
+
+LINKLIBS=$(BASEDIR)\private\windows\media\drivers\drvlib\obj\*\drvlib.lib \
+         $(BASEDIR)\private\windows\media\drivers\synthlib\obj\*\synth.lib
+
+TARGETLIBS=$(BASEDIR)\public\sdk\lib\*\user32.lib   \
+           $(BASEDIR)\public\sdk\lib\*\kernel32.lib \
+           $(BASEDIR)\public\sdk\lib\*\advapi32.lib \
+           $(BASEDIR)\public\sdk\lib\*\winmm.lib
+
+INCLUDES=..;$(BASEDIR)\private\windows\media\drivers\drvlib\inc;$(BASEDIR)\private\windows\media\drivers\sndsys32\dll;$(BASEDIR)\private\inc
+
+C_DEFINES=-DUNICODE
+
+USE_NTDLL=1
+
+SOURCES=drvproc.c \
+        bcmsnd32.rc
+
+DLLBASE=0x6BD00000

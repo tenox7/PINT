@@ -22,9 +22,9 @@ D=$NT35/RASPI/obj/mktyplib
 mkdir -p $D
 for f in lexer.c intlstr.c mktyplib.c parser.c hout.c typout.cpp dimalloc.cxx mktyplib.rc mktyplib.ico \
          errors.h fileinfo.h intlstr.h mktyplib.h parser.h tokens.h typelib.err stdole.odl stdole32.rc; do
-    cp -fX $M/mktyplib/$f $D/ || exit 1
+    cp -f $M/mktyplib/$f $D/ || exit 1
 done
-cp -fX $M/inc/verstamp.h ../apps/mktyplib/SOURCES $D/ || exit 1
+cp -f $M/inc/verstamp.h ../apps/mktyplib/SOURCES $D/ || exit 1
 INSTALL=0 ROOT=/work/RASPI/obj ./make-exe.sh mktyplib mktyplib || exit 1
 
 docker run --rm -e INSTALL="${INSTALL:-0}" -v "$NT35/msvc":/opt/msvc -v "$NT35":/work -w /work/RASPI/build --entrypoint bash tenox7/msvc-arm32 -c '
