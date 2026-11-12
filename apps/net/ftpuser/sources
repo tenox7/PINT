@@ -1,0 +1,13 @@
+MAJORCOMP=tcpcmd
+MINORCOMP=ftpuser
+
+TARGETNAME=ftpuser
+TARGETPATH=obj
+TARGETTYPE=UMAPPL_NOLIB
+USE_CRTDLL=1
+
+SOURCES=
+
+UMTYPE=console
+UMAPPL=ftpuser
+UMLIBS=$(BASEDIR)\public\sdk\lib\*\netapi32.lib

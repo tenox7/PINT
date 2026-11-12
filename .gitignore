@@ -15,6 +15,7 @@ sdcard/root/WINNT/System32/*.INI
 sdcard/root/WINNT/System32/WINPERMS.TXT
 sdcard/root/WINNT/System32/viewers/
 sdcard/root/WINNT/System32/spool/
+sdcard/root/WINNT/System32/inetsrv/
 sdcard/root/WINNT/INF/
 sdcard/root/WINNT/System32/Drivers/*.SYS
 sdcard/root/WINNT/System32/*.SYS
@@ -27,6 +28,9 @@ sdcard/root/APPS/
 # the checkouts of the extras (build/build-extras.sh), or links to them; kept are their recipes
 extras/*
 !extras/*.sh
+
+# the wireless chips' firmware, fetched by sdcard/make-sd-image.sh (Raspberry Pi hardware only)
+sdcard/root/WINNT/System32/Drivers/BCMWLAN/
 
 # screen dumps
 *.ppm
@@ -351,6 +355,7 @@ ported/windows/shell/shelldll/futil.c
 kernel/inc/infstr.h
 ported/eventlog/server/operate.c
 ported/net/sockets/wshtcpip/wshtcpip.c
+ported/net/sockets/internet/common/svcloc/svcinfo.cxx
 ported/net/ui/ncpa1.1/netcfg/busloc.cxx
 ported/ntos/mm/alpha/hypermap.c
 ported/ntos/nbt/nt/ntpnp.c

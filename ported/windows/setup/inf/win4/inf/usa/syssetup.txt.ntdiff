@@ -6,6 +6,7 @@
 +tenoxvnc = "TenoxVNC"
 +iexplore = "Internet Explorer"
 +ntfetch = "ntfetch"
++inetmgr = "Internet Service Manager"
 +game2048 = "2048"
 +breakout = "Breakout"
 +bubbles = "Bubble Breaker"

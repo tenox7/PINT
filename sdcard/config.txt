@@ -15,7 +15,10 @@ kernel=arcfw.bin
 device_tree_address=0x2000000
 
 # Keep the serial console (PL011 / GPIO14-15) alive. enable_uart=1 also pins the
-# core clock at 250 MHz on a Pi 3, the clock of the I2C bus of the realtime clock.
+# core clock at 250 MHz on a Pi 3, the clock of the I2C bus of the realtime clock
+# and of the SD host controller (SDHOST) the card runs on: the firmware and NT
+# divide the core clock's maximum rate for the card, so a core clock that moves
+# with load only slows the card; a pinned one keeps it at 25 MHz.
 enable_uart=1
 
 # Force HDMI on even if the monitor is not detected at boot, and use the full
@@ -32,6 +35,33 @@ hdmi_drive=2
 framebuffer_width=1920
 framebuffer_height=1080
 
+# The HDMI signal is the display's preferred mode, and the GPU scales the frame buffer
+# to fill it: a 4:3 or 5:4 frame buffer on a 16:9 display is stretched, a 16:9 one on a
+# 4:3 or 5:4 monitor squashed. On such a monitor, either delete the two lines above (the
+# frame buffer then takes the monitor's mode) or set both the frame buffer and the HDMI
+# mode in place of them. hdmi_group=2 is the computer monitor (DMT) list; all at 60 Hz:
+#
+#   4:3   800x600    framebuffer_width=800   framebuffer_height=600   hdmi_group=2 hdmi_mode=9
+#   4:3   1024x768   framebuffer_width=1024  framebuffer_height=768   hdmi_group=2 hdmi_mode=16
+#   4:3   1280x960   framebuffer_width=1280  framebuffer_height=960   hdmi_group=2 hdmi_mode=32
+#   4:3   1400x1050  framebuffer_width=1400  framebuffer_height=1050  hdmi_group=2 hdmi_mode=42
+#   4:3   1600x1200  framebuffer_width=1600  framebuffer_height=1200  hdmi_group=2 hdmi_mode=51
+#   5:4   1280x1024  framebuffer_width=1280  framebuffer_height=1024  hdmi_group=2 hdmi_mode=35
+#   16:10 1280x800   framebuffer_width=1280  framebuffer_height=800   hdmi_group=2 hdmi_mode=28
+#   16:10 1680x1050  framebuffer_width=1680  framebuffer_height=1050  hdmi_group=2 hdmi_mode=58
+#   16:10 1920x1200  framebuffer_width=1920  framebuffer_height=1200  hdmi_group=2 hdmi_mode=68
+#   16:9  1920x1080  framebuffer_width=1920  framebuffer_height=1080  hdmi_group=2 hdmi_mode=82
+#
+# For example, a 5:4 monitor:
+# framebuffer_width=1280
+# framebuffer_height=1024
+# hdmi_group=2
+# hdmi_mode=35
+#
+# 1920x1200 is mode 68, reduced blanking: mode 69, its normal-blanking version, needs a
+# faster pixel clock than a Pi 2 or 3 drives (a Pi 4 does). In QEMU the size is RES of
+# build/run.sh (RES=1280x1024 build/run.sh).
+
 # Show the frame buffer on the whole screen. Without this line the GPU firmware takes an HD
 # display for a TV that hides its edges (overscan) and shrinks the picture into a black
 # border, 48 pixels a side. On a TV that does hide them, delete this line.
@@ -42,3 +72,32 @@ disable_overscan=1
 [pi4]
 enable_gic=1
 [all]
+
+# Windows NT's settings. The boot firmware passes over these keys; Windows NT reads them at
+# startup (C:\CONFIG.TXT). Keep them here, after [all].
+#
+# Wi-Fi (Pi 3, 3B+, 3A+, 4, 400, Zero 2 W):
+#   wifi_ssid      the network's name, as written (spaces allowed, no quotes)
+#   wifi_password  its passphrase (8-63 characters), or nothing for an open network
+#   wifi_security  WPA2 (default), WPA2/WPA3 (joined with WPA2) or OPEN
+#   wifi_country   two-letter country code (channels and power); XX by default
+wifi_ssid=
+wifi_password=
+wifi_security=WPA2
+wifi_country=XX
+
+# Sound: AUTO plays through HDMI if the display takes sound, else the 3.5 mm jack;
+# HDMI, JACK (Pi 2, 3B, 3B+, 3A+, 4B) or NONE choose one.
+sound_output=AUTO
+
+# Logs for finding trouble: 1 writes C:\WLAN.LOG (Wi-Fi) or C:\SOUND.LOG (sound).
+debug_wifi=0
+debug_sound=0
+
+# Crash dumps, for debugging (off by default). With crash_dump=1 and a memory limit
+# (total_mem, the Pi firmware's, in MB), NT writes all of its memory on a crash (STOP
+# screen) and saves it as C:\WINNT\MEMORY.DMP at the next start. C: needs about twice the
+# limit free (the pagefile and MEMORY.DMP), so grow the partition. Without total_mem,
+# crash_dump is ignored (and NT takes all the memory there is).
+# crash_dump=1
+# total_mem=256

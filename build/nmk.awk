@@ -172,6 +172,8 @@ function command(cmd,    a, n, f, i) {
         return ":"
     if (tolower(a[1]) == "del" || tolower(a[1]) == "erase")
         return "nmk_del " substr(cmd, length(a[1]) + 2)
+    if (tolower(a[1]) == "rename" || tolower(a[1]) == "ren")
+        return "nmk_rename " a[2] " " a[3]
     if (tolower(a[1]) == "md" || tolower(a[1]) == "mkdir")
         return "nmk_md " substr(cmd, length(a[1]) + 2)
     if (tolower(a[1]) == "delnode") {

@@ -303,6 +303,8 @@ nmk_binplace() {
     done
 }
 nmk_del() { local f; for f; do rm -f "$(out $f)"; done; }
+# rename a b: a generated file by another name (tmp.h of the messages of ftpsvc2 as msg.h)
+nmk_rename() { [ -f "$(out $1)" ] || { echo "nttarget: no $1" >&2; return 1; }; mv "$(out $1)" "$(out $2)"; }
 # copy a + b c: a and b, one after the other, in c (which may be a), as cmd copies the files
 # it joins, as text: each up to its end of file mark (^Z), and the mark at the end
 nmk_copycat() {

@@ -4,9 +4,11 @@
 # macOS arm64 (Homebrew's, its libraries bundled with dylibbundler), Linux x86_64 and aarch64
 # (AlmaLinux 9, GTK 3 of the host) and Windows x86_64 (Fedora MinGW, GTK 3 bundled), the last
 # three built in Docker from the QEMU release. GTK, not SDL: SDL shows the raspi frame buffer
-# black. The QEMU binaries stay in obj/portable/bin; FORCE=1 rebuilds them.
+# black. The QEMU binaries stay in obj/portable/bin; FORCE=1 rebuilds them. PLATFORMS names the
+# QEMU builds to pack (all four by default); macos-arm64 bundles Homebrew's QEMU, so it needs a Mac
+# with Homebrew qemu and dylibbundler, and is left out elsewhere with a warning.
 #
-# Usage:  [IMG=disk.img] [FORCE=1] build/portable-qemu-image.sh
+# Usage:  [IMG=disk.img] [FORCE=1] [PLATFORMS="linux-x86_64 ..."] build/portable-qemu-image.sh
 set -euo pipefail
 V=${QEMU_VERSION:-11.1.1}
 SV=4.9.1
@@ -76,7 +78,13 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 IMG=${IMG:-obj/nt-arcfw-sd.img}
 P=obj/portable
 [[ -f obj/arcfw.elf && -f $IMG ]] || { echo "missing obj/arcfw.elf or $IMG - build first"; exit 1; }
-command -v dylibbundler >/dev/null && brew --prefix qemu >/dev/null || { echo "needs Homebrew qemu and dylibbundler"; exit 1; }
+PLATFORMS=${PLATFORMS:-linux-x86_64 linux-aarch64 windows-x86_64 macos-arm64}
+want() { [[ " $PLATFORMS " == *" $1 "* ]]; }
+if want macos-arm64 && ! { command -v dylibbundler >/dev/null && command -v brew >/dev/null && brew --prefix qemu >/dev/null; }; then
+    [[ $(uname) != Darwin ]] || { echo "needs Homebrew qemu and dylibbundler"; exit 1; }
+    echo "warning: not a Mac with Homebrew qemu and dylibbundler: no macos-arm64 QEMU in the package"
+    PLATFORMS=${PLATFORMS//macos-arm64/}
+fi
 mkdir -p $P/dl $P/bin $P/log
 
 if [[ ! -s $P/dl/qemu-$V.tar.xz ]]; then
@@ -90,6 +98,7 @@ if [[ ! -s $P/dl/libslirp-v$SV.tar.gz ]]; then
 fi
 
 build() {  # NAME DOCKER_PLATFORM IMAGE MODE
+    want $1 || return 0
     [[ -z ${FORCE:-} && -e $P/bin/$1 ]] && return
     echo ">> building QEMU $V for $1 (log: $P/log/$1.log)"
     docker run --rm ${2:+--platform $2} -v "$PWD/build":/b:ro -v "$PWD/$P/dl":/dl:ro \
@@ -101,7 +110,7 @@ build linux-aarch64 linux/arm64 almalinux:9 --linux
 build windows-x86_64 "" registry.fedoraproject.org/fedora:43 --windows
 
 o=$P/bin/macos-arm64
-if [[ -n ${FORCE:-} || ! -e $o ]]; then
+if want macos-arm64 && [[ -n ${FORCE:-} || ! -e $o ]]; then
     echo ">> bundling Homebrew QEMU for macos-arm64"
     q=$(brew --prefix qemu)/bin/qemu-system-arm
     "$q" --version | grep -q "version $V$" || echo "warning: Homebrew has $("$q" --version | head -1)"
@@ -125,8 +134,15 @@ cp "$IMG" $r/nt-arcfw-sd.img
 cp obj/arcfw.elf build/portable/run.sh $r/
 sed "s/@V@/$V/g" build/portable/README.txt >$r/README.txt
 sed 's/$/\r/' build/portable/run.cmd >$r/run.cmd
-cp -R $P/bin $r/bin
-COPYFILE_DISABLE=1 tar --no-mac-metadata --no-xattrs --uid 0 --gid 0 --uname root --gname root \
-    -C $s -cf - pint40-qemu | gzip -9 >obj/pint40-qemu.tar.gz
+mkdir -p $r/bin
+for b in $PLATFORMS; do [[ -e $P/bin/$b ]] && cp -R $P/bin/$b $r/bin/; done
+cp $P/bin/COPYING $P/bin/COPYING.LIB $r/bin/ 2>/dev/null || true
+cp -R $P/bin/share $r/bin/ 2>/dev/null || true
+if [[ $(uname) = Darwin ]]; then
+    COPYFILE_DISABLE=1 tar --no-mac-metadata --no-xattrs --uid 0 --gid 0 --uname root --gname root \
+        -C $s -cf - pint40-qemu | gzip -9 >obj/pint40-qemu.tar.gz
+else
+    tar --owner=0 --group=0 --numeric-owner -C $s -cf - pint40-qemu | gzip -9 >obj/pint40-qemu.tar.gz
+fi
 rm -rf $s
 echo ">> built obj/pint40-qemu.tar.gz ($(du -h obj/pint40-qemu.tar.gz | cut -f1))"

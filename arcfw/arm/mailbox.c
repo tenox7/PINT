@@ -39,6 +39,7 @@ Abstract:
 #define TAG_GET_CLOCK_RATE      0x00030002
 #define TAG_GET_MAX_CLOCK_RATE  0x00030004
 #define TAG_NOTIFY_XHCI_RESET   0x00030058
+#define TAG_GET_DMA_CHANNELS    0x00060001
 
 #define POWER_STATE_ON          1
 #define POWER_STATE_WAIT        2
@@ -211,6 +212,32 @@ Routine Description:
 }
 
 ULONG
+MailboxGetMaxClockRate (
+    IN ULONG ClockId
+    )
+
+/*++
+
+Routine Description:
+
+    This routine returns the maximum rate of a clock in hertz, or its current
+    rate if the VideoCore reports no maximum, or 0. The SD host controller
+    is clocked from the core clock, which the VideoCore may raise with load;
+    a divisor from the maximum rate keeps the card's clock in range.
+
+--*/
+
+{
+    ULONG Answer[2];
+
+    if (MailboxTag(TAG_GET_MAX_CLOCK_RATE, 4, ClockId, 0, Answer) == 0 && Answer[1] != 0) {
+        return Answer[1];
+    }
+
+    return MailboxGetClockRate(ClockId);
+}
+
+ULONG
 MailboxGetArmMemory (
     VOID
     )
@@ -273,6 +300,26 @@ Routine Description:
     ULONG Answer[2];
 
     return MailboxTag(TAG_GET_BOARD_REVISION, 0, 0, 0, Answer) ? 0 : Answer[0];
+}
+
+ULONG
+MailboxGetDmaChannels (
+    VOID
+    )
+
+/*++
+
+Routine Description:
+
+    This routine returns the mask of the DMA channels the VideoCore leaves to
+    the ARM (bit n: channel n); 0 if unknown.
+
+--*/
+
+{
+    ULONG Answer[2];
+
+    return MailboxTag(TAG_GET_DMA_CHANNELS, 0, 0, 0, Answer) ? 0 : Answer[0];
 }
 
 ULONG

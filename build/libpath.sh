@@ -34,6 +34,14 @@ case $l in
 *) exit 0 ;;
 esac
 b=$(basename "$l" | tr A-Z a-z)
+# the objects of a directory by a wildcard of cmd (..\tsunami\obj\*\????????.obj of infocomm.dll:
+# a ? is a character or none, so all of them), which a LINKLIBS names: all it has
+case $b in *\?*.obj)
+    for o in /work/RASPI/obj/um /work/RASPI/obj; do
+        ls $o/dir/${p#/work/}/*.obj > /dev/null 2>&1 && { echo $o/dir/${p#/work/}/*.obj; exit 0; }
+    done
+    exit 0 ;;
+esac
 for o in /work/RASPI/obj/um /work/RASPI/obj; do
     [ -f $o/dir/${p#/work/}/$b ] && { echo $o/dir/${p#/work/}/$b; exit 0; }
 done

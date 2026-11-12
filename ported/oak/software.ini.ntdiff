@@ -1,6 +1,32 @@
 #ntdiff public/oak/bin/software.ini ../nt35/PUBLIC/OAK/BIN/SOFTWARE.INI
 #crlf
-=1 1 1921
+=1 1 1645
++#if defined(_RASPI_)
++        //
++        // The FTP pages of Internet Service Manager (INETSTP: the AddOnServices of INetMgr).
++        //
++        INetMgr
++            Parameters
++                AddOnServices
++                    FTP = fscfg.dll
++#endif // defined(_RASPI_)
+=1 1645 5
++                //
++                // \Program Files and its Common Files, which the setup of NT 4.0 names here.
++                //
++                ProgramFilesDir = C:\Program Files
++                CommonFilesDir = C:\Program Files\Common Files
+=1 1650 2
++#if defined(_RASPI_)
++                    //
++                    // Internet Service Manager of Peer Web Services (Start, Run: inetmgr), which
++                    // manages the FTP service.
++                    //
++                    inetmgr.exe
++                        = REG_EXPAND_SZ %SystemRoot%\System32\inetsrv\inetmgr.exe
++                        Path = REG_EXPAND_SZ %SystemRoot%\System32\inetsrv
++#endif // defined(_RASPI_)
+=1 1652 270
 +#if defined(_RASPI_)
 +                    //
 +                    // The adapter the network setup installs (NTLANMAN.INF, the INF of the
@@ -19,6 +45,19 @@
 +                            bindform = "Bcmeth1" yes yes container
 +                            class = REG_MULTI_SZ "bcmethAdapter basic"
 +                            InfOption = BCMETH
++                    2
++                        ServiceName = Bcmwlan1
++                        Manufacturer = Microsoft
++                        Title = [2] Raspberry Pi Wireless Adapter
++                        Description = Raspberry Pi Wireless Adapter
++                        ProductName = Bcmwlan
++                        OperationsSupport = REG_DWORD 0x00000086
++                        NetRules
++                            InfName = OEMNADBW.INF
++                            type = bcmwlan bcmwlanAdapter
++                            bindform = "Bcmwlan1" yes yes container
++                            class = REG_MULTI_SZ "bcmwlanAdapter basic"
++                            InfOption = BCMWLAN
 +#endif // defined(_RASPI_)
 =1 1922 386
 +#if defined(_RASPI_)
@@ -68,7 +107,26 @@
 +                FontDPI
 +                    LogPixels = REG_DWORD 0x00000060
 +#endif // defined(_RASPI_)
-=1 2371 481
+=1 2371 79
++#if defined(_RASPI_)
++                    bcmsnd32.dll = Raspberry Pi Sound
++#endif // defined(_RASPI_)
+=1 2450 8
++#if defined(_RASPI_)
++                    //
++                    // The Raspberry Pi's sound driver (bcmsound.sys) and its multimedia driver,
++                    // as the Windows Sound System's sndsys32.dll is installed: wave, mixer, aux
++                    // and MIDI (its FM synthesizer); mmdrv.dll's devices are those of drivers
++                    // named for it (\Device\WaveOut0), which the port has none of.
++                    //
++                    wave=bcmsnd32.dll
++                    midi=bcmsnd32.dll
++                    aux=bcmsnd32.dll
++                    mixer=bcmsnd32.dll
++#else
+=1 2458 3
++#endif // defined(_RASPI_)
+=1 2461 391
 +#if defined(_RASPI_)
 +        //
 +        // The network products of the network of the Pi (the network block of SYSTEM.INI)
@@ -92,6 +150,23 @@
 +                    class = REG_MULTI_SZ "bcmethDriver basic"
 +                    bindable = REG_MULTI_SZ "bcmethDriver bcmethAdapter non exclusive 100"
 +                    InfOption = BCMETH
++        Bcmwlan
++            CurrentVersion
++                ServiceName = Bcmwlan
++                RefCount = REG_DWORD 0x00000001
++                SoftwareType = driver
++                MajorVersion = REG_DWORD 0x00000004
++                MinorVersion = REG_DWORD 0x00000000
++                Title = Raspberry Pi Wireless Adapter Driver
++                Description = Raspberry Pi Wireless Adapter Driver
++                NetRules
++                    InfName = OEMNADBW.INF
++                    type = bcmwlanSys ndisDriver bcmwlanDriver
++                    use = driver
++                    bindform = "BcmwlanSys" yes no container
++                    class = REG_MULTI_SZ "bcmwlanDriver basic"
++                    bindable = REG_MULTI_SZ "bcmwlanDriver bcmwlanAdapter non exclusive 100"
++                    InfOption = BCMWLAN
 +        Browser
 +            CurrentVersion
 +                ServiceName = Browser
