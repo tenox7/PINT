@@ -32,7 +32,7 @@ INSTALL=1 job stdole step stdole $R/apps/mktyplib $ST/dll_CAIROLE_DLL_DAYTONA $S
 $R/build/build-sdktools.sh
 GEN=$HOSTGEN job infs step infs $R/tools/inf $R/ported/windows/setup/bom $R/ported/windows/setup/inf $R/ported/windows/setup/localinf \
     $R/apps/net/ncpabind -- $R/tools/inf/make-infs.sh
-job firmware step firmware $R/arcfw/arm $R/drivers/bcmusb/usbhost.c $R/drivers/bcmusb/usbhost.h $R/drivers/bcmusb/xhci.c $R/drivers/bcmusb/xhci.h $R/drivers/bcmeth/bcmethhw.h $R/arcfw/arcdos $R/tools/fon2fw.pl $R/obj/boot.lib \
+job firmware step firmware $R/arcfw/arm $R/drivers/bcmusb/usbhost.c $R/drivers/bcmusb/usbhost.h $R/drivers/bcmusb/xhci.c $R/drivers/bcmusb/xhci.h $R/drivers/bcmeth/bcmethhw.h $R/drivers/bcmwlan/bcmwlanhw.h $R/drivers/bcmsound/bcmsoundhw.h $R/arcfw/arcdos $R/tools/fon2fw.pl $R/obj/boot.lib \
     $R/obj/bldrrtl.lib $R/obj/libcntpr.lib -- $R/build/build.sh
 barrier
 $R/sdcard/make-sd-image.sh $([ -n "${FORCE:-}" ] || echo -u)

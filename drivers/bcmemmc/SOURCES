@@ -9,4 +9,5 @@ INCLUDES=..\..\inc
 
 TARGETLIBS=\nt\public\sdk\lib\*\scsiport.lib
 
-SOURCES=bcmemmc.c
+SOURCES=bcmemmc.c \
+        crashdmp.c

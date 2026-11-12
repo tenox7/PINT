@@ -1,0 +1,20 @@
+MAJORCOMP=ntos
+MINORCOMP=dd
+
+TARGETNAME=bcmsound
+TARGETPATH=\nt\public\sdk\lib
+TARGETTYPE=DRIVER
+
+INCLUDES=..\..\inc;\nt\private\ntos\dd\sound\soundlib\inc;\nt\private\inc;\nt\private\ntos\inc
+
+TARGETLIBS=\nt\private\ntos\dd\sound\soundlib\obj\*\soundlib.lib
+
+C_DEFINES=-DWIN32
+
+SOURCES=init.c \
+        mixer.c \
+        synth.c \
+        opl3.c \
+        output.c \
+        hdmi.c \
+        bcmsound.rc

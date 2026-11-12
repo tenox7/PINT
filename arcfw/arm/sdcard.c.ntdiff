@@ -5,35 +5,526 @@
 =1 9 3
 +    This module implements the hard disk boot driver for the Raspberry Pi
 +    (the ARM BOOT\LIB\SCSIDISK.C ScsiDiskEntryTable) over its SD card, the
-+    system disk, which sits on the EMMC controller of the BCM2836 and BCM2837
-+    (an Arasan SD host controller, SDHCI 3.0) or on the EMMC2 controller of the
-+    BCM2711 (SDHCI 3.0), the only one wired to the card slot of a Raspberry
-+    Pi 4. The card is disk 0 of SCSI adapter 0, the adapter the configuration
-+    tree describes: scsi(0)disk(0)rdisk(0).
++    system disk. The card is disk 0 of SCSI adapter 0, the adapter the
++    configuration tree describes: scsi(0)disk(0)rdisk(0).
 +
-+    The controller is driven by programmed I/O: each 512-byte block passes
-+    through the data port. Card bring-up follows the SD physical layer
++    The BCM2836 and BCM2837 have two card controllers: the SD host controller
++    (SDHOST, 0x202000 into the peripherals), a small Broadcom core, and the
++    EMMC (0x300000), an Arasan SD host controller (SDHCI 3.0). The VideoCore
++    firmware boots from the card on the SDHOST, with the slot's GPIO 48-53 at
++    function ALT0, and connects the EMMC to the wireless chip of the Pi 3 and
++    Zero 2 W on GPIO 34-39 (ALT3). The card stays on the SDHOST here, so that
++    the EMMC is free for the wireless driver; the EMMC (GPIO 48-53 at ALT3) is
++    tried only when no card answers on the SDHOST. Every BCM2711 board (Pi 4)
++    wires its card to the EMMC2 (SDHCI 3.0, 0x340000), which has pins of its
++    own; QEMU's raspi4b attaches it to the EMMC instead, which is looked at
++    when the EMMC2 has no card.
++
++    Both controllers are driven by programmed I/O: each 512-byte block passes
++    through a data port. Card bring-up follows the SD physical layer
 +    specification: CMD0, CMD8, ACMD41, CMD2, CMD3, CMD9 (capacity), CMD7,
 +    ACMD6 (4-bit bus). A standard capacity card is byte addressed, a high
-+    capacity card block addressed.
++    capacity card block addressed. The card code is shared; a controller is a
++    set of routines (SD_HOST): reset, clock, command, response, transfer and
++    bus width.
 +
-+    The EMMC loses a register write that follows another within two SD clocks
-+    (a clock domain crossing), so every register write but the data port's is
-+    followed by a delay longer than two clocks at the 400 kHz identification
-+    clock.
++    SDHOST: a command goes to SDCMD with the NEW flag, which clears when the
++    response is in SDRSP0-3 (a long response keeps its CRC byte, which the
++    SDHCI drops), and its FAIL flag and SDHSTS report errors. Data moves
++    through a 16-word FIFO whose level SDEDM shows. There is no automatic
++    CMD12: a multiple block transfer is ended with one. The SD clock is the
++    VideoCore core clock divided by SDCDIV + 2; as the core clock may change
++    with load, the divisor is taken from its maximum rate.
 +
-+    The card slot is on GPIO 48-53, which function ALT3 connects to the EMMC.
-+    The VideoCore firmware of a BCM2837 board (Pi 2 v1.2, Pi 3) leaves them on
-+    ALT0, its SD host controller, and connects the EMMC to the wireless chip on
-+    GPIO 34-39 (ALT3 too); those pins are made inputs, so the EMMC drives the
-+    slot alone. The EMMC2 has pins of its own.
++    EMMC: the EMMC loses a register write that follows another within two SD
++    clocks (a clock domain crossing), so every register write but the data
++    port's is followed by a delay longer than two clocks at the 400 kHz
++    identification clock.
 =1 23 3
 =3 28 2
 +#include "string.h"
 +
++//
++// A command as the card code gives it: the index of the command, its response
++// and its data. Each controller translates it to its own registers.
++//
++
++#define SD_INDEX_MASK       0x0000003F
++#define SD_RESP_NONE        0x00000000
++#define SD_RESP_SHORT       0x00000100      // 48 bits: R1, R3, R6, R7
++#define SD_RESP_SHORT_BUSY  0x00000200      // 48 bits, then busy on DAT0: R1b
++#define SD_RESP_LONG        0x00000300      // 136 bits: R2
++#define SD_RESP_MASK        0x00000300
++#define SD_RESP_NO_CRC      0x00000400      // a response without a CRC: R3
++#define SD_DATA_READ        0x00001000
++#define SD_DATA_WRITE       0x00002000
++#define SD_DATA_MULTIPLE    0x00004000
++#define SD_APP              0x00008000      // an application command (CMD55 first)
++
++#define CMD(n)              (n)
++#define APP                 SD_APP
++#define R1                  SD_RESP_SHORT
++#define R1B                 SD_RESP_SHORT_BUSY
++#define R2                  SD_RESP_LONG
++#define R3                  (SD_RESP_SHORT | SD_RESP_NO_CRC)
++#define R6                  SD_RESP_SHORT
++#define R7                  SD_RESP_SHORT
++
++//
++// A card controller: Response(n) gives word n of the last response, a long
++// response (CSD, CID) in words 3 to 0 as the SDHCI holds it, bits 127:8 with
++// the CRC byte dropped.
++//
++
++typedef struct _SD_HOST {
++    PCHAR Name;
++    BOOLEAN (*Reset)(VOID);
++    BOOLEAN (*SetClock)(IN ULONG Hz);
++    BOOLEAN (*Command)(IN ULONG Command, IN ULONG Argument, IN ULONG Blocks);
++    ULONG (*Response)(IN ULONG Word);
++    BOOLEAN (*Transfer)(IN PULONG Buffer, IN ULONG Blocks, IN BOOLEAN Read);
++    VOID (*SetBusWidth)(IN ULONG Bits);
++} SD_HOST, *PSD_HOST;
++
++#define SDHOST_OFFSET       0x202000u
 +#define EMMC_OFFSET         0x300000u
 +#define EMMC2_OFFSET        0x340000u
-+#define EMMC(r)             (*(volatile ULONG *)(SdBase + (r)))
++#define REG(r)              (*(volatile ULONG *)(SdBase + (r)))
++
++#define GPFSEL(Pin)         (*(volatile ULONG *)(PERIPHERAL_BASE + 0x200000 + ((Pin) / 10) * 4))
++#define GPIO_INPUT          0
++#define GPIO_ALT0           4
++#define GPIO_ALT3           7
++
++#define POWER_DEVID_SD      0
++#define CLOCK_ID_EMMC       1
++#define CLOCK_ID_CORE       4
++#define CLOCK_ID_EMMC2      12
++#define IDENT_CLOCK         400000
++#define TRANSFER_CLOCK      25000000
++#define TIMEOUT_US          1000000
++
++static ULONG SdBase;
++static ULONG SdBaseClock;
++static ULONG SdRca;
++static ULONG SdSectors;
++static BOOLEAN SdHighCapacity;
++static PSD_HOST SdHost;
++static ULONG SdBounce[SECTOR_SIZE / sizeof(ULONG)];
++
++static ULONG
++SdGetPinFunction(
++    IN ULONG Pin
++    )
++{
++    return (GPFSEL(Pin) >> ((Pin % 10) * 3)) & 7;
++}
++
++static VOID
++SdSetPinFunction(
++    IN ULONG Pin,
++    IN ULONG Function
++    )
++{
++    ULONG shift = (Pin % 10) * 3;
++
++    GPFSEL(Pin) = (GPFSEL(Pin) & ~(7 << shift)) | (Function << shift);
++}
++
++static BOOLEAN
++SdWait(
++    IN ULONG Register,
++    IN ULONG Mask,
++    IN ULONG Value
++    )
++{
++    ULONG start = FwGetMicroseconds();
++
++    while ((REG(Register) & Mask) != Value) {
++        if ((FwGetMicroseconds() - start) > TIMEOUT_US) {
++            return FALSE;
++        }
++    }
+=1 3213 3 -4
++//
++// Issue a command; for a data command the caller moves the blocks afterwards.
++// An application command is prefixed with CMD55.
++//
++static BOOLEAN
++SdCommand(
++    IN ULONG Command,
++    IN ULONG Argument,
++    IN ULONG Blocks
++    )
++{
++    if ((Command & SD_APP) != 0 && !SdHost->Command(CMD(55) | R1, SdRca << 16, 0)) {
++        return FALSE;
++    }
++    return SdHost->Command(Command & ~SD_APP, Argument, Blocks);
+=1 375 3 -4
++// The SDHOST.
++//
++
++#define SDCMD               0x00
++#define SDARG               0x04
++#define SDTOUT              0x08
++#define SDCDIV              0x0C
++#define SDRSP0              0x10
++#define SDRSP1              0x14
++#define SDRSP2              0x18
++#define SDRSP3              0x1C
++#define SDHSTS              0x20
++#define SDVDD               0x30
++#define SDEDM               0x34
++#define SDHCFG              0x38
++#define SDHBCT              0x3C
++#define SDDATA              0x40
++#define SDHBLC              0x50
++
++#define SDCMD_NEW           0x00008000
++#define SDCMD_FAIL          0x00004000
++#define SDCMD_BUSYWAIT      0x00000800
++#define SDCMD_NO_RESPONSE   0x00000400
++#define SDCMD_LONG_RESPONSE 0x00000200
++#define SDCMD_WRITE         0x00000080
++#define SDCMD_READ          0x00000040
++
++#define SDCDIV_MAX          0x7FF
++
++#define SDHSTS_BUSY_IRPT    0x00000400
++#define SDHSTS_BLOCK_IRPT   0x00000200
++#define SDHSTS_SDIO_IRPT    0x00000100
++#define SDHSTS_REW_TIME_OUT 0x00000080
++#define SDHSTS_CMD_TIME_OUT 0x00000040
++#define SDHSTS_CRC16_ERROR  0x00000020
++#define SDHSTS_CRC7_ERROR   0x00000010
++#define SDHSTS_FIFO_ERROR   0x00000008
++#define SDHSTS_DATA_FLAG    0x00000001
++#define SDHSTS_ERRORS       (SDHSTS_REW_TIME_OUT | SDHSTS_CMD_TIME_OUT | SDHSTS_CRC16_ERROR | \
++                             SDHSTS_CRC7_ERROR | SDHSTS_FIFO_ERROR)
++#define SDHSTS_CLEAR        (SDHSTS_BUSY_IRPT | SDHSTS_BLOCK_IRPT | SDHSTS_SDIO_IRPT | SDHSTS_ERRORS)
++
++#define SDHCFG_BUSY_IRPT_EN 0x00000400
++#define SDHCFG_BLOCK_IRPT_EN 0x00000100
++#define SDHCFG_SDIO_IRPT_EN 0x00000020
++#define SDHCFG_DATA_IRPT_EN 0x00000010
++#define SDHCFG_SLOW_CARD    0x00000008
++#define SDHCFG_WIDE_EXT_BUS 0x00000004
++#define SDHCFG_WIDE_INT_BUS 0x00000002
++
++#define SDEDM_FSM_MASK      0x0000000F
++#define SDEDM_FSM_IDENTMODE 0x0
++#define SDEDM_FSM_DATAMODE  0x1
++#define SDEDM_FSM_READWAIT  0x4
++#define SDEDM_FSM_WRITESTART1 0xA
++#define SDEDM_FIFO_LEVEL(e) (((e) >> 4) & 0x1F)
++#define SDEDM_WRITE_THRESHOLD_SHIFT 9
++#define SDEDM_READ_THRESHOLD_SHIFT 14
++#define SDEDM_THRESHOLD_MASK 0x1F
++#define SDEDM_FORCE_DATA_MODE 0x00080000
++
++#define SDVDD_POWER_ON      1
++#define SDHOST_FIFO_WORDS   16
++#define SDHOST_FIFO_THRESHOLD 4
++#define SDHOST_PIO_BURST    8
++#define SDHOST_RESET_TIMEOUT 0xF00000
++
++static ULONG SdhostConfig;
++static ULONG SdhostResponseType;
++static BOOLEAN SdhostMultiple;
++
++//
++// Program the SD clock: the core clock divided by SDCDIV + 2, the largest
++// rate at or below Hz; and the timeout of a command or a block, half a second.
++//
++static BOOLEAN
++SdhostSetClock(
++    IN ULONG Hz
++    )
++{
++    ULONG divisor = SdBaseClock / Hz;
++
++    if (divisor < 2) {
++        divisor = 2;
++    }
++    if (SdBaseClock / divisor > Hz) {
++        divisor += 1;
++    }
++    divisor -= 2;
++    if (divisor > SDCDIV_MAX) {
++        divisor = SDCDIV_MAX;
++    }
++    REG(SDCDIV) = divisor;
++    REG(SDTOUT) = SdBaseClock / (divisor + 2) / 2;
+=1 3213 3 -4
++//
++// Clear the errors and take the state machine out of a wait a failed transfer
++// left it in.
++//
++static VOID
++SdhostRecover(
+=2 1099 3
++    ULONG edm = REG(SDEDM);
++    ULONG fsm = edm & SDEDM_FSM_MASK;
++
++    REG(SDHSTS) = SDHSTS_CLEAR;
++    if (fsm == SDEDM_FSM_READWAIT || fsm == SDEDM_FSM_WRITESTART1) {
++        REG(SDEDM) = edm | SDEDM_FORCE_DATA_MODE;
++    }
++    SdhostMultiple = FALSE;
+=1 375 3 -4
++// Reset the controller as Linux does: power off, every register cleared, the
++// FIFO thresholds lowered to 4 words (a silicon bug), power on, and the busy
++// and block interrupt status enabled: the one marks the end of an R1b
++// command's busy, the other a block the card has taken. The firmware polls
++// them; the SDHOST's interrupt is not enabled.
++// The slow card bit keeps the controller from switching to its own fast clock
++// divisor in data mode.
++//
++static BOOLEAN
++SdhostReset(
+=2 1099 3
++    ULONG edm;
++
++    REG(SDVDD) = 0;
++    REG(SDCMD) = 0;
++    REG(SDARG) = 0;
++    REG(SDTOUT) = SDHOST_RESET_TIMEOUT;
++    REG(SDCDIV) = 0;
++    REG(SDHSTS) = SDHSTS_CLEAR;
++    REG(SDHCFG) = 0;
++    REG(SDHBCT) = 0;
++    REG(SDHBLC) = 0;
++
++    edm = REG(SDEDM);
++    edm &= ~((SDEDM_THRESHOLD_MASK << SDEDM_READ_THRESHOLD_SHIFT) |
++             (SDEDM_THRESHOLD_MASK << SDEDM_WRITE_THRESHOLD_SHIFT));
++    edm |= (SDHOST_FIFO_THRESHOLD << SDEDM_READ_THRESHOLD_SHIFT) |
++           (SDHOST_FIFO_THRESHOLD << SDEDM_WRITE_THRESHOLD_SHIFT);
++    REG(SDEDM) = edm;
++    FwStallExecution(20000);
++    REG(SDVDD) = SDVDD_POWER_ON;
++    FwStallExecution(20000);
++
++    SdhostConfig = SDHCFG_BUSY_IRPT_EN | SDHCFG_BLOCK_IRPT_EN | SDHCFG_SLOW_CARD | SDHCFG_WIDE_INT_BUS;
++    REG(SDHCFG) = SdhostConfig;
++    SdhostMultiple = FALSE;
++    return SdhostSetClock(IDENT_CLOCK);
+=1 375 3 -4
++// Issue a command: wait for the NEW flag to clear, then look at the FAIL flag.
++// The CRC check fails on a response that has no CRC (R3), which is no error.
++// An R1b command is complete when the busy interrupt status is set.
++//
++static BOOLEAN
++SdhostCommand(
++    IN ULONG Command,
++    IN ULONG Argument,
++    IN ULONG Blocks
++    )
++{
++    ULONG sdcmd = Command & SD_INDEX_MASK;
++    ULONG status;
++
++    if (!SdWait(SDCMD, SDCMD_NEW, 0)) {
++        return FALSE;
++    }
++
++    status = REG(SDHSTS);
++    if ((status & SDHSTS_ERRORS) != 0) {
++        REG(SDHSTS) = status & SDHSTS_ERRORS;
++    }
++
++    switch (Command & SD_RESP_MASK) {
++    case SD_RESP_NONE:
++        sdcmd |= SDCMD_NO_RESPONSE;
++        break;
++    case SD_RESP_SHORT_BUSY:
++        sdcmd |= SDCMD_BUSYWAIT;
++        break;
++    case SD_RESP_LONG:
++        sdcmd |= SDCMD_LONG_RESPONSE;
++        break;
++    }
++    if ((Command & SD_DATA_READ) != 0) {
++        sdcmd |= SDCMD_READ;
++    }
++    if ((Command & SD_DATA_WRITE) != 0) {
++        sdcmd |= SDCMD_WRITE;
++    }
++    if (Blocks != 0) {
++        REG(SDHBCT) = SECTOR_SIZE;
++        REG(SDHBLC) = Blocks;
++        SdhostMultiple = (Command & SD_DATA_MULTIPLE) != 0;
++    }
++
++    SdhostResponseType = Command & SD_RESP_MASK;
++    REG(SDARG) = Argument;
++    REG(SDCMD) = sdcmd | SDCMD_NEW;
++
++    if (!SdWait(SDCMD, SDCMD_NEW, 0)) {
++        SdhostRecover();
++        return FALSE;
++    }
++    if ((REG(SDCMD) & SDCMD_FAIL) != 0) {
++        status = REG(SDHSTS) & SDHSTS_ERRORS;
++        if (status != SDHSTS_CRC7_ERROR || (Command & SD_RESP_NO_CRC) == 0) {
++            SdhostRecover();
++            return FALSE;
++        }
++        REG(SDHSTS) = SDHSTS_CRC7_ERROR;
++    }
++
++    if ((Command & SD_RESP_MASK) == SD_RESP_SHORT_BUSY) {
++        if (!SdWait(SDHSTS, SDHSTS_BUSY_IRPT, SDHSTS_BUSY_IRPT)) {
++            SdhostRecover();
++            return FALSE;
++        }
++        REG(SDHSTS) = SDHSTS_BUSY_IRPT;
++    }
+=1 3213 3 -4
++static ULONG
++SdhostResponse(
++    IN ULONG Word
++    )
++{
++    ULONG low = REG(SDRSP0 + Word * 4);
++
++    if (SdhostResponseType != SD_RESP_LONG) {
++        return low;
++    }
++    return (low >> 8) | (Word < 3 ? REG(SDRSP0 + (Word + 1) * 4) << 24 : 0);
+=1 375 3 -4
++// Wait for the state machine to come back to its idle state after a transfer;
++// it is pushed out of the wait it enters after the last block of a multiple
++// block read (and a write's start wait), as Linux does.
++//
++static BOOLEAN
++SdhostWaitIdle(
++    IN BOOLEAN Read
++    )
++{
++    ULONG start = FwGetMicroseconds();
++    ULONG alternate = Read ? SDEDM_FSM_READWAIT : SDEDM_FSM_WRITESTART1;
++    ULONG edm, fsm;
++
++    for (;;) {
++        edm = REG(SDEDM);
++        fsm = edm & SDEDM_FSM_MASK;
++        if (fsm == SDEDM_FSM_IDENTMODE || fsm == SDEDM_FSM_DATAMODE) {
++            return TRUE;
++        }
++        if (fsm == alternate) {
++            REG(SDEDM) = edm | SDEDM_FORCE_DATA_MODE;
++            return TRUE;
++        }
++        if ((FwGetMicroseconds() - start) > TIMEOUT_US) {
++            SdhostRecover();
++            return FALSE;
+=3 780 4
++//
++// End a failed multiple block transfer: the card is left sending or receiving
++// data until a CMD12, which every later data command would fail without.
++//
++static VOID
++SdhostAbort(
+=2 1099 3
++    BOOLEAN multiple = SdhostMultiple;
++
++    SdhostRecover();
++    if (multiple) {
++        SdhostCommand(CMD(12) | R1B, 0, 0);
+=1 1203 4 -12
++// Move Blocks 512-byte blocks through the FIFO, in bursts of up to 8 words as
++// its level allows; a written block is waited for until the card has taken it
++// (the block interrupt status), so that the CMD12 that ends a multiple block
++// transfer cannot cut the last one short. Then the transfer is ended with
++// CMD12 and the controller left to settle.
++//
++static BOOLEAN
++SdhostTransfer(
++    IN PULONG Buffer,
++    IN ULONG Blocks,
++    IN BOOLEAN Read
++    )
++{
++    ULONG start;
++    ULONG words;
++    ULONG level, n, burst;
++
++    REG(SDHSTS) = SDHSTS_BLOCK_IRPT;
++    while (Blocks--) {
++        words = SECTOR_SIZE / sizeof(ULONG);
++        start = FwGetMicroseconds();
++        while (words != 0) {
++            level = SDEDM_FIFO_LEVEL(REG(SDEDM));
++            n = Read ? level : SDHOST_FIFO_WORDS - level;
++            burst = words < SDHOST_PIO_BURST ? words : SDHOST_PIO_BURST;
++            if (n < burst) {
++                if ((REG(SDHSTS) & SDHSTS_ERRORS) != 0 || (FwGetMicroseconds() - start) > TIMEOUT_US) {
++                    SdhostAbort();
++                    return FALSE;
++                }
++                continue;
++            }
++            if (n > words) {
++                n = words;
++            }
++            words -= n;
++            while (n--) {
++                if (Read) {
++                    *Buffer++ = REG(SDDATA);
++                } else {
++                    REG(SDDATA) = *Buffer++;
++                }
++            }
++            start = FwGetMicroseconds();
++        }
++
++        if (!Read) {
++            if (!SdWait(SDHSTS, SDHSTS_BLOCK_IRPT | SDHSTS_ERRORS, SDHSTS_BLOCK_IRPT)) {
++                SdhostAbort();
++                return FALSE;
++            }
++            REG(SDHSTS) = SDHSTS_BLOCK_IRPT;
+=1 938 3
++    if ((REG(SDHSTS) & SDHSTS_ERRORS) != 0) {
++        SdhostAbort();
++        return FALSE;
++    }
++    if (SdhostMultiple) {
++        SdhostMultiple = FALSE;
++        if (!SdhostCommand(CMD(12) | R1B, 0, 0)) {
++            return FALSE;
++        }
++    }
++    return SdhostWaitIdle(Read);
++}
++
++static VOID
++SdhostSetBusWidth(
++    IN ULONG Bits
++    )
++{
++    SdhostConfig &= ~SDHCFG_WIDE_EXT_BUS;
++    if (Bits == 4) {
++        SdhostConfig |= SDHCFG_WIDE_EXT_BUS;
++    }
++    REG(SDHCFG) = SdhostConfig;
++}
++
++static SD_HOST SdhostHost = {
++    "SDHOST",
++    SdhostReset,
++    SdhostSetClock,
++    SdhostCommand,
++    SdhostResponse,
++    SdhostTransfer,
++    SdhostSetBusWidth
++};
++
++//
++// The EMMC and EMMC2 (SDHCI).
++//
 +
 +#define BLKSIZECNT          0x04
 +#define ARG1                0x08
@@ -83,83 +574,19 @@
 +#define CMD_IXCHK           0x00100000
 +#define CMD_ISDATA          0x00200000
 +
-+#define R1                  (RSP_48 | CMD_CRCCHK | CMD_IXCHK)
-+#define R1B                 (RSP_48_BUSY | CMD_CRCCHK | CMD_IXCHK)
-+#define R2                  (RSP_136 | CMD_CRCCHK)
-+#define R3                  RSP_48
-+#define R6                  R1
-+#define R7                  R1
-+
-+#define CMD(n)              ((ULONG)(n) << 24)
-+#define APP                 0x80000000
-+
-+#define GPFSEL(Pin)         (*(volatile ULONG *)(PERIPHERAL_BASE + 0x200000 + ((Pin) / 10) * 4))
-+#define GPIO_INPUT          0
-+#define GPIO_ALT3           7
-+
-+#define POWER_DEVID_SD      0
-+#define CLOCK_ID_EMMC       1
-+#define CLOCK_ID_EMMC2      12
-+#define IDENT_CLOCK         400000
-+#define TRANSFER_CLOCK      25000000
-+#define TIMEOUT_US          1000000
-+
-+static ULONG SdBase;
-+static ULONG SdBaseClock;
-+static ULONG SdRca;
-+static ULONG SdSectors;
-+static BOOLEAN SdHighCapacity;
-+static ULONG SdBounce[SECTOR_SIZE / sizeof(ULONG)];
-+
-+static ULONG
-+SdGetPinFunction(
-+    IN ULONG Pin
-+    )
-+{
-+    return (GPFSEL(Pin) >> ((Pin % 10) * 3)) & 7;
-+}
-+
 +static VOID
-+SdSetPinFunction(
-+    IN ULONG Pin,
-+    IN ULONG Function
-+    )
-+{
-+    ULONG shift = (Pin % 10) * 3;
-+
-+    GPFSEL(Pin) = (GPFSEL(Pin) & ~(7 << shift)) | (Function << shift);
-+}
-+
-+static VOID
-+SdWrite(
++EmmcWrite(
 +    IN ULONG Register,
 +    IN ULONG Value
 +    )
 +{
-+    EMMC(Register) = Value;
++    REG(Register) = Value;
 +    FwStallExecution(6);
-+}
-+
-+static BOOLEAN
-+SdWait(
-+    IN ULONG Register,
-+    IN ULONG Mask,
-+    IN ULONG Value
-+    )
-+{
-+    ULONG start = FwGetMicroseconds();
-+
-+    while ((EMMC(Register) & Mask) != Value) {
-+        if ((FwGetMicroseconds() - start) > TIMEOUT_US) {
-+            return FALSE;
-+        }
-+    }
-=1 3213 3 -4
-+//
+=1 375 3 -4
 +// Program the SD clock: the 10-bit divided clock is base / (2 * divisor).
 +//
 +static BOOLEAN
-+SdSetClock(
++EmmcSetClock(
 +    IN ULONG Hz
 +    )
 +{
@@ -169,74 +596,114 @@
 +    if (divisor > 0x3FF) {
 +        divisor = 0x3FF;
 +    }
-+    c1 = EMMC(CONTROL1) & ~(C1_CLK_EN | 0xFFE0);
-+    SdWrite(CONTROL1, c1);
++    c1 = REG(CONTROL1) & ~(C1_CLK_EN | 0xFFE0);
++    EmmcWrite(CONTROL1, c1);
 +    c1 |= ((divisor & 0xFF) << 8) | ((divisor >> 8) << 6) | C1_CLK_INTLEN | C1_TOUNIT_MAX;
-+    SdWrite(CONTROL1, c1);
++    EmmcWrite(CONTROL1, c1);
 +    if (!SdWait(CONTROL1, C1_CLK_STABLE, C1_CLK_STABLE)) {
 +        return FALSE;
 +    }
-+    SdWrite(CONTROL1, c1 | C1_CLK_EN);
++    EmmcWrite(CONTROL1, c1 | C1_CLK_EN);
 =1 3213 3 -4
 +static VOID
-+SdResetLines(
++EmmcResetLines(
 +    IN ULONG Lines
 +    )
 +{
-+    SdWrite(CONTROL1, EMMC(CONTROL1) | Lines);
++    EmmcWrite(CONTROL1, REG(CONTROL1) | Lines);
 +    SdWait(CONTROL1, Lines, 0);
-=1 375 3 -4
-+// Issue a command; for a data command the caller moves the blocks afterwards.
-+// An application command is prefixed with CMD55.
++}
++
++static BOOLEAN
++EmmcReset(
+=2 1099 3
++    EmmcWrite(CONTROL0, 0);
++    EmmcWrite(CONTROL1, C1_SRST_HC);
++    if (!SdWait(CONTROL1, C1_SRST_HC, 0)) {
++        return FALSE;
++    }
++
++    EmmcWrite(CONTROL0, C0_POWER_330);
++    if (!EmmcSetClock(IDENT_CLOCK)) {
++        return FALSE;
++    }
++
++    EmmcWrite(IRPT_EN, 0);
++    EmmcWrite(IRPT_MASK, 0xFFFFFFFF);
++    EmmcWrite(INTERRUPT, 0xFFFFFFFF);
+=1 3213 3 -4
++//
++// Issue a command and wait for its response; a multiple block transfer ends
++// with the controller's automatic CMD12.
 +//
 +static BOOLEAN
-+SdCommand(
++EmmcCommand(
 +    IN ULONG Command,
 +    IN ULONG Argument,
 +    IN ULONG Blocks
 +    )
 +{
++    ULONG cmdtm = (Command & SD_INDEX_MASK) << 24;
 +    ULONG busy = STATUS_CMD_INHIBIT;
-+    ULONG status;
 +
-+    if ((Command & APP) != 0 && !SdCommand(CMD(55) | R1, SdRca << 16, 0)) {
-+        return FALSE;
++    switch (Command & SD_RESP_MASK) {
++    case SD_RESP_SHORT:
++        cmdtm |= (Command & SD_RESP_NO_CRC) != 0 ? RSP_48 : (RSP_48 | CMD_CRCCHK | CMD_IXCHK);
++        break;
++    case SD_RESP_SHORT_BUSY:
++        cmdtm |= RSP_48_BUSY | CMD_CRCCHK | CMD_IXCHK;
++        break;
++    case SD_RESP_LONG:
++        cmdtm |= RSP_136 | CMD_CRCCHK;
++        break;
 +    }
-+    Command &= ~APP;
-+
-+    if ((Command & (CMD_ISDATA | RSP_48_BUSY)) != 0) {
++    if ((Command & (SD_DATA_READ | SD_DATA_WRITE)) != 0) {
++        cmdtm |= CMD_ISDATA;
++        if ((Command & SD_DATA_READ) != 0) {
++            cmdtm |= TM_DAT_DIR_READ;
++        }
++        if ((Command & SD_DATA_MULTIPLE) != 0) {
++            cmdtm |= TM_MULTI_BLOCK | TM_BLKCNT_EN | TM_AUTO_CMD12;
+=1 938 3
++    if ((cmdtm & (CMD_ISDATA | RSP_48_BUSY)) != 0) {
 +        busy |= STATUS_DAT_INHIBIT;
 +    }
 +    if (!SdWait(STATUS, busy, 0)) {
 +        return FALSE;
 +    }
 +
-+    SdWrite(INTERRUPT, 0xFFFFFFFF);
++    EmmcWrite(INTERRUPT, 0xFFFFFFFF);
 +    if (Blocks != 0) {
-+        SdWrite(BLKSIZECNT, (Blocks << 16) | SECTOR_SIZE);
++        EmmcWrite(BLKSIZECNT, (Blocks << 16) | SECTOR_SIZE);
 +    }
-+    SdWrite(ARG1, Argument);
-+    SdWrite(CMDTM, Command);
++    EmmcWrite(ARG1, Argument);
++    EmmcWrite(CMDTM, cmdtm);
 +
 +    if (!SdWait(INTERRUPT, INT_CMD_DONE | INT_ERR, INT_CMD_DONE) ||
-+        ((status = EMMC(INTERRUPT)) & INT_ERR) != 0) {
-+        SdWrite(INTERRUPT, 0xFFFFFFFF);
-+        SdResetLines(C1_SRST_CMD | C1_SRST_DATA);
++        (REG(INTERRUPT) & INT_ERR) != 0) {
++        EmmcWrite(INTERRUPT, 0xFFFFFFFF);
++        EmmcResetLines(C1_SRST_CMD | C1_SRST_DATA);
 +        return FALSE;
 +    }
-+    SdWrite(INTERRUPT, INT_CMD_DONE);
++    EmmcWrite(INTERRUPT, INT_CMD_DONE);
 +
-+    if ((Command & RSP_48_BUSY) == RSP_48_BUSY && (Command & CMD_ISDATA) == 0) {
++    if ((cmdtm & RSP_48_BUSY) == RSP_48_BUSY && (cmdtm & CMD_ISDATA) == 0) {
 +        SdWait(INTERRUPT, INT_DATA_DONE, INT_DATA_DONE);
-+        SdWrite(INTERRUPT, INT_DATA_DONE);
++        EmmcWrite(INTERRUPT, INT_DATA_DONE);
 +    }
 =1 3213 3 -4
-+//
++static ULONG
++EmmcResponse(
++    IN ULONG Word
++    )
++{
++    return REG(RESP0 + Word * 4);
+=1 375 3 -4
 +// Move Blocks 512-byte blocks through the data port, then wait for the transfer
 +// (and the automatic CMD12 of a multiple block transfer) to complete.
 +//
 +static BOOLEAN
-+SdTransfer(
++EmmcTransfer(
 +    IN PULONG Buffer,
 +    IN ULONG Blocks,
 +    IN BOOLEAN Read
@@ -246,24 +713,46 @@
 +    ULONG i;
 +
 +    while (Blocks--) {
-+        if (!SdWait(INTERRUPT, ready | INT_ERR, ready) || (EMMC(INTERRUPT) & INT_ERR) != 0) {
-+            SdWrite(INTERRUPT, 0xFFFFFFFF);
-+            SdResetLines(C1_SRST_CMD | C1_SRST_DATA);
++        if (!SdWait(INTERRUPT, ready | INT_ERR, ready) || (REG(INTERRUPT) & INT_ERR) != 0) {
++            EmmcWrite(INTERRUPT, 0xFFFFFFFF);
++            EmmcResetLines(C1_SRST_CMD | C1_SRST_DATA);
 +            return FALSE;
 +        }
-+        SdWrite(INTERRUPT, ready);
++        EmmcWrite(INTERRUPT, ready);
 +        for (i = 0; i < SECTOR_SIZE / sizeof(ULONG); i += 1) {
 +            if (Read) {
-+                *Buffer++ = EMMC(DATA);
++                *Buffer++ = REG(DATA);
 +            } else {
-+                EMMC(DATA) = *Buffer++;
++                REG(DATA) = *Buffer++;
 =1 1677 4
 +    if (!SdWait(INTERRUPT, INT_DATA_DONE | INT_ERR, INT_DATA_DONE)) {
-+        SdResetLines(C1_SRST_CMD | C1_SRST_DATA);
++        EmmcResetLines(C1_SRST_CMD | C1_SRST_DATA);
 +        return FALSE;
 +    }
-+    SdWrite(INTERRUPT, 0xFFFFFFFF);
++    EmmcWrite(INTERRUPT, 0xFFFFFFFF);
 =1 3213 3 -4
++static VOID
++EmmcSetBusWidth(
++    IN ULONG Bits
++    )
++{
++    EmmcWrite(CONTROL0, Bits == 4 ? REG(CONTROL0) | C0_HCTL_DWIDTH : REG(CONTROL0) & ~C0_HCTL_DWIDTH);
++}
++
++static SD_HOST EmmcHost = {
++    "EMMC",
++    EmmcReset,
++    EmmcSetClock,
++    EmmcCommand,
++    EmmcResponse,
++    EmmcTransfer,
++    EmmcSetBusWidth
++};
++
++//
++// The card.
++//
++
 +static BOOLEAN
 +SdBlocks(
 +    IN ULONG Lba,
@@ -276,23 +765,23 @@
 +    ULONG address = SdHighCapacity ? Lba : Lba * SECTOR_SIZE;
 +
 +    if (Count == 1) {
-+        command = Read ? (CMD(17) | R1 | CMD_ISDATA | TM_DAT_DIR_READ) : (CMD(24) | R1 | CMD_ISDATA);
++        command = Read ? (CMD(17) | R1 | SD_DATA_READ) : (CMD(24) | R1 | SD_DATA_WRITE);
 +    } else {
-+        command = (Read ? (CMD(18) | TM_DAT_DIR_READ) : CMD(25)) |
-+                  R1 | CMD_ISDATA | TM_MULTI_BLOCK | TM_BLKCNT_EN | TM_AUTO_CMD12;
++        command = Read ? (CMD(18) | R1 | SD_DATA_READ | SD_DATA_MULTIPLE) :
++                         (CMD(25) | R1 | SD_DATA_WRITE | SD_DATA_MULTIPLE);
 +    }
-+    return SdCommand(command, address, Count) && SdTransfer(Buffer, Count, Read);
++    return SdCommand(command, address, Count) && SdHost->Transfer(Buffer, Count, Read);
 =1 375 3 -4
-+// The card's capacity in sectors from its CSD (the controller drops the CRC byte, so
-+// RESP0-3 hold CSD bits 127:8).
++// The card's capacity in sectors from its CSD: response words 3 to 0 hold CSD
++// bits 127:8.
 +//
 +static ULONG
 +SdCapacity(
 =2 1099 3
-+    ULONG r1 = EMMC(RESP1), r2 = EMMC(RESP2);
++    ULONG r1 = SdHost->Response(1), r2 = SdHost->Response(2);
 +    ULONG size, mult, blockLength;
 +
-+    if (((EMMC(RESP3) >> 22) & 3) == 1) {
++    if (((SdHost->Response(3) >> 22) & 3) == 1) {
 +        size = (r1 >> 8) & 0x3FFFFF;
 +        return (size + 1) * 1024;
 +    }
@@ -343,41 +832,29 @@
 +SdCardInitialize (
 +    IN PCHAR Name
 =1 218 6
-+    This routine resets the controller at SdBase and brings the card to the
-+    transfer state.
++    This routine resets the controller SdHost at SdBase and brings the card
++    to the transfer state.
 =1 225 3
 +    Name - Supplies the name of the controller in messages.
 =1 231 3
 +    TRUE if a card is ready, FALSE otherwise.
 =1 235 4
-+    ULONG ocr;
++    ULONG ocr = 0;
 +    ULONG i;
 +    BOOLEAN v2;
 +
 +    if (SdBaseClock == 0) {
-+        SdBaseClock = 50000000;
++        SdBaseClock = SdHost == &SdhostHost ? 250000000 : 50000000;
 +    }
 +
-+    SdWrite(CONTROL0, 0);
-+    SdWrite(CONTROL1, C1_SRST_HC);
-+    if (!SdWait(CONTROL1, C1_SRST_HC, 0)) {
++    if (!SdHost->Reset()) {
 +        FwPrint("%s: controller reset timed out\r\n", Name);
 +        return FALSE;
 +    }
 +
-+    SdWrite(CONTROL0, C0_POWER_330);
-+    if (!SdSetClock(IDENT_CLOCK)) {
-+        FwPrint("%s: clock did not stabilize\r\n", Name);
-+        return FALSE;
-+    }
-+
-+    SdWrite(IRPT_EN, 0);
-+    SdWrite(IRPT_MASK, 0xFFFFFFFF);
-+    SdWrite(INTERRUPT, 0xFFFFFFFF);
-+
 +    SdRca = 0;
-+    SdCommand(CMD(0) | RSP_NONE, 0, 0);
-+    v2 = SdCommand(CMD(8) | R7, 0x1AA, 0) && (EMMC(RESP0) & 0xFFF) == 0x1AA;
++    SdCommand(CMD(0) | SD_RESP_NONE, 0, 0);
++    v2 = SdCommand(CMD(8) | R7, 0x1AA, 0) && (SdHost->Response(0) & 0xFFF) == 0x1AA;
 +
 +    for (i = 0; i < 1000; i += 1) {
 +        if (!SdCommand(APP | CMD(41) | R3, (v2 ? 0x40000000 : 0) | 0x00FF8000, 0)) {
@@ -385,7 +862,7 @@
 +            return FALSE;
 +        }
 +
-+        ocr = EMMC(RESP0);
++        ocr = SdHost->Response(0);
 +        if ((ocr & 0x80000000) != 0) {
 =1 597 3
 +        FwStallExecution(1000);
@@ -403,7 +880,7 @@
 +        return FALSE;
 +    }
 +
-+    SdRca = EMMC(RESP0) >> 16;
++    SdRca = SdHost->Response(0) >> 16;
 +
 +    if (!SdCommand(CMD(9) | R2, SdRca << 16, 0)) {
 +        FwPrint("%s: CSD read failed\r\n", Name);
@@ -412,13 +889,13 @@
 +
 +    SdSectors = SdCapacity();
 +
-+    if (!SdCommand(CMD(7) | R1B, SdRca << 16, 0) || !SdSetClock(TRANSFER_CLOCK)) {
++    if (!SdCommand(CMD(7) | R1B, SdRca << 16, 0) || !SdHost->SetClock(TRANSFER_CLOCK)) {
 +        FwPrint("%s: card select failed\r\n", Name);
 +        return FALSE;
 +    }
 +
 +    if (SdCommand(APP | CMD(6) | R1, 2, 0)) {
-+        SdWrite(CONTROL0, EMMC(CONTROL0) | C0_HCTL_DWIDTH);
++        SdHost->SetBusWidth(4);
 +    }
 +
 +    if (!SdHighCapacity) {
@@ -429,27 +906,53 @@
 =1 3213 3 -4
 +static BOOLEAN
 +SdDiskBootInitialize (
-=2 1139 7
++    OUT PSD_CONTROLLER Controller
+=1 218 6
 +    This routine finds the controller of the card and brings the card to the
 +    transfer state. Every BCM2711 board wires its card to the EMMC2 (the EMMC
 +    is the wireless chip's); QEMU's raspi4b attaches it to the EMMC, the only
-+    controller of its card, which is looked at when the EMMC2 has none.
++    controller of its card, which is looked at when the EMMC2 has none. A
++    BCM2836 or BCM2837 board has it on the SDHOST, where the VideoCore booted
++    from; the EMMC is tried when no card answers there.
+=1 225 3
++    Controller - Returns the controller the card is on.
 =1 231 3
 +    TRUE if a card is ready, FALSE otherwise.
 =1 235 4
 +    ULONG i;
 +
 +    if (FwBcm2711) {
++        SdHost = &EmmcHost;
 +        SdBase = PERIPHERAL_BASE + EMMC2_OFFSET;
 +        SdBaseClock = MailboxGetClockRate(CLOCK_ID_EMMC2);
++        *Controller = SdControllerEmmc2;
 +        if (SdCardInitialize("SD (EMMC2)")) {
 =1 3213 3 4
 +        SdBase = PERIPHERAL_BASE + EMMC_OFFSET;
 +        SdBaseClock = MailboxGetClockRate(CLOCK_ID_EMMC);
++        *Controller = SdControllerEmmc;
 +        return SdCardInitialize("SD (EMMC)");
+=1 375 3
++    // The slot on the SDHOST (GPIO 48-53 at ALT0, as the VideoCore leaves
++    // them; QEMU's gpio model attaches the card to the SDHOST at that
++    // function); the wireless chip keeps the EMMC on GPIO 34-39.
++    //
++
++    for (i = 48; i <= 53; i += 1) {
++        SdSetPinFunction(i, GPIO_ALT0);
 +    }
 +
-+    SdBase = PERIPHERAL_BASE + EMMC_OFFSET;
++    MailboxSetPowerState(POWER_DEVID_SD, TRUE);
++    SdHost = &SdhostHost;
++    SdBase = PERIPHERAL_BASE + SDHOST_OFFSET;
++    SdBaseClock = MailboxGetMaxClockRate(CLOCK_ID_CORE);
++    *Controller = SdControllerSdhost;
++    if (SdCardInitialize("SD (SDHOST)")) {
+=1 3213 3
++    //
++    // No card there: the EMMC, alone on the slot.
++    //
++
 +    for (i = 34; i <= 39; i += 1) {
 +        if (SdGetPinFunction(i) == GPIO_ALT3) {
 +            SdSetPinFunction(i, GPIO_INPUT);
@@ -458,9 +961,52 @@
 +        SdSetPinFunction(i, GPIO_ALT3);
 +    }
 +
-+    MailboxSetPowerState(POWER_DEVID_SD, TRUE);
++    SdHost = &EmmcHost;
++    SdBase = PERIPHERAL_BASE + EMMC_OFFSET;
 +    SdBaseClock = MailboxGetClockRate(CLOCK_ID_EMMC);
-+    return SdCardInitialize("SD");
++    *Controller = SdControllerEmmc;
++    return SdCardInitialize("SD (EMMC)");
+=1 375 3 -4
++// Whether an SDIO card answers on the EMMC: the wireless chip of a Pi 3,
++// Zero 2 W or Pi 4, on GPIO 34-39 (ALT3), whose power the VideoCore turned
++// on. CMD5 asks the card for its operating conditions and changes nothing.
++// The controller of the SD card is left as it was; the EMMC is left reset.
++//
++BOOLEAN
++SdioProbe(
++    OUT PULONG BaseClock
++    )
++{
++    PSD_HOST host = SdHost;
++    ULONG base = SdBase, clock = SdBaseClock, rca = SdRca;
++    BOOLEAN present = FALSE;
++    ULONG i;
++
++    for (i = 34; i <= 39; i += 1) {
++        SdSetPinFunction(i, GPIO_ALT3);
++    }
++
++    SdHost = &EmmcHost;
++    SdBase = PERIPHERAL_BASE + EMMC_OFFSET;
++    SdBaseClock = MailboxGetClockRate(CLOCK_ID_EMMC);
++    if (SdBaseClock == 0) {
++        SdBaseClock = 50000000;
++    }
++    *BaseClock = SdBaseClock;
++    if (EmmcReset()) {
++        EmmcCommand(CMD(0) | SD_RESP_NONE, 0, 0);
++        for (i = 0; i < 3 && !present; i += 1) {
++            present = EmmcCommand(CMD(5) | R3, 0, 0);
++        }
++    }
++    EmmcWrite(CONTROL0, 0);
++    EmmcWrite(CONTROL1, C1_SRST_HC);
++
++    SdHost = host;
++    SdBase = base;
++    SdBaseClock = clock;
++    SdRca = rca;
++    return present;
 +}
 +
 +static ARC_STATUS
@@ -677,9 +1223,24 @@
 +
 +    Entries - Supplies the number of free entries in the driver lookup table.
 =1 1267 8
-+    if (!SdDiskBootInitialize()) {
++    SD_CONTROLLER controller;
++
++    if (!SdDiskBootInitialize(&controller)) {
 =1 1307 3
-+    FwSetScsiAdapter(SdBase, SdBase == PERIPHERAL_BASE + EMMC2_OFFSET);
++    FwSetScsiAdapter(SdBase, controller);
++
++    //
++    // The wireless chip on the EMMC, when the card is elsewhere.
++    //
++
++    if (controller != SdControllerEmmc) {
++        ULONG clock;
++
++        if (SdioProbe(&clock)) {
++            FwPrint("Wireless: SDIO card on the EMMC\r\n");
++            FwAddWlan(clock);
++        }
++    }
 +    LookupTable->DevicePath = SdDiskDevicePath;
 +    LookupTable->DispatchTable = &SdDiskEntryTable;
 +}

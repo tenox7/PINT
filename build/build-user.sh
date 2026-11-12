@@ -67,6 +67,8 @@ dll $P NEWSAM/CLIENT; dll $P NET/RAP; dll $P NET/API
 # logon
 for c in LSA/CLIENT/USER WINDOWS/SCREG/WINREG/SERVER WINDOWS/USER/WINLOGON/DAYTONA; do lib $P $c; done
 exe $W USER/WINLOGON/DAYTONA winlogon
+# savedump, which winlogon starts after a crash to copy the dump out of the pagefile (MEMORY.DMP)
+pair $W USER/SAVEDUMP:savedump
 
 # the local security authority (lsass: lsasrv, samsrv, msv1_0, msprivs), the service controller, the event log
 # and the message files of its events (netevent, iologmsg and the network messages, netmsg)
@@ -151,6 +153,9 @@ for c in DRAWDIB COMPMAN MCIWND; do lib $W MEDIA/AVI/$c; done
 for c in VIDEO MSVIDC MSRLE MCIAVI32; do dll $W MEDIA/AVI/$c; done
 for a in SNDVOL:sndvol32 CDPLAYER:cdplayer MPLAYER2:mplay32; do exe $W MEDIA/${a%%:*} ${a#*:}; done
 lib $W MEDIA/SNDREC32/O2BASE; exe $W MEDIA/SNDREC32/SOUNDREC sndrec32
+# the multimedia driver of the sound driver (bcmsound), on NT's drvlib and synthlib as the Windows
+# Sound System's sndsys32.dll is
+lib $W MEDIA/DRIVERS/DRVLIB; lib $W MEDIA/DRIVERS/SYNTHLIB; dll /work/RASPI/drivers/bcmsound bcmsnd32
 
 # Windows NT Diagnostics: winmsd, its 3D controls (winmsd.dll) and column list box (clb.dll); the
 # header the library makes, wintools.h, before winmsd compiles
@@ -252,9 +257,11 @@ for c in XLATE SRC; do lib $P NET/UI/NCPA/TCPIP/$c; done; dll $P NET/UI/NCPA/TCP
 # the simple TCP/IP services
 D=NET/SOCKETS/TCPCMD/FTPSVC
 dll $P $D/CLIENT; dll $P $D/SERVER; dll $P $D/FTPCTRS; dll $P NET/UI/FTPMGR/CPL; dll $P NET/UI/FTPMGR/FTPSMX
+# (ftpanon, which the first boot runs: the account of the FTP Server's anonymous user and the LSA secret of its password)
+exe $X ftpanon ftpanon
 dll $P NET/SOCKETS/TCPSVCS/SIMPTCP; exe $P NET/SOCKETS/TCPSVCS/TCPSVCS tcpsvcs
 
-exe /work/RASPI/apps hello hello; exe /work/RASPI/apps smptest smptest; exe /work/RASPI/apps nettest nettest
+exe /work/RASPI/apps hello hello; exe /work/RASPI/apps smptest smptest; exe /work/RASPI/apps nettest nettest; exe /work/RASPI/apps ftptest ftptest
 }
 
 PASS=compile; user; barrier

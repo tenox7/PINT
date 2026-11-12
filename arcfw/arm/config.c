@@ -25,6 +25,8 @@
 #include "fwstring.h"
 #include "bcmvdeo.h"
 #include "bcmethhw.h"
+#include "bcmwlanhw.h"
+#include "bcmsoundhw.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -41,6 +43,8 @@ static CONFIGURATION_COMPONENT_DATA ArcKeyboardNode;
 static CONFIGURATION_COMPONENT_DATA ArcPointerControllerNode;
 static CONFIGURATION_COMPONENT_DATA ArcPointerNode;
 static CONFIGURATION_COMPONENT_DATA ArcNetworkNode;
+static CONFIGURATION_COMPONENT_DATA ArcWlanNode;
+static CONFIGURATION_COMPONENT_DATA ArcAudioNode;
 
 //
 // The BCM2836 has four Cortex-A7 cores, the BCM2837 four Cortex-A53 and the
@@ -96,12 +100,16 @@ static struct {
 } ArcSystemData;
 
 //
-// The configuration data of the SD card controller (the EMMC): its registers,
-// the VideoCore mailbox through which its clock is controlled, its interrupt at
+// The configuration data of the SD card controller: its registers, the
+// VideoCore mailbox through which its clock is asked, its interrupt at
 // DEVICE_LEVEL, and the SCSI host identifier, as Jazz describes its SCSI
-// controller. The card of a BCM2711 board is on the EMMC2. An interrupt vector
-// is an IRQ number of the BCM2835 interrupt controller, or on the BCM2711 an
-// interrupt ID of the GIC-400 (VideoCore interrupt n is ID 96 + n).
+// controller. The tree is built with the EMMC (the Arasan SDHCI, 0x300000) of
+// a BCM2836 or BCM2837, or the EMMC2 of a BCM2711; the boot driver then gives
+// the controller it found the card on (FwSetScsiAdapter): the SDHOST
+// (0x202000) of a BCM2836 or BCM2837, where the VideoCore boots from, so that
+// the EMMC is left to the wireless chip. An interrupt vector is an IRQ number
+// of the BCM2835 interrupt controller, or on the BCM2711 an interrupt ID of
+// the GIC-400 (VideoCore interrupt n is ID 96 + n).
 //
 
 #define EMMC_PHYSICAL_BASE      (PERIPHERAL_BASE + 0x300000)
@@ -111,6 +119,7 @@ static struct {
 #define MAILBOX_SIZE            0x40
 #define EMMC_LEVEL              3
 #define EMMC_VECTOR             (FwBcm2711 ? 158 : 62)
+#define SDHOST_VECTOR           56
 #define SCSI_HOST_ID            7
 
 static struct {
@@ -195,6 +204,21 @@ Link(
     }
     *Last = Child;
     Child->Parent = Parent;
+}
+
+static VOID
+Unlink(
+    PCONFIGURATION_COMPONENT_DATA Child
+    )
+{
+    PCONFIGURATION_COMPONENT_DATA *Next = &Child->Parent->Child;
+
+    while (*Next != Child) {
+        Next = &(*Next)->Sibling;
+    }
+    *Next = Child->Sibling;
+    Child->Sibling = NULL;
+    Child->Parent = NULL;
 }
 
 static VOID
@@ -340,17 +364,21 @@ MakeScsiData(
 
 //
 // Give the SCSI adapter the controller the boot driver found the card on
-// (sdcard.c): the EMMC2 or the EMMC of a BCM2711.
+// (sdcard.c): its registers, its interrupt and its identifier, by which the
+// miniport (bcmemmc) tells the controllers apart.
 //
 
 VOID
 FwSetScsiAdapter(
     IN ULONG PhysicalBase,
-    IN BOOLEAN Emmc2
+    IN SD_CONTROLLER Controller
     )
 {
     ArcScsiData.List.PartialDescriptors[1].u.Memory.Start.LowPart = PhysicalBase;
-    ArcScsiId = Emmc2 ? "BCM2711-EMMC2" : "BCM2835-EMMC";
+    ArcScsiData.List.PartialDescriptors[0].u.Interrupt.Vector =
+        Controller == SdControllerSdhost ? SDHOST_VECTOR : EMMC_VECTOR;
+    ArcScsiId = Controller == SdControllerEmmc2 ? "BCM2711-EMMC2" :
+                Controller == SdControllerSdhost ? "BCM2835-SDHOST" : "BCM2835-EMMC";
     SetIdentifier(&ArcScsiNode, ArcScsiId);
 }
 
@@ -481,6 +509,16 @@ MakeNetworkNode (
         sizeof(CM_PARTIAL_RESOURCE_LIST) + 3 * sizeof(CM_PARTIAL_RESOURCE_DESCRIPTOR) +
         sizeof(CM_BCMETH_DEVICE_DATA);
     Link(&ArcBusNode, &ArcNetworkNode);
+
+    //
+    // NT numbers the network controllers in the order of the tree, and the
+    // Ethernet miniport takes the first: the wireless controller follows it.
+    //
+
+    if (ArcWlanNode.Parent != NULL) {
+        Unlink(&ArcWlanNode);
+        Link(&ArcBusNode, &ArcWlanNode);
+    }
 }
 
 VOID
@@ -490,6 +528,144 @@ FwAddNetworkController (
 {
     MakeNetworkNode(Identifier, USB_LEVEL, USB_VECTOR, USB_PHYSICAL_BASE, USB_REGISTERS_SIZE,
                     VIDEOCORE_BUS_CHANNEL);
+}
+
+//
+// The wireless chip, which the boot driver of the SD card found on the EMMC
+// (sdcard.c): a network controller of the internal bus after the Ethernet
+// controller, with the interrupt and registers of the EMMC, the board's
+// revision code and the base clock of the EMMC (bcmwlanhw.h).
+//
+
+static struct {
+    CM_PARTIAL_RESOURCE_LIST List;
+    CM_PARTIAL_RESOURCE_DESCRIPTOR More[2];
+    CM_BCMWLAN_DEVICE_DATA WlanData;
+} ArcWlanData;
+
+VOID
+FwAddWlan (
+    IN ULONG BaseClock
+    )
+{
+    PCM_PARTIAL_RESOURCE_DESCRIPTOR Partial = ArcWlanData.List.PartialDescriptors;
+
+    if (ArcWlanNode.Parent != NULL) {
+        return;
+    }
+
+    ArcWlanData.List.Version = ARC_VERSION;
+    ArcWlanData.List.Revision = ARC_REVISION;
+    ArcWlanData.List.Count = 3;
+
+    SetDescriptor(&Partial[0], CmResourceTypeInterrupt, CM_RESOURCE_INTERRUPT_LEVEL_SENSITIVE);
+    Partial[0].u.Interrupt.Level = EMMC_LEVEL;
+    Partial[0].u.Interrupt.Vector = EMMC_VECTOR;
+
+    SetDescriptor(&Partial[1], CmResourceTypeMemory, CM_RESOURCE_MEMORY_READ_WRITE);
+    Partial[1].u.Memory.Start.LowPart = EMMC_PHYSICAL_BASE;
+    Partial[1].u.Memory.Length = EMMC_REGISTERS_SIZE;
+
+    SetDescriptor(&Partial[2], CmResourceTypeDeviceSpecific, 0);
+    Partial[2].u.DeviceSpecificData.DataSize = sizeof(CM_BCMWLAN_DEVICE_DATA);
+    ArcWlanData.WlanData.Version = ARC_VERSION;
+    ArcWlanData.WlanData.Revision = ARC_REVISION;
+    ArcWlanData.WlanData.BoardRevision = MailboxGetBoardRevision();
+    ArcWlanData.WlanData.BaseClock = BaseClock;
+
+    SetComponent(&ArcWlanNode, ControllerClass, NetworkController, 1);
+    SetIdentifier(&ArcWlanNode, BCMWLAN_ID);
+    ArcWlanNode.ComponentEntry.Flags.Input = 1;
+    ArcWlanNode.ComponentEntry.Flags.Output = 1;
+    ArcWlanNode.ConfigurationData = &ArcWlanData;
+    ArcWlanNode.ComponentEntry.ConfigurationDataLength =
+        sizeof(CM_PARTIAL_RESOURCE_LIST) + 2 * sizeof(CM_PARTIAL_RESOURCE_DESCRIPTOR) +
+        sizeof(CM_BCMWLAN_DEVICE_DATA);
+    Link(&ArcBusNode, &ArcWlanNode);
+}
+
+//
+// The sound hardware, an audio controller of the internal bus (bcmsoundhw.h):
+// the DMA channel that feeds the 3.5 mm jack (the PWM) or HDMI, its interrupt
+// at DEVICE_LEVEL, the board's revision code and the peripherals' address.
+// The channel is a full one (0-6, not a lite one) the VideoCore leaves to the
+// ARM, 5 if it may (as on every board so far). The interrupt of DMA channel n
+// (0-10) is VideoCore interrupt 16 + n.
+//
+
+#define AUDIO_LEVEL             3
+#define AUDIO_DMA_CHANNEL       5
+#define AUDIO_DMA_MASK          (FwBcm2711 ? 0x07F5 : 0x7F35)
+#define AUDIO_VECTOR(Channel)   ((FwBcm2711 ? 96 : 0) + 16 + (Channel))
+
+//
+// The firmware's revision is its build time (seconds since 1970); QEMU
+// answers a small constant, and its DMA controller ignores the DREQs, so the
+// driver plays nowhere there.
+//
+
+#define AUDIO_REAL_FIRMWARE     0x40000000
+
+static struct {
+    CM_PARTIAL_RESOURCE_LIST List;
+    CM_PARTIAL_RESOURCE_DESCRIPTOR More[1];
+    CM_BCMSOUND_DEVICE_DATA AudioData;
+} ArcAudioData;
+
+VOID
+FwAddAudio (
+    VOID
+    )
+{
+    PCM_PARTIAL_RESOURCE_DESCRIPTOR Partial = ArcAudioData.List.PartialDescriptors;
+    ULONG Channel, Mask;
+
+    if (ArcAudioNode.Parent != NULL) {
+        return;
+    }
+
+    Mask = MailboxGetDmaChannels();
+    if (Mask == 0) {
+        Mask = AUDIO_DMA_MASK;
+    }
+
+    Channel = AUDIO_DMA_CHANNEL;
+    if ((Mask & (1 << Channel)) == 0) {
+        for (Channel = 6; Channel > 0 && (Mask & (1 << Channel)) == 0; Channel -= 1) {
+        }
+
+        if (Channel == 0) {
+            return;
+        }
+    }
+
+    ArcAudioData.List.Version = ARC_VERSION;
+    ArcAudioData.List.Revision = ARC_REVISION;
+    ArcAudioData.List.Count = 2;
+
+    SetDescriptor(&Partial[0], CmResourceTypeInterrupt, CM_RESOURCE_INTERRUPT_LEVEL_SENSITIVE);
+    Partial[0].u.Interrupt.Level = AUDIO_LEVEL;
+    Partial[0].u.Interrupt.Vector = AUDIO_VECTOR(Channel);
+
+    SetDescriptor(&Partial[1], CmResourceTypeDeviceSpecific, 0);
+    Partial[1].u.DeviceSpecificData.DataSize = sizeof(CM_BCMSOUND_DEVICE_DATA);
+    ArcAudioData.AudioData.Version = ARC_VERSION;
+    ArcAudioData.AudioData.Revision = ARC_REVISION;
+    ArcAudioData.AudioData.BoardRevision = MailboxGetBoardRevision();
+    ArcAudioData.AudioData.PeripheralBase = PERIPHERAL_BASE;
+    ArcAudioData.AudioData.DmaChannel = Channel;
+    ArcAudioData.AudioData.DmaChannelMask = Mask;
+    ArcAudioData.AudioData.Flags = (FwBcm2711 ? BCMSOUND_BCM2711 : 0) |
+                                   (MailboxGetFirmwareRevision() < AUDIO_REAL_FIRMWARE ? BCMSOUND_EMULATED : 0);
+
+    SetComponent(&ArcAudioNode, ControllerClass, AudioController, 0);
+    SetIdentifier(&ArcAudioNode, BCMSOUND_ID);
+    ArcAudioNode.ComponentEntry.Flags.Output = 1;
+    ArcAudioNode.ConfigurationData = &ArcAudioData;
+    ArcAudioNode.ComponentEntry.ConfigurationDataLength =
+        sizeof(CM_PARTIAL_RESOURCE_LIST) + sizeof(CM_PARTIAL_RESOURCE_DESCRIPTOR) +
+        sizeof(CM_BCMSOUND_DEVICE_DATA);
+    Link(&ArcBusNode, &ArcAudioNode);
 }
 
 //
@@ -664,6 +840,7 @@ FwBuildConfigurationTree(
     Link(&ArcBusNode, &ArcPointerControllerNode);
     Link(&ArcPointerControllerNode, &ArcPointerNode);
     FwAddGenet();
+    FwAddAudio();
 
     Link(&ArcSystemNode, &ArcScsiNode);
     Link(&ArcScsiNode, &ArcControllerNode);
@@ -978,4 +1155,106 @@ Routine Description:
     SYSTEM_BLOCK->FirmwareVector[DeleteComponentRoutine] = (PVOID)FwDeleteComponent;
     SYSTEM_BLOCK->FirmwareVector[GetComponentRoutine] = (PVOID)FwGetComponent;
     SYSTEM_BLOCK->FirmwareVector[SaveConfigurationRoutine] = (PVOID)FwSaveConfiguration;
+}
+
+//
+// crash_dump of config.txt, the Pi firmware's configuration on the card's FAT
+// partition, which the firmware passes over (keys it does not know). With
+// crash_dump=1 (or yes, true, on) and a memory limit, total_mem= (the Pi
+// firmware's, in MB), the boot selection gets the CRASHDUMP load option with
+// the limit (CRASHDUMP=256; FwCrashDumpRequested returns it, 0 for no dumps):
+// the SD card driver (bcmemmc) then sets NT's crash dumps up, whose file
+// (MEMORY.DMP) and pagefile each take as much of C: as the memory. Without
+// the limit, crash_dump is ignored: all the memory of a large board would
+// not fit. Both are off by default.
+//
+
+#define CONFIG_TXT_PATH "scsi(0)disk(0)rdisk(0)partition(1)\\config.txt"
+#define CONFIG_TXT_SIZE 8192
+
+static CHAR FwConfigText[CONFIG_TXT_SIZE + 1];
+
+static PCHAR
+FwConfigValue (
+    IN PCHAR Line,
+    IN PCHAR Key
+    )
+
+//
+// The value of a "key=value" line (not case sensitive), or NULL.
+//
+
+{
+    ULONG Index;
+
+    while (*Line == ' ' || *Line == '\t') {
+        Line += 1;
+    }
+    for (Index = 0; Key[Index] != 0 && tolower(Line[Index]) == Key[Index]; Index += 1) {
+    }
+    if (Key[Index] != 0) {
+        return NULL;
+    }
+    for (Line += Index; *Line == ' ' || *Line == '\t'; Line += 1) {
+    }
+    if (*Line != '=') {
+        return NULL;
+    }
+    for (Line += 1; *Line == ' ' || *Line == '\t'; Line += 1) {
+    }
+    return Line;
+}
+
+ULONG
+FwCrashDumpRequested (
+    VOID
+    )
+{
+    static BOOLEAN Read = FALSE;
+    static ULONG Requested = 0;
+    ULONG FileId, Count, Length = 0, TotalMemory = 0;
+    BOOLEAN CrashDump = FALSE;
+    PCHAR Line, End, Value;
+
+    if (Read) {
+        return Requested;
+    }
+
+    Read = TRUE;
+    if (FwOpen(CONFIG_TXT_PATH, ArcOpenReadOnly, &FileId) != ESUCCESS) {
+        return 0;
+    }
+
+    while (Length < CONFIG_TXT_SIZE &&
+           FwRead(FileId, FwConfigText + Length, CONFIG_TXT_SIZE - Length, &Count) == ESUCCESS && Count != 0) {
+        Length += Count;
+    }
+
+    FwClose(FileId);
+    FwConfigText[Length] = 0;
+
+    //
+    // The last line of a key counts, as the Pi firmware takes its keys.
+    //
+
+    for (Line = FwConfigText; *Line != 0; Line = End) {
+        for (End = Line; *End != 0 && *End != '\n'; End += 1) {
+        }
+        if (*End == '\n') {
+            *End++ = 0;
+        }
+
+        if ((Value = FwConfigValue(Line, "crash_dump")) != NULL) {
+            CrashDump = (BOOLEAN)(*Value == '1' || *Value == 'y' || *Value == 'Y' || *Value == 't' ||
+                                  *Value == 'T' ||
+                                  ((*Value == 'o' || *Value == 'O') && (Value[1] == 'n' || Value[1] == 'N')));
+        } else if ((Value = FwConfigValue(Line, "total_mem")) != NULL) {
+            for (TotalMemory = 0; *Value >= '0' && *Value <= '9'; Value += 1) {
+                TotalMemory = TotalMemory * 10 + (*Value - '0');
+            }
+        }
+    }
+
+    Requested = CrashDump ? TotalMemory : 0;
+    return Requested;
 }

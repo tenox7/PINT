@@ -47,7 +47,13 @@
 +;  bindings of the network in the hives, with the Route values REGINI cannot write. With !
 +;  for its end: NET USER gives the account the password above (ADDUSER, which winlogon.cmd
 +;  runs in a workgroup, only makes new accounts).
++;  Then, for the anonymous logon of the FTP Server (FTPSVC of SYSTEM.INI, which starts on
++;  demand), FTPANON makes the account its anonymous user is logged on as, a guest whose
++;  password does not expire, and the LSA secret that holds the account's password, without
++;  which the service allows no anonymous logon (NET USER /ADD cannot make an account here:
++;  it wants the Workstation service, which is not running yet).
 +;
 +InsertScript
 +    setup /f /i ncpabind.inf
 +    !net user Administrator password
++    !ftpanon FTP_RASPI ftp

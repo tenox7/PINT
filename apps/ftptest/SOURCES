@@ -1,0 +1,13 @@
+MAJORCOMP=tcpcmd
+MINORCOMP=ftptest
+
+TARGETNAME=ftptest
+TARGETPATH=obj
+TARGETTYPE=UMAPPL_NOLIB
+USE_CRTDLL=1
+
+SOURCES=
+
+UMTYPE=console
+UMAPPL=ftptest
+UMLIBS=$(BASEDIR)\public\sdk\lib\*\wsock32.lib

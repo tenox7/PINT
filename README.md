@@ -11,6 +11,9 @@ Windows NT 3.5 ported to 32-bit ARM (ARMv7-A) on the Raspberry Pi 2, 3 and 4, wi
   memory) and QEMU `raspi2b`, `raspi3b`, `raspi3ap`, `raspi4b`.
 - Untested, should work: 3A+, Zero 2 W (BCM2837), CM4 (BCM2711).
 - NT runs its multiprocessor kernel on all four cores of every model.
+- On the Pi 2, 3 and Zero 2 W the SD card runs on the BCM2836/7's SD host controller (SDHOST), where the GPU
+  firmware boots from, which leaves the Arasan EMMC controller to the on-board wireless chip of the Pi 3 and
+  Zero 2 W. The Pi 4's card is on its EMMC2.
 - Not planned:
   - Pi 1, Zero, Zero W: ARMv6 (ARM1176), no Thumb-2.
   - Pi 5, Pi 500: the Cortex-A76 runs 32-bit code only in user mode.
@@ -69,8 +72,71 @@ Networking works: TCP/IP with DHCP and NetBIOS over TCP/IP, so NT maps shares of
 or `net use`), shares its own folders (`net share`), and has ping, ipconfig and hostname. It uses the onboard Ethernet
 (LAN9514 on the Pi 2/3B, LAN7800 on the 3B+, the BCM2711's GENET on the Pi 4), in QEMU a USB Ethernet adapter
 (`NONET=1 build/run.sh`: none). Control Panel > Network configures it: TCP/IP (DHCP or a static address, DNS, WINS),
-bindings, computer name and workgroup. Its Add Software > TCP/IP Protocol installs the FTP Server and the Simple TCP/IP
-Services.
+bindings, computer name and workgroup. Its Add Software > TCP/IP Protocol installs the Simple TCP/IP Services.
+
+## FTP Server
+
+NT 3.5's FTP Server (`ftpsvc.dll` in `tcpsvcs.exe`) is installed but not started: start it in Control Panel > Services
+(FTP Server) or with `net start ftpsvc`. It takes the accounts of the machine and anonymous users (`anonymous` or `ftp`,
+any password), who are logged on as the account `FTP_RASPI`, a guest the first boot makes; the home directory is `C:\`
+and every drive can be read and written, to bring files to the machine. Control Panel > FTP Server shows the connected
+users; Network > FTP Server > Configure changes the settings (`Services\FTPSVC\Parameters` in the registry).
+
+## Wireless
+
+The on-board Wi-Fi of the Pi 3, 3B+, 3A+, 4, 400 and Zero 2 W (a Broadcom BCM43430 or Cypress CYW43436 or CYW43455 on
+SDIO) is a second network adapter, Raspberry Pi Wireless Adapter (`drivers/bcmwlan`, an NDIS 3.0 miniport), bound to
+TCP/IP with DHCP. The chip's own firmware joins the network and runs the WPA2 and WPA3 supplicant. Before booting, set
+the network in `config.txt` on the card's FAT partition, on any computer (the boot firmware passes over these keys, and
+Windows NT reads them as `C:\CONFIG.TXT`):
+
+    wifi_ssid=MyNetwork
+    wifi_password=my passphrase
+    wifi_security=WPA2      (WPA2, WPA3, WPA2/WPA3 or OPEN)
+    wifi_country=US         (the regulatory domain; XX by default)
+
+The registry values `Ssid`, `Passphrase`, `Security` and `Country` of
+`HKLM\System\CurrentControlSet\Services\Bcmwlan1\Parameters` take precedence when set. With `debug_wifi=1` the driver
+logs each step to `C:\WLAN.LOG`. The chip's firmware, NVRAM and regulatory files are Raspberry Pi OS's
+(RPi-Distro/firmware-nonfree), licensed for Raspberry Pi hardware only: the image build fetches them into
+`\WINNT\System32\Drivers\BCMWLAN`, and the repository does not hold them. QEMU has no wireless chip; the firmware
+describes the adapter only when the chip answers.
+
+## Sound
+
+The sound driver (`drivers/bcmsound`) is a sound card driver as NT 3.5's Windows Sound System driver is: a kernel driver
+on NT's sound library (`bcmsound.sys`) with a wave output, a mixer and an FM synthesizer, and its multimedia driver
+(`bcmsnd32.dll`, on NT's drvlib and synthlib, as `sndsys32.dll` is), which makes them the system's wave, mixer and MIDI
+devices. The wave output plays PCM at 8 to 48 kHz, 8 or 16 bits, mono or stereo; the driver mixes it with the
+synthesizer, an emulated OPL3, at 48 kHz, at the volumes of the mixer. MIDI files play through the MIDI Mapper, whose
+setup `Raspberry Pi` (all 16 channels on the synthesizer) the image's `MIDIMAP.CFG` holds: `tools/midimap.pl` makes it
+from NT's file when the image is built. `CANYON.MID` and NT's sounds are in `\WINNT`.
+
+It drives the hardware directly through a DMA channel the firmware leaves to the ARM: HDMI audio on the display the
+firmware brought up (Pi 2, 3, Zero 2 W; HDMI0 or HDMI1 of a Pi 4 or 400), or the 3.5 mm jack (the PWM: Pi 2, 3B, 3B+,
+3A+, 4B). Before booting, choose in `config.txt` on the card's FAT partition:
+
+    sound_output=AUTO       (AUTO, HDMI, JACK or NONE)
+
+AUTO plays through HDMI when the display's EDID says it takes sound, else through the jack. The registry value `Output`
+of `HKLM\System\CurrentControlSet\Services\Bcmsound\Parameters` takes precedence when set. With `debug_sound=1` the
+driver logs what it found to `C:\SOUND.LOG`. QEMU has neither output: there the devices are silent but keep the time of
+the sounds.
+
+## Crash dumps
+
+For debugging, NT can write a crash dump, all of its memory, when it stops with a STOP screen. It is off by default. In
+`config.txt` on the card's FAT partition, both:
+
+    crash_dump=1            (the ARC firmware passes NT the CRASHDUMP option)
+    total_mem=256           (the Pi firmware's memory limit, in MB: required)
+
+`crash_dump` counts only with a `total_mem` limit, so that a dump fits: the SD card driver (`drivers/bcmemmc`) turns
+NT's crash dumps on and sizes the pagefile on C: to that limit; after a crash its own copy writes the dump into the
+pagefile (through `diskdump.sys`, polled), and at the next start winlogon runs savedump, which copies it to
+`C:\WINNT\MEMORY.DMP`. C: needs about twice the limit free (grow the partition). Copy `MEMORY.DMP` off the card and read
+it with `tools/dumpinfo.py MEMORY.DMP`: the STOP code, the registers, the loaded drivers and which driver each address
+is in. Without the setting the driver turns dumps off and puts the previous pagefile setting back.
 
 ## Task Manager
 

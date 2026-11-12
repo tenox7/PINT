@@ -76,8 +76,10 @@ set -f
 for l in $(macro TARGETLIBS); do
   b=$(basename "$(echo "$l" | tr "\\\\" /)" .lib | tr A-Z a-z)
   case $b in ntoskrnl|hal) continue ;; esac
-  [ -f $O/$b.lib ] || { echo "   missing library $b (build it first)"; exit 1; }
-  LIBS="$LIBS $O/$b.lib"
+  # (a LIBRARY named by its directory, ...\soundlib\obj\*\soundlib.lib: the one make-lib.sh made there)
+  a=$(bash libpath.sh $SRC "$l"); [ -n "$a" ] || a=$O/$b.lib
+  [ -f $a ] || { echo "   missing library $b (build it first)"; exit 1; }
+  LIBS="$LIBS $a"
 done
 set +f
 
