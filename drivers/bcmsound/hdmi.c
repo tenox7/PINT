@@ -40,6 +40,7 @@ Abstract:
 //
 
 #define MAILBOX_OFFSET              0xB880
+#define MAILBOX_SIZE                0x40
 #define MAILBOX_READ                0x00
 #define MAILBOX_STATUS              0x18
 #define MAILBOX_WRITE               0x20
@@ -92,6 +93,11 @@ Abstract:
 #define VC5_PHY_OFFSET(Port)        (0xF00F00 + (Port) * 0x5000)
 #define VC5_PACKET_OFFSET(Port)     (0xF01B00 + (Port) * 0x5000)
 #define VC5_HD_OFFSET               0xF20000
+#define VC4_CORE_SIZE               0x600
+#define VC5_CORE_SIZE               0x300
+#define VC5_PHY_SIZE                0x80
+#define VC5_PACKET_SIZE             0x200
+#define HD_SIZE                     0x100
 
 #define MAI_CTL_RESET               0x00000001
 #define MAI_CTL_ERRORF              0x00000002
@@ -130,6 +136,7 @@ typedef struct _HDMI_STATE {
     PUCHAR Packet;
     PUCHAR Phy;
     PUCHAR Mailbox;
+    PADAPTER_OBJECT MailboxAdapter;
     PULONG MailboxBuffer;
     ULONG MailboxBufferBus;
 
@@ -427,6 +434,76 @@ HdmiSinkHasAudio(
     return Audio && HdmiSink;
 }
 
+//
+// The end of the HDMI state: its registers, its mailbox buffer and itself.
+// On the VideoCore 4 the packet and PHY registers are part of the core's.
+//
+
+static VOID
+HdmiFree(
+    IN PHDMI_STATE Hdmi
+    )
+{
+    PHYSICAL_ADDRESS Logical;
+
+    if (Hdmi->Vc5) {
+        if (Hdmi->Packet != NULL) {
+            MmUnmapIoSpace(Hdmi->Packet, VC5_PACKET_SIZE);
+        }
+
+        if (Hdmi->Phy != NULL) {
+            MmUnmapIoSpace(Hdmi->Phy, VC5_PHY_SIZE);
+        }
+    }
+
+    if (Hdmi->Core != NULL) {
+        MmUnmapIoSpace(Hdmi->Core, Hdmi->Vc5 ? VC5_CORE_SIZE : VC4_CORE_SIZE);
+    }
+
+    if (Hdmi->Hd != NULL) {
+        MmUnmapIoSpace(Hdmi->Hd, HD_SIZE);
+    }
+
+    if (Hdmi->MailboxBuffer != NULL) {
+        Logical.QuadPart = Hdmi->MailboxBufferBus;
+        HalFreeCommonBuffer(Hdmi->MailboxAdapter, PAGE_SIZE, Logical, Hdmi->MailboxBuffer, FALSE);
+    }
+
+    if (Hdmi->Mailbox != NULL) {
+        MmUnmapIoSpace(Hdmi->Mailbox, MAILBOX_SIZE);
+    }
+
+    ExFreePool(Hdmi);
+}
+
+VOID
+HdmiTerminate(
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
+    )
+
+/*++
+
+Routine Description:
+
+    This routine frees what HdmiInitialize made. The output is stopped.
+
+Arguments:
+
+    GlobalInfo - Supplies the global device information.
+
+Return Value:
+
+    None.
+
+--*/
+
+{
+    if (GlobalInfo->Hdmi != NULL) {
+        HdmiFree(GlobalInfo->Hdmi);
+        GlobalInfo->Hdmi = NULL;
+    }
+}
+
 BOOLEAN
 HdmiInitialize(
     IN PGLOBAL_DEVICE_INFO GlobalInfo
@@ -453,7 +530,6 @@ Return Value:
 {
     ULONG Base = GlobalInfo->Hardware.PeripheralBase;
     PHDMI_STATE Hdmi;
-    PADAPTER_OBJECT Adapter;
     DEVICE_DESCRIPTION Description;
     PHYSICAL_ADDRESS Logical;
     ULONG MapRegisterCount;
@@ -483,22 +559,22 @@ Return Value:
 
     RtlZeroMemory(Hdmi, sizeof(HDMI_STATE));
     Hdmi->Vc5 = (GlobalInfo->Hardware.Flags & BCMSOUND_BCM2711) != 0;
-    Hdmi->Mailbox = MapRegisters(Base + MAILBOX_OFFSET, 0x40);
+    Hdmi->Mailbox = MapRegisters(Base + MAILBOX_OFFSET, MAILBOX_SIZE);
     RtlZeroMemory(&Description, sizeof(Description));
     Description.Version = DEVICE_DESCRIPTION_VERSION;
     Description.Master = TRUE;
     Description.Dma32BitAddresses = TRUE;
     Description.InterfaceType = Internal;
     Description.MaximumLength = PAGE_SIZE;
-    Adapter = HalGetAdapter(&Description, &MapRegisterCount);
-    if (Adapter != NULL) {
-        Hdmi->MailboxBuffer = HalAllocateCommonBuffer(Adapter, PAGE_SIZE, &Logical, FALSE);
+    Hdmi->MailboxAdapter = HalGetAdapter(&Description, &MapRegisterCount);
+    if (Hdmi->MailboxAdapter != NULL) {
+        Hdmi->MailboxBuffer = HalAllocateCommonBuffer(Hdmi->MailboxAdapter, PAGE_SIZE, &Logical, FALSE);
         Hdmi->MailboxBufferBus = Logical.LowPart;
     }
 
     if (Hdmi->Mailbox == NULL || Hdmi->MailboxBuffer == NULL) {
         BcmSoundLog(GlobalInfo, "HDMI: no mailbox");
-        ExFreePool(Hdmi);
+        HdmiFree(Hdmi);
         return FALSE;
     }
 
@@ -513,12 +589,13 @@ Return Value:
             BcmSoundLog(GlobalInfo,
                         "HDMI: PLLH %u Hz, pixel divider %u (A2W_PLLH_PIX %08X); firmware pixel clock %u Hz",
                         Pllh, PixelDivider, READ_REGISTER(Clock, A2W_PLLH_PIX), FirmwarePixel);
+            MmUnmapIoSpace(Clock, CM_SIZE);
         }
     }
 
     BcmSoundLog(GlobalInfo, "HDMI: HSM clock %u Hz", Hsm);
     if (Hsm == 0) {
-        ExFreePool(Hdmi);
+        HdmiFree(Hdmi);
         return FALSE;
     }
 
@@ -545,15 +622,15 @@ Return Value:
 
     if (!EdidBlock(Hdmi, 0, Edid)) {
         BcmSoundLog(GlobalInfo, "HDMI: no EDID from the firmware: no HDMI audio");
-        ExFreePool(Hdmi);
+        HdmiFree(Hdmi);
         return FALSE;
     }
 
     if (Hdmi->Vc5) {
-        Hdmi->Core = MapRegisters(Base + VC5_CORE_OFFSET(Hdmi->Port), 0x300);
-        Hdmi->Hd = MapRegisters(Base + VC5_HD_OFFSET, 0x100);
-        Hdmi->Packet = MapRegisters(Base + VC5_PACKET_OFFSET(Hdmi->Port), 0x200);
-        Hdmi->Phy = MapRegisters(Base + VC5_PHY_OFFSET(Hdmi->Port), 0x80);
+        Hdmi->Core = MapRegisters(Base + VC5_CORE_OFFSET(Hdmi->Port), VC5_CORE_SIZE);
+        Hdmi->Hd = MapRegisters(Base + VC5_HD_OFFSET, HD_SIZE);
+        Hdmi->Packet = MapRegisters(Base + VC5_PACKET_OFFSET(Hdmi->Port), VC5_PACKET_SIZE);
+        Hdmi->Phy = MapRegisters(Base + VC5_PHY_OFFSET(Hdmi->Port), VC5_PHY_SIZE);
         Hdmi->MaiCtl = Hdmi->Port == 0 ? 0x10 : 0x30;
         Hdmi->MaiThr = Hdmi->MaiCtl + 0x04;
         Hdmi->MaiFmt = Hdmi->MaiCtl + 0x08;
@@ -577,8 +654,8 @@ Return Value:
         Hdmi->Dreq = Hdmi->Port == 0 ? 10 : 17;
         Hdmi->FifoBus = BUS_PERIPHERAL_BASE + VC5_HD_OFFSET + Hdmi->MaiData;
     } else {
-        Hdmi->Core = MapRegisters(Base + VC4_CORE_OFFSET, 0x600);
-        Hdmi->Hd = MapRegisters(Base + VC4_HD_OFFSET, 0x100);
+        Hdmi->Core = MapRegisters(Base + VC4_CORE_OFFSET, VC4_CORE_SIZE);
+        Hdmi->Hd = MapRegisters(Base + VC4_HD_OFFSET, HD_SIZE);
         Hdmi->Packet = Hdmi->Core != NULL ? Hdmi->Core + 0x400 : NULL;
         Hdmi->Phy = Hdmi->Core;
         Hdmi->MaiCtl = 0x14;
@@ -606,7 +683,7 @@ Return Value:
 
     if (Hdmi->Core == NULL || Hdmi->Hd == NULL || Hdmi->Packet == NULL || Hdmi->Phy == NULL) {
         BcmSoundLog(GlobalInfo, "HDMI: cannot map the registers");
-        ExFreePool(Hdmi);
+        HdmiFree(Hdmi);
         return FALSE;
     }
 
@@ -671,7 +748,7 @@ Return Value:
     if ((Scheduler & SCHEDULER_HDMI) != SCHEDULER_HDMI || (Packet & RAM_PACKET_ENABLE) == 0 ||
         Hdmi->PixelClock == 0) {
         BcmSoundLog(GlobalInfo, "HDMI: the display is not in HDMI mode with packets: no HDMI audio");
-        ExFreePool(Hdmi);
+        HdmiFree(Hdmi);
         return FALSE;
     }
 

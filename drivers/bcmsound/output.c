@@ -333,6 +333,7 @@ Return Value:
     KeInitializeTimer(&GlobalInfo->Timer);
     KeInitializeDpc(&GlobalInfo->TimerDpc, OutputEngineDeferred, GlobalInfo);
     Opl3Init(&GlobalInfo->Synth, OUTPUT_RATE);
+    GlobalInfo->EngineInitialized = TRUE;
 
     if (GlobalInfo->Output == OUTPUT_NONE) {
         return TRUE;
@@ -348,10 +349,10 @@ Return Value:
     Description.Master = TRUE;
     Description.Dma32BitAddresses = TRUE;
     Description.InterfaceType = Internal;
-    Description.MaximumLength = 2 * RING_HALF_SIZE + PAGE_SIZE;
+    Description.MaximumLength = RING_BUFFER_SIZE;
     GlobalInfo->RingAdapter = HalGetAdapter(&Description, &MapRegisterCount);
     if (GlobalInfo->RingAdapter != NULL) {
-        GlobalInfo->Ring = HalAllocateCommonBuffer(GlobalInfo->RingAdapter, Description.MaximumLength, &Logical, FALSE);
+        GlobalInfo->Ring = HalAllocateCommonBuffer(GlobalInfo->RingAdapter, RING_BUFFER_SIZE, &Logical, FALSE);
     }
 
     if (GlobalInfo->Ring == NULL) {
@@ -910,6 +911,73 @@ OutputShutdown(
     }
 }
 
+VOID
+OutputTerminate(
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
+    )
+
+/*++
+
+Routine Description:
+
+    This routine stops the output and frees what OutputInitialize made: the
+    HDMI state, the ring and the mappings of the registers. It also undoes an
+    OutputInitialize that failed, or was not reached.
+
+Arguments:
+
+    GlobalInfo - Supplies the global device information.
+
+Return Value:
+
+    None.
+
+--*/
+
+{
+    PHYSICAL_ADDRESS Logical;
+
+    if (GlobalInfo->EngineInitialized) {
+        OutputShutdown(GlobalInfo);
+        KeRemoveQueueDpc(&GlobalInfo->EngineDpc);
+        KeRemoveQueueDpc(&GlobalInfo->TimerDpc);
+        GlobalInfo->EngineInitialized = FALSE;
+    }
+
+    GlobalInfo->Output = OUTPUT_NONE;
+    HdmiTerminate(GlobalInfo);
+    if (GlobalInfo->Ring != NULL) {
+        Logical.QuadPart = GlobalInfo->RingBus;
+        HalFreeCommonBuffer(GlobalInfo->RingAdapter, RING_BUFFER_SIZE, Logical, GlobalInfo->Ring, FALSE);
+        GlobalInfo->Ring = NULL;
+    }
+
+    if (GlobalInfo->DmaChannel != NULL) {
+        MmUnmapIoSpace(GlobalInfo->DmaChannel, DMA_CHANNEL_SIZE);
+        GlobalInfo->DmaChannel = NULL;
+    }
+
+    if (GlobalInfo->DmaEnable != NULL) {
+        MmUnmapIoSpace(GlobalInfo->DmaEnable, sizeof(ULONG));
+        GlobalInfo->DmaEnable = NULL;
+    }
+
+    if (GlobalInfo->Pwm != NULL) {
+        MmUnmapIoSpace(GlobalInfo->Pwm, PWM_SIZE);
+        GlobalInfo->Pwm = NULL;
+    }
+
+    if (GlobalInfo->Clock != NULL) {
+        MmUnmapIoSpace(GlobalInfo->Clock, CLOCK_SIZE);
+        GlobalInfo->Clock = NULL;
+    }
+
+    if (GlobalInfo->Gpio != NULL) {
+        MmUnmapIoSpace(GlobalInfo->Gpio, GPIO_SIZE);
+        GlobalInfo->Gpio = NULL;
+    }
+}
+
 //
 // Soundlib's hardware routines of the wave output. The device is one of
 // soundlib's reprogram-on-interrupt DMA: soundlib starts it on the lower half
@@ -965,12 +1033,13 @@ Return Value:
 {
     PGLOBAL_DEVICE_INFO GlobalInfo = WaveInfo->HwContext;
     BOOLEAN Started = TRUE;
+    KIRQL Irql;
 
     if (GlobalInfo->InWaveDeferred && GlobalInfo->WaveActive) {
         return TRUE;
     }
 
-    KeAcquireSpinLockAtDpcLevel(&GlobalInfo->EngineLock);
+    KeAcquireSpinLock(&GlobalInfo->EngineLock, &Irql);
     GlobalInfo->BufferSize = WaveInfo->DoubleBuffer.BufferSize;
     GlobalInfo->WaveOffset = 0;
     GlobalInfo->WavePhase = 0;
@@ -982,7 +1051,7 @@ Return Value:
         Started = EngineStart(GlobalInfo);
     }
 
-    KeReleaseSpinLockFromDpcLevel(&GlobalInfo->EngineLock);
+    KeReleaseSpinLock(&GlobalInfo->EngineLock, Irql);
     return Started;
 }
 

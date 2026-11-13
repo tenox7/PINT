@@ -1179,7 +1179,11 @@ ChipJoinFailed(
     IN PCHAR Why
     )
 {
-    WlanLog(Adapter, "Join failed: %s; again in %u s", Why, REJOIN_DELAY_MS / 1000);
+    CHAR Text[160];
+
+    sprintf(Text, "Join failed: %s; again in %u s", Why, REJOIN_DELAY_MS / 1000);
+    WlanNotice(Adapter, Text);
+    Adapter->JoinFailures += 1;
     Adapter->LinkState = LINK_IDLE;
     Adapter->NextJoin.LowPart = NowMs() + REJOIN_DELAY_MS;
 }

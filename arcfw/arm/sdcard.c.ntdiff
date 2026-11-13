@@ -13,9 +13,11 @@
 +    EMMC (0x300000), an Arasan SD host controller (SDHCI 3.0). The VideoCore
 +    firmware boots from the card on the SDHOST, with the slot's GPIO 48-53 at
 +    function ALT0, and connects the EMMC to the wireless chip of the Pi 3 and
-+    Zero 2 W on GPIO 34-39 (ALT3). The card stays on the SDHOST here, so that
-+    the EMMC is free for the wireless driver; the EMMC (GPIO 48-53 at ALT3) is
-+    tried only when no card answers on the SDHOST. Every BCM2711 board (Pi 4)
++    Zero 2 W on GPIO 34-39 (ALT3). On a board with the wireless chip the card
++    stays on the SDHOST here, so that the EMMC is free for the wireless
++    driver; the EMMC (GPIO 48-53 at ALT3) is tried only when no card answers
++    on the SDHOST. A board without the chip (Pi 2, Compute Module 3) has its
++    card on the EMMC, and GPIO 34-39 are not touched. Every BCM2711 board (Pi 4)
 +    wires its card to the EMMC2 (SDHCI 3.0, 0x340000), which has pins of its
 +    own; QEMU's raspi4b attaches it to the EMMC instead, which is looked at
 +    when the EMMC2 has no card.
@@ -904,6 +906,25 @@
 +
 +    FwPrint("%s: %s card, %d MB\r\n", Name, SdHighCapacity ? "SDHC" : "SD", SdSectors / 2048);
 =1 3213 3 -4
++//
++// Whether the board has the wireless chip on the EMMC, by the type of its
++// revision code: Pi 3B, 3B+, 3A+, Zero 2 W, 4B, 400 and Compute Module 4
++// (where SdioProbe tells whether it is fitted).
++//
++static BOOLEAN
++SdBoardHasWireless(
+=2 1099 3
++    ULONG revision = MailboxGetBoardRevision();
++    ULONG type = (revision >> 4) & 0xff;
++
++    if ((revision & (1 << 23)) == 0) {
++        return FALSE;
++    }
++
++    return type == 0x08 || type == 0x0d || type == 0x0e || type == 0x12 ||
++           type == 0x11 || type == 0x13 || type == 0x14;
++}
++
 +static BOOLEAN
 +SdDiskBootInitialize (
 +    OUT PSD_CONTROLLER Controller
@@ -912,8 +933,9 @@
 +    transfer state. Every BCM2711 board wires its card to the EMMC2 (the EMMC
 +    is the wireless chip's); QEMU's raspi4b attaches it to the EMMC, the only
 +    controller of its card, which is looked at when the EMMC2 has none. A
-+    BCM2836 or BCM2837 board has it on the SDHOST, where the VideoCore booted
-+    from; the EMMC is tried when no card answers there.
++    BCM2836 or BCM2837 board with the wireless chip has it on the SDHOST,
++    where the VideoCore booted from; the EMMC is tried when no card answers
++    there. A board without the chip has it on the EMMC.
 =1 225 3
 +    Controller - Returns the controller the card is on.
 =1 231 3
@@ -938,19 +960,20 @@
 +    // function); the wireless chip keeps the EMMC on GPIO 34-39.
 +    //
 +
-+    for (i = 48; i <= 53; i += 1) {
-+        SdSetPinFunction(i, GPIO_ALT0);
-+    }
++    if (SdBoardHasWireless()) {
++        for (i = 48; i <= 53; i += 1) {
++            SdSetPinFunction(i, GPIO_ALT0);
++        }
 +
-+    MailboxSetPowerState(POWER_DEVID_SD, TRUE);
-+    SdHost = &SdhostHost;
-+    SdBase = PERIPHERAL_BASE + SDHOST_OFFSET;
-+    SdBaseClock = MailboxGetMaxClockRate(CLOCK_ID_CORE);
-+    *Controller = SdControllerSdhost;
-+    if (SdCardInitialize("SD (SDHOST)")) {
-=1 3213 3
-+    //
-+    // No card there: the EMMC, alone on the slot.
++        MailboxSetPowerState(POWER_DEVID_SD, TRUE);
++        SdHost = &SdhostHost;
++        SdBase = PERIPHERAL_BASE + SDHOST_OFFSET;
++        SdBaseClock = MailboxGetMaxClockRate(CLOCK_ID_CORE);
++        *Controller = SdControllerSdhost;
++        if (SdCardInitialize("SD (SDHOST)")) {
++            return TRUE;
+=1 1203 4 -8
++    // No wireless chip, or no card there: the EMMC, alone on the slot.
 +    //
 +
 +    for (i = 34; i <= 39; i += 1) {
@@ -969,7 +992,8 @@
 =1 375 3 -4
 +// Whether an SDIO card answers on the EMMC: the wireless chip of a Pi 3,
 +// Zero 2 W or Pi 4, on GPIO 34-39 (ALT3), whose power the VideoCore turned
-+// on. CMD5 asks the card for its operating conditions and changes nothing.
++// on. For a board that has the chip (SdBoardHasWireless) only: elsewhere
++// those pins are the board's own. CMD5 asks the card for its operating conditions and changes nothing.
 +// The controller of the SD card is left as it was; the EMMC is left reset.
 +//
 +BOOLEAN
@@ -1230,10 +1254,11 @@
 +    FwSetScsiAdapter(SdBase, controller);
 +
 +    //
-+    // The wireless chip on the EMMC, when the card is elsewhere.
++    // The wireless chip on the EMMC, when the board has one and the card is
++    // elsewhere.
 +    //
 +
-+    if (controller != SdControllerEmmc) {
++    if (controller != SdControllerEmmc && SdBoardHasWireless()) {
 +        ULONG clock;
 +
 +        if (SdioProbe(&clock)) {

@@ -1015,10 +1015,7 @@ Fail:
         }
     }
 
-    if (GlobalInfo->Output == OUTPUT_JACK) {
-        OutputShutdown(GlobalInfo);
-    }
-
+    OutputTerminate(GlobalInfo);
     if (GlobalInfo->WaveInfo.DMABuf.VirtualAddress != NULL) {
         SoundFreeCommonBuffer(&GlobalInfo->WaveInfo.DMABuf);
     }
