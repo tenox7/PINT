@@ -24,6 +24,8 @@ job video video; job input input
 # the sound driver, on NT's sound library
 sound() { lib DD/SOUND/SOUNDLIB; bcm bcmsound; }
 job sound sound
+# the driver of MYFAULT (apps/myfault), which stops the system on demand to test crash dumps
+job myfault bcm myfault
 # networking: the NDIS wrapper, the netcard detection driver of setup, the Ethernet miniport of
 # the board (a function of bcmusb), the TDI wrapper and TCP/IP with NetBIOS over TCP/IP, the
 # NetBIOS interface, Windows Sockets (afd), and the redirector, server, browser and multiple UNC

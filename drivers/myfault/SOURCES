@@ -1,0 +1,8 @@
+MAJORCOMP=ntos
+MINORCOMP=dd
+
+TARGETNAME=myfault
+TARGETPATH=\nt\public\sdk\lib
+TARGETTYPE=DRIVER
+
+SOURCES=myfault.c
