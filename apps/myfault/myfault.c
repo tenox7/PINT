@@ -7,14 +7,11 @@ Module Name:
 Abstract:
 
     Stops the system with a STOP screen on demand, to test crash dumps
-    (crash_dump=1 and total_mem= of config.txt): it raises a hard error with
-    the shutdown option, which the kernel answers, for a caller with the
-    shutdown privilege, with the bugcheck FATAL_UNHANDLED_HARD_ERROR (STOP
-    0x0000004C), the status given here as its first parameter; the screen
-    names the status ("STOP: deaddead Unknown Hard Error"). It is what
-    the session manager does when a system process dies. No driver is
-    needed. (Named after the crash tool everyone knows; the code is PINT's
-    own.)
+    (crash_dump=1 and total_mem= of config.txt). The bugcheck is the
+    kernel's, so a driver makes it (drivers/myfault, myfault.sys in
+    System32\Drivers): this program installs it as the service Myfault if it
+    is not, starts it and sends it the request. The STOP code is 0xDEADDEAD.
+    (Named after the crash tool everyone knows; the code is PINT's own.)
 
     What is not yet written to the disk is lost: close the programs first.
 
@@ -22,14 +19,16 @@ Abstract:
 
 --*/
 
-#include <nt.h>
-#include <ntrtl.h>
-#include <nturtl.h>
 #include <windows.h>
+#include <winioctl.h>
 #include <stdio.h>
 #include <string.h>
 
-#define MYFAULT_STATUS ((NTSTATUS)0xDEADDEADL)
+//
+// The request of the driver (drivers/myfault/myfault.c has the same).
+//
+
+#define IOCTL_MYFAULT_STOP  CTL_CODE(FILE_DEVICE_UNKNOWN, 0x800, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
 int __cdecl
 main(
@@ -37,24 +36,47 @@ main(
     char **argv
     )
 {
-    BOOLEAN WasEnabled;
-    NTSTATUS Status;
-    ULONG Response;
+    SC_HANDLE Manager, Service;
+    HANDLE Device;
+    DWORD Returned;
 
     if (argc != 2 || _stricmp(argv[1], "now") != 0) {
         printf("\nusage: myfault now\n\n"
-               "Stops Windows NT with a STOP screen (STOP: deaddead), at once:\n"
-               "unsaved work is lost. For testing crash dumps.\n");
+               "Stops Windows NT with a STOP screen (0xDEADDEAD), at once: unsaved work\n"
+               "is lost. For testing crash dumps.\n");
         return 1;
     }
 
-    Status = RtlAdjustPrivilege(SE_SHUTDOWN_PRIVILEGE, TRUE, FALSE, &WasEnabled);
-    if (!NT_SUCCESS(Status)) {
-        printf("myfault: no shutdown privilege (%08lX)\n", Status);
+    Manager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (Manager == NULL) {
+        printf("myfault: cannot open the service control manager (error %lu)\n", GetLastError());
         return 1;
     }
 
-    Status = NtRaiseHardError(MYFAULT_STATUS, 0, 0, NULL, OptionShutdownSystem, &Response);
-    printf("myfault: the system did not stop (%08lX)\n", Status);
+    Service = OpenService(Manager, "Myfault", SERVICE_START);
+    if (Service == NULL) {
+        Service = CreateService(Manager, "Myfault", "Myfault", SERVICE_START, SERVICE_KERNEL_DRIVER,
+                                SERVICE_DEMAND_START, SERVICE_ERROR_IGNORE, "System32\\Drivers\\myfault.sys",
+                                NULL, NULL, NULL, NULL, NULL);
+    }
+
+    if (Service == NULL) {
+        printf("myfault: cannot install the driver (error %lu)\n", GetLastError());
+        return 1;
+    }
+
+    if (!StartService(Service, 0, NULL) && GetLastError() != ERROR_SERVICE_ALREADY_RUNNING) {
+        printf("myfault: cannot start the driver, System32\\Drivers\\myfault.sys (error %lu)\n", GetLastError());
+        return 1;
+    }
+
+    Device = CreateFile("\\\\.\\Myfault", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+    if (Device == INVALID_HANDLE_VALUE) {
+        printf("myfault: cannot open the driver (error %lu)\n", GetLastError());
+        return 1;
+    }
+
+    DeviceIoControl(Device, IOCTL_MYFAULT_STOP, NULL, 0, NULL, 0, &Returned, NULL);
+    printf("myfault: the system did not stop (error %lu)\n", GetLastError());
     return 1;
 }

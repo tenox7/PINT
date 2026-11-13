@@ -10,4 +10,4 @@ SOURCES=
 
 UMTYPE=console
 UMAPPL=myfault
-UMLIBS=$(BASEDIR)\public\sdk\lib\*\ntdll.lib
+UMLIBS=$(BASEDIR)\public\sdk\lib\*\advapi32.lib
