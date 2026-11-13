@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Ready-to-run QEMU package obj/pint40-qemu.tar.gz: the system disk, the ARC firmware, run.sh and
+# Ready-to-run QEMU package obj/pint40-qemu.tar.gz: the system disk (without the firmware files of
+# the wireless chips), the ARC firmware, run.sh and
 # run.cmd (build/portable: the HDMI window with a USB keyboard and mouse) and qemu-system-arm for
 # macOS arm64 (Homebrew's, its libraries bundled with dylibbundler), Linux x86_64 and aarch64
 # (AlmaLinux 9, GTK 3 of the host) and Windows x86_64 (Fedora MinGW, GTK 3 bundled), the last
@@ -131,6 +132,17 @@ echo ">> packing obj/pint40-qemu.tar.gz"
 s=$P/stage r=$P/stage/pint40-qemu
 rm -rf $s && mkdir -p $r
 cp "$IMG" $r/nt-arcfw-sd.img
+# without the firmware files of the wireless chips (make-sd-image.sh), which are licensed for
+# Raspberry Pi hardware only and of no use in QEMU: deleted, and the free space of the disk
+# written with zeros, so that their data is not left in it
+docker run --rm -v "$PWD/$r":/k -w /k --entrypoint bash tenox7/msvc-arm32 -c '
+set -e
+I=nt-arcfw-sd.img@@1M
+mdeltree -i $I ::/WINNT/System32/Drivers/BCMWLAN 2>/dev/null || exit 0
+free=$(mdir -i $I ::/ | sed -n "s/^ *\([0-9 ]*\) bytes free.*/\1/p" | tr -d " ")
+head -c "$free" /dev/zero >/tmp/zero
+mcopy -i $I /tmp/zero ::/ZERO.TMP
+mdel -i $I ::/ZERO.TMP'
 cp obj/arcfw.elf build/portable/run.sh $r/
 sed "s/@V@/$V/g" build/portable/README.txt >$r/README.txt
 sed 's/$/\r/' build/portable/run.cmd >$r/run.cmd

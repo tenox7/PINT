@@ -94,6 +94,7 @@ Abstract:
 #define RING_FRAMES                     1024
 #define RING_FRAME_SIZE                 8
 #define RING_HALF_SIZE                  (RING_FRAMES * RING_FRAME_SIZE)
+#define RING_BUFFER_SIZE                (2 * RING_HALF_SIZE + PAGE_SIZE)
 #define RING_HALF_TIME                  (RING_FRAMES * 10000000 / OUTPUT_RATE)
 
 //
@@ -204,6 +205,7 @@ typedef struct _GLOBAL_DEVICE_INFO {
     // whether it runs, the halves played and the halves with nothing to play.
     //
 
+    BOOLEAN EngineInitialized;
     KSPIN_LOCK EngineLock;
     KDPC EngineDpc;
     KTIMER Timer;
@@ -301,6 +303,11 @@ OutputShutdown(
     );
 
 VOID
+OutputTerminate(
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
+    );
+
+VOID
 OutputEngineUpdate(
     IN PGLOBAL_DEVICE_INFO GlobalInfo
     );
@@ -359,6 +366,11 @@ SOUND_DISPATCH_ROUTINE SynthGetCaps;
 
 BOOLEAN
 HdmiInitialize(
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
+    );
+
+VOID
+HdmiTerminate(
     IN PGLOBAL_DEVICE_INFO GlobalInfo
     );
 

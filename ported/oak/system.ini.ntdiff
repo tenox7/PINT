@@ -74,23 +74,28 @@
 +                    ProviderOrder = LanmanWorkstation
 +#endif // defined(RASPI)
 +
-+#if defined(RASPI)
-+            //
-+            // The name service providers of Winsock 1.1 (OEMNXPTC.INF, AddServiceProvider).
-+            //
++#if defined(RASPI) || defined(PWSFTP)
 +            ServiceProvider
++#if defined(RASPI)
++                //
++                // The name service providers of Winsock 1.1 (OEMNXPTC.INF, AddServiceProvider).
++                //
 +                Order
 +                    ExcludedProviders = REG_MULTI_SZ
 +                    ProviderOrder = REG_MULTI_SZ "Tcpip"
++#endif // defined(RASPI)
++#if defined(PWSFTP)
 +                //
 +                // The service type of the FTP service of Peer Web Services, which its setup
-+                // registers (SetService) and the service advertises itself by.
++                // registers (SetService) and the service advertises itself by: without it
++                // the service does not start.
 +                //
 +                ServiceTypes
 +                    MSFTPSVC
 +                        GUID = {91604620-6305-11CE-AE00-00AA004A38B9}
 +                        TcpPort = REG_DWORD 0x00000015
-+#endif // defined(RASPI)
++#endif // defined(PWSFTP)
++#endif // defined(RASPI) || defined(PWSFTP)
 =1 1257 372
 +#if defined(RASPI)
 +//
@@ -796,11 +801,11 @@
 +            //
 +            // The FTP service of Peer Web Services (ftpsvc2.dll, in inetinfo.exe) as its setup
 +            // (INETSTP) installs it, with these differences: it starts on demand (Services, or
-+            // Internet Service Manager), it takes the accounts of the machine as well as the
-+            // anonymous user, and its home directory is the root of drive C, read and written,
-+            // to bring files to the machine. The anonymous user is IUSR_RASPI, which the first
-+            // boot makes (REGISTRY.INI; after NT's setup, the RunOnce of the SOFTWARE hive)
-+            // with the secrets of its (empty) password.
++            // Internet Service Manager), it takes the accounts of the machine and no anonymous
++            // user, and its home directory (C:\InetPub\ftproot) is read and written, to
++            // bring files to the machine. No account is made for an anonymous user: Internet Service
++            // Manager allows one and names its account. The first boot makes the secrets of
++            // the service (REGISTRY.INI; after NT's setup, the RunOnce of the SOFTWARE hive).
 +            //
 +            InetInfo
 +                Parameters
@@ -820,12 +825,12 @@
 +                Parameters
 =1 1261 2 4
 +                    SecurityOn = REG_DWORD 0x00000001
-+                    AllowAnonymous = REG_DWORD 0x00000001
++                    AllowAnonymous = REG_DWORD 0x00000000
 +                    AnonymousOnly = REG_DWORD 0x00000000
 +                    AllowGuestAccess = REG_DWORD 0x00000001
 +                    LogAnonymous = REG_DWORD 0x00000000
 +                    LogNonAnonymous = REG_DWORD 0x00000000
-+                    AnonymousUserName = IUSR_RASPI
++                    AnonymousUserName = Guest
 +                    AdminName = Administrator
 +                    ConnectionTimeOut = REG_DWORD 0x00000384
 +                    MaxConnections = REG_DWORD 0x000003e8
@@ -839,7 +844,7 @@
 +                    InstallPath = REG_EXPAND_SZ %SystemRoot%\System32\inetsrv
 +                    MsdosDirOutput = REG_DWORD 0x00000000
 +                    Virtual Roots
-+                        / = C:\,,3
++                        / = C:\InetPub\ftproot,,3
 +#endif // defined(PWSFTP)
 =1 3640 16
 +#if defined(RASPI)

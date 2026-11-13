@@ -49,11 +49,8 @@
 +;  with RUNONCE -r, which runs the commands of RunOnce before the first logon; NET USER
 +;  gives the account the password above (with a network, winlogon.cmd only stores it for
 +;  the logon).
-+;  Then, as the setup of Peer Web Services does for its FTP service: the account of the
-+;  anonymous user, a guest with no password (FTPUSER of PINT: NET USER /ADD wants the
-+;  Workstation service, which is not running here), and (SVCSETUP, of the Internet
-+;  services) the LSA secrets that hold that password, without which the service does not
-+;  start.
++;  Then, as the setup of Peer Web Services does for its FTP service: the LSA secrets of
++;  the service (SVCSETUP, of the Internet services), without which it does not start.
 +;  With a password, winlogon.cmd restarts at once, while the display boxes of this logon
 +;  may still be open: so it says so and waits for a key, as it does without one.
 +;
@@ -61,7 +58,6 @@
 +    ini winlogon.Shell = "Explorer.exe"
 +    !runonce -r
 +    !net user Administrator password
-+    !%SystemRoot%\System32\inetsrv\ftpuser IUSR_RASPI
 +    !%SystemRoot%\System32\inetsrv\svcsetup FtpSvc /add
 +    !@echo Windows NT will now restart and log on as Administrator.
 +    !@pause

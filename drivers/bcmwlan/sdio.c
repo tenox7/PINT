@@ -15,9 +15,11 @@ Abstract:
 
     Only the thread of the miniport (and its initialization) uses the
     controller. The one register the interrupt service routine writes is the
-    signal enable of the card interrupt (IRPT_EN), with a delay before and
-    after: the controller loses a register write that follows another within
-    two SD clocks.
+    signal enable of the card interrupt (IRPT_EN). The controller loses a
+    register write that follows another within two SD clocks: so each write
+    is followed by a delay, and once the interrupt is connected the writes of
+    the thread are synchronized with the interrupt service routine, which may
+    run on another processor.
 
 Environment:
 
@@ -103,6 +105,29 @@ HostRead(
     return READ_REGISTER_ULONG((PULONG)(Adapter->Registers + Register));
 }
 
+//
+// A register write and the delay after it, which the interrupt service
+// routine must not come between (NdisMSynchronizeWithInterrupt).
+//
+
+typedef struct _HOST_WRITE {
+    PWLAN_ADAPTER Adapter;
+    ULONG Register;
+    ULONG Value;
+} HOST_WRITE, *PHOST_WRITE;
+
+static BOOLEAN
+HostWriteSynchronized(
+    IN PVOID Context
+    )
+{
+    PHOST_WRITE Write = Context;
+
+    WRITE_REGISTER_ULONG((PULONG)(Write->Adapter->Registers + Write->Register), Write->Value);
+    KeStallExecutionProcessor(Write->Adapter->WriteDelay);
+    return TRUE;
+}
+
 static VOID
 HostWrite(
     IN PWLAN_ADAPTER Adapter,
@@ -110,8 +135,16 @@ HostWrite(
     IN ULONG Value
     )
 {
-    WRITE_REGISTER_ULONG((PULONG)(Adapter->Registers + Register), Value);
-    KeStallExecutionProcessor(Adapter->WriteDelay);
+    HOST_WRITE Write;
+
+    Write.Adapter = Adapter;
+    Write.Register = Register;
+    Write.Value = Value;
+    if (Adapter->InterruptConnected) {
+        NdisMSynchronizeWithInterrupt(&Adapter->Interrupt, HostWriteSynchronized, &Write);
+    } else {
+        HostWriteSynchronized(&Write);
+    }
 }
 
 static BOOLEAN
@@ -729,8 +762,8 @@ Return Value:
 
 //
 // The signal of the card interrupt: on once the thread has served the chip,
-// off in the interrupt service routine until then. Both write with a delay
-// before and after, so no write of the thread falls within two SD clocks.
+// off in the interrupt service routine until then. As the writes of the
+// thread (HostWrite), with the delay after it.
 //
 
 static BOOLEAN
@@ -740,7 +773,6 @@ SdioSetInterrupt(
 {
     PWLAN_ADAPTER Adapter = Context;
 
-    KeStallExecutionProcessor(Adapter->WriteDelay);
     WRITE_REGISTER_ULONG((PULONG)(Adapter->Registers + IRPT_EN), Adapter->InterruptEnable);
     KeStallExecutionProcessor(Adapter->WriteDelay);
     return TRUE;

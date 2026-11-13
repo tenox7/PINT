@@ -407,8 +407,7 @@ exe $P net/sockets/tcpsvcs/tcpsvcs tcpsvcs
 # ---- the FTP service of Peer Web Services (\WINNT\System32\inetsrv): inetinfo.exe with the common
 #      DLL of the Internet services (infocomm) and the service (ftpsvc2), the service locator, the
 #      DLLs of their administration APIs, Internet Service Manager with its FTP pages (fscfg), and
-#      SVCSETUP and FTPUSER (apps/net), which make the LSA secrets of the service and the account of
-#      its anonymous user at the first boot (REGISTRY.INI)
+#      SVCSETUP, which makes the LSA secrets of the service at the first boot (REGISTRY.INI)
 IS=net/sockets/internet
 lib $P $IS/svcs/inc $IS/svcs/lib $IS/svcs/dll/tsunami $IS/svcs/dll/tsstr $IS/svcs/dll/common $IS/common/sec $IS/common/util \
     $IS/ui/comprop/info $IS/ui/ipaddr
@@ -417,7 +416,6 @@ DEST=WINNT/System32/inetsrv dll $P $IS/common/svcloc $IS/svcs/dll/info/server $I
 DEST=WINNT/System32/inetsrv exe $P $IS/svcs/exe/info inetinfo
 DEST=WINNT/System32/inetsrv exe $P $IS/ui/internet inetmgr
 DEST=WINNT/System32/inetsrv exe $P $IS/svcs/dll/setup svcsetup
-DEST=WINNT/System32/inetsrv exe $A net/ftpuser ftpuser
 
 dll $P windows/shell/fontfldr/ole2map net/sockets/tcpcmd/dhcp/server/client windows/rover/filesync/core windows/rover/filesync/syncui
 lib $P windows/rover/filesync/syncapp net/snmp/agent/mibcc

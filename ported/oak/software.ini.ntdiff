@@ -29,11 +29,11 @@
 =1 1652 3
 +#if defined(PWSFTP) && !defined(_RASPI_)
 +                    //
-+                    // After NT's setup, at the first logon: the account of the anonymous user
-+                    // of the FTP service and the LSA secrets of its password, which the first
-+                    // boot of the system disk makes from REGISTRY.INI.
++                    // After NT's setup, at the first logon: the home directory of the FTP service,
++                    // which the system disk is built with, and the LSA secrets of the service,
++                    // which its first boot makes from REGISTRY.INI.
 +                    //
-+                    FtpUser = cmd /c %SystemRoot%\System32\inetsrv\ftpuser IUSR_RASPI
++                    FtpRoot = cmd /c md C:\InetPub\ftproot
 +                    FtpSecrets = cmd /c %SystemRoot%\System32\inetsrv\svcsetup FtpSvc /add
 +#endif // defined(PWSFTP) && !defined(_RASPI_)
 =1 1655 267

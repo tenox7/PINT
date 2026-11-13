@@ -77,7 +77,8 @@ enable_gic=1
 # startup (C:\CONFIG.TXT). Keep them here, after [all].
 #
 # Wi-Fi (Pi 3, 3B+, 3A+, 4, 400, Zero 2 W):
-#   wifi_ssid      the network's name, as written (spaces allowed, no quotes)
+#   wifi_ssid      the network's name, as written (spaces allowed, no quotes); with none the
+#                  adapter is not started
 #   wifi_password  its passphrase (8-63 characters), or nothing for an open network
 #   wifi_security  WPA2 (default), WPA2/WPA3 (joined with WPA2) or OPEN
 #   wifi_country   two-letter country code (channels and power); XX by default

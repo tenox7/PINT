@@ -29,6 +29,9 @@ Abstract:
         wifi_country=US         (the regulatory domain, default XX)
         debug_wifi=1            (log to C:\WLAN.LOG)
 
+    With no network the adapter is not started; a join that fails is noted
+    in C:\WLAN.LOG without debug_wifi too.
+
     A thread owns the SDIO host: it brings the chip up, joins the network
     (and again when the link drops), sends the frames the send handler
     queued and reads what the chip has for the host: frames, events and the
@@ -51,6 +54,7 @@ NDIS_PHYSICAL_ADDRESS HighestAcceptableMax = NDIS_PHYSICAL_ADDRESS_CONST(-1, -1)
 
 #define POLL_INTERVAL_MS            10
 #define JOIN_WAIT_MS                20000
+#define NOTICE_LINES                8
 #define LOG_LINES                   4000
 
 static const NDIS_OID WlanSupportedOids[] = {
@@ -103,7 +107,8 @@ DriverEntry(
 
 static VOID
 WlanOpenLog(
-    IN PWLAN_ADAPTER Adapter
+    IN PWLAN_ADAPTER Adapter,
+    IN BOOLEAN New
     )
 {
     UNICODE_STRING Name;
@@ -113,7 +118,7 @@ WlanOpenLog(
     RtlInitUnicodeString(&Name, L"\\DosDevices\\C:\\WLAN.LOG");
     InitializeObjectAttributes(&Attributes, &Name, OBJ_CASE_INSENSITIVE, NULL, NULL);
     if (!NT_SUCCESS(ZwCreateFile(&Adapter->LogFile, FILE_APPEND_DATA | SYNCHRONIZE, &Attributes, &Iosb,
-                                 NULL, FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ, FILE_OVERWRITE_IF,
+                                 NULL, FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ, New ? FILE_OVERWRITE_IF : FILE_OPEN_IF,
                                  FILE_SYNCHRONOUS_IO_NONALERT | FILE_NON_DIRECTORY_FILE, NULL, 0))) {
         Adapter->LogFile = NULL;
     }
@@ -178,6 +183,58 @@ Return Value:
 
     Adapter->LogLines += 1;
     ZwWriteFile(Adapter->LogFile, NULL, NULL, NULL, &Iosb, Line, Length, NULL, NULL);
+}
+
+VOID
+WlanNotice(
+    IN PWLAN_ADAPTER Adapter,
+    IN PCHAR Text
+    )
+
+/*++
+
+Routine Description:
+
+    This routine writes a line the user is to find without debug_wifi: why
+    the network was not joined. With the log open it is a line of the log;
+    without, the first NOTICE_LINES of them open C:\WLAN.LOG (a new file at
+    the first), write the line and close it.
+
+Arguments:
+
+    Adapter - Supplies the adapter.
+
+    Text - Supplies the line.
+
+Return Value:
+
+    None.
+
+--*/
+
+{
+    if (Adapter->LogFile != NULL) {
+        WlanLog(Adapter, "%s", Text);
+        return;
+    }
+
+    if (KeGetCurrentIrql() != PASSIVE_LEVEL || Adapter->Notices >= NOTICE_LINES) {
+        return;
+    }
+
+    WlanOpenLog(Adapter, Adapter->Notices == 0);
+    if (Adapter->LogFile != NULL) {
+        if (Adapter->Notices == 0) {
+            WlanLog(Adapter, "Raspberry Pi wireless miniport: network \"%s\" (debug_wifi=1 of CONFIG.TXT logs more)",
+                    Adapter->Ssid);
+        }
+
+        WlanLog(Adapter, "%s", Text);
+        ZwClose(Adapter->LogFile);
+        Adapter->LogFile = NULL;
+    }
+
+    Adapter->Notices += 1;
 }
 
 VOID
@@ -612,13 +669,22 @@ WlanReadSettings(
         NdisCloseConfiguration(ConfigurationHandle);
     }
 
+    //
+    // A network with no passphrase is an open one, whatever the security
+    // says (WPA2 by default).
+    //
+
+    if (Adapter->PassphraseLength == 0) {
+        Adapter->Security = SECURITY_OPEN;
+    }
+
     Adapter->Configured = Adapter->SsidLength != 0;
     if (Adapter->TransferClock < 400000 || Adapter->TransferClock > 50000000) {
         Adapter->TransferClock = 25000000;
     }
 
     if (Adapter->Debug) {
-        WlanOpenLog(Adapter);
+        WlanOpenLog(Adapter, TRUE);
     }
 
     WlanLog(Adapter, "Raspberry Pi wireless miniport, built " __DATE__ " " __TIME__);
@@ -978,8 +1044,9 @@ Routine Description:
     This routine maps the EMMC the firmware describes, brings the chip up
     (its firmware loaded and running, its station address read), connects
     the card interrupt and starts the thread, which joins the network. The
-    first join is waited for (up to JOIN_WAIT_MS), so that the protocols
-    bound next find the link up: TCP/IP's DHCP asks for an address at once.
+    first join is waited for (up to JOIN_WAIT_MS, or until it fails: a wrong
+    passphrase, no such network), so that the protocols bound next find the
+    link up: TCP/IP's DHCP asks for an address at once.
 
 Arguments:
 
@@ -1027,6 +1094,19 @@ Return Value:
     NdisAllocateSpinLock(&Adapter->Lock);
     KeInitializeEvent(&Adapter->WorkEvent, SynchronizationEvent, FALSE);
     WlanReadSettings(Adapter, WrapperConfigurationContext);
+
+    //
+    // No network to join: the adapter is not started, and the protocols have
+    // none to bind to (TCP/IP's DHCP would wait at every boot for an address
+    // no network gives). The service's ErrorControl is Ignore: nothing is
+    // reported, as on a board without the chip.
+    //
+
+    if (!Adapter->Configured) {
+        WlanLog(Adapter, "No network configured (wifi_ssid of C:\\CONFIG.TXT or Parameters\\Ssid): not started");
+        WlanFreeAdapter(Adapter);
+        return NDIS_STATUS_ADAPTER_NOT_FOUND;
+    }
 
     if (!WlanReadHardware(&Hardware)) {
         WlanLog(Adapter, "The firmware describes no wireless controller");
@@ -1099,6 +1179,7 @@ Return Value:
         WlanLogFailure(Adapter, 4, NDIS_STATUS_RESOURCES);
         if (Adapter->InterruptConnected) {
             NdisMDeregisterInterrupt(&Adapter->Interrupt);
+            Adapter->InterruptConnected = FALSE;
         }
 
         ChipStop(Adapter);
@@ -1110,16 +1191,15 @@ Return Value:
     // The first join.
     //
 
-    if (Adapter->Configured) {
-        Interval.QuadPart = -10000 * 100;
-        for (Waited = 0; Waited < JOIN_WAIT_MS && Adapter->LinkState != LINK_UP; Waited += 100) {
-            KeDelayExecutionThread(KernelMode, FALSE, &Interval);
-        }
-
-        WlanLog(Adapter, "Initialized; the link is %s", Adapter->LinkState == LINK_UP ? "up" : "not up yet");
-    } else {
-        WlanLog(Adapter, "Initialized; no network configured (wifi_ssid of C:\\CONFIG.TXT or Parameters\\Ssid)");
+    Interval.QuadPart = -10000 * 100;
+    for (Waited = 0;
+         Waited < JOIN_WAIT_MS && Adapter->LinkState != LINK_UP && Adapter->JoinFailures == 0 &&
+         Adapter->Configured;
+         Waited += 100) {
+        KeDelayExecutionThread(KernelMode, FALSE, &Interval);
     }
+
+    WlanLog(Adapter, "Initialized; the link is %s", Adapter->LinkState == LINK_UP ? "up" : "not up yet");
 
     //
     // From here the timer indicates: the link as the protocols will find it

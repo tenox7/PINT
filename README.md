@@ -89,9 +89,12 @@ Adapter (`drivers/bcmwlan`), with TCP/IP and DHCP. Set the network in `config.tx
     wifi_country=US         (the regulatory domain; XX by default)
     debug_wifi=1            (log to C:\WLAN.LOG)
 
+With no `wifi_ssid` the adapter is not started. A network that cannot be joined (wrong name or passphrase) is
+noted in `C:\WLAN.LOG` even without `debug_wifi`.
+
 The chip's firmware files are Raspberry Pi OS's, licensed for Raspberry Pi hardware only: the image build fetches
-them, and the repository does not hold them. On the Pi 2, 3 and Zero 2 W the SD card runs on the SD host controller
-(SDHOST), which leaves the EMMC controller to the wireless chip.
+them, and the repository does not hold them. On the Pi 3 and Zero 2 W the SD card runs on the SD host controller
+(SDHOST), which leaves the EMMC controller to the wireless chip; the Pi 2 keeps it on the EMMC.
 
 ## Sound
 
@@ -103,19 +106,21 @@ wave output, a mixer (the volume icon and Volume Control) and an FM synthesizer 
     debug_sound=1           (log to C:\SOUND.LOG)
 
 NT 4.0's logon and logoff sounds are not in the source tree: copy `Windows NT Logon Sound.wav` and `Windows NT Logoff
-Sound.wav` from `\WINNT\Media` of an NT 4.0 install into `private/windows/media/sounds` before building.
+Sound.wav` from `\WINNT\Media` of an NT 4.0 install into `private/windows/media/sounds` before building. The image
+holds the logoff sound as `Original Windows NT Logoff Sound.wav`, which does not play: the shell waits for the sound before
+shutting down, a silent pause with no speaker connected. Rename it to `Windows NT Logoff Sound.wav` to hear it.
 
 ## FTP server
 
 The FTP Publishing Service of Peer Web Services is installed with Internet Service Manager (Start > Programs >
-Administrative Tools) and does not start by itself: `net start msftpsvc`. `anonymous` logs on with any password (the
-account `IUSR_RASPI`), and so do the accounts of the machine; the root is `C:\`, read and write, so start it only on a
-network you trust.
+Administrative Tools) and does not start by itself: `net start msftpsvc`. The accounts of the machine log on
+(`Administrator`); anonymous access is off, and Internet Service Manager turns it on with an account you name. The
+root is `C:\InetPub\ftproot`, read and write.
 
 ## Crash dumps
 
 Off by default. With both settings in `config.txt`, NT writes its memory at a STOP screen and saves it as
-`C:\WINNT\MEMORY.DMP` at the next start; C: needs about twice the limit free. `tools/dumpinfo.py MEMORY.DMP` prints the
+`C:\WINNT\MEMORY.DMP` at the next start; C: needs about twice the limit free. `tools/dumpinfo.pl MEMORY.DMP` prints the
 STOP code, the registers and the loaded drivers.
 
     crash_dump=1

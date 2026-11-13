@@ -90,6 +90,9 @@ mkdir -p /tmp/sd/WINNT/System32/config /tmp/sd/WINNT/Fonts /tmp/sd/TMP
 # \Program Files and its Common Files, which the setup of NT 4.0 makes (and names in the registry:
 # ProgramFilesDir, CommonFilesDir), where applications install and look for them
 mkdir -p "/tmp/sd/Program Files/Common Files"
+# the home directory of the FTP service (MSFTPSVC Virtual Roots, SYSTEM.INI), as the setup of
+# Peer Web Services makes it
+mkdir -p /tmp/sd/InetPub/ftproot
 # the NLS tables of text setup ([nls] of TXTSETUP.SIF, USA) and of the base
 N=/nt/private/windows/winnls/data
 cp $N/c_1252.nls $N/c_437.nls $N/c_850.nls $N/c_10000.nls $N/l_intl.nls $N/ctype.nls $N/locale.nls $N/sortkey.nls \
@@ -134,6 +137,9 @@ M=/nt/private/windows/media
 cp $M/synth/synth.pat $M/midimap/midimap.cfg /tmp/sd/WINNT/System32/
 mkdir -p /tmp/sd/WINNT/Media
 cp $M/sounds/*.wav $M/sounds/*.mid /tmp/sd/WINNT/Media/
+# the logoff sound goes under another name, so that it does not play: the shell waits for it before
+# shutting down, which is a silent pause of some seconds with no speaker (renamed back, it plays)
+[ ! -f "/tmp/sd/WINNT/Media/Windows NT Logoff Sound.wav" ] || mv "/tmp/sd/WINNT/Media/Windows NT Logoff Sound.wav" "/tmp/sd/WINNT/Media/Original Windows NT Logoff Sound.wav"
 cp $M/avi/clock.avi /tmp/sd/WINNT/
 # the hive of the profile of a new user, which GUI setup saves from the default hive (SaveHive
 # of HKEY_USERS\.DEFAULT, syssetup.c); the profile directories are made at the first boot
