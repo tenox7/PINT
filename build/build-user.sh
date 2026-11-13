@@ -260,6 +260,8 @@ dll $P $D/CLIENT; dll $P $D/SERVER; dll $P $D/FTPCTRS; dll $P NET/UI/FTPMGR/CPL;
 dll $P NET/SOCKETS/TCPSVCS/SIMPTCP; exe $P NET/SOCKETS/TCPSVCS/TCPSVCS tcpsvcs
 
 exe /work/RASPI/apps hello hello; exe /work/RASPI/apps smptest smptest; exe /work/RASPI/apps nettest nettest; exe /work/RASPI/apps ftptest ftptest
+# (myfault, which stops the system with a STOP screen on demand, to test crash dumps)
+exe /work/RASPI/apps myfault myfault
 }
 
 PASS=compile; user; barrier

@@ -81,6 +81,8 @@ cp firmware/bootcode.bin firmware/start.elf firmware/fixup.dat firmware/bcm2709-
 cp config.txt ../obj/arcfw.bin /tmp/sd/
 cp -r root/* /tmp/sd/
 mkdir -p /tmp/sd/WINNT/System /tmp/sd/WINNT/System32 /tmp/sd/TMP
+# the home directory of the FTP Server (HomeDirectory of FTPSVC, SYSTEM.INI)
+mkdir -p /tmp/sd/InetPub/ftproot
 cp /nt/PRIVATE/WINDOWS/WINNLS/DATA/{C_1252,C_437,CTYPE,L_INTL,LOCALE,SORTKEY,SORTTBLS,UNICODE}.NLS /tmp/sd/WINNT/System32/
 # the fonts Setup copies to \system (TXTSETUP.SIF directory 5): the VGA resolution set the registry names,
 # the TrueType fonts with Lucida Console, the DOS window fonts

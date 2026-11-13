@@ -1,0 +1,13 @@
+MAJORCOMP=sdktools
+MINORCOMP=myfault
+
+TARGETNAME=myfault
+TARGETPATH=obj
+TARGETTYPE=UMAPPL_NOLIB
+USE_CRTDLL=1
+
+SOURCES=
+
+UMTYPE=console
+UMAPPL=myfault
+UMLIBS=$(BASEDIR)\public\sdk\lib\*\ntdll.lib
