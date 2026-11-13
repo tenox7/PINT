@@ -4,6 +4,7 @@
 +Games = %games%,0
 +Apps = %apps%,0
 +Accessories_Games = %accessories_games%,0
++Accessories_Multimedia = %accessories_multimedia%,0
 =1 377 15
 +; A sixth field, <workdir>, is the directory the item starts in (default:
 +; the user's home directory).
@@ -31,6 +32,11 @@
 +%freecell% = freecell.exe,freecell.exe,,0
 +%winmine% = winmine.exe,winmine.exe,,0
 +%sol% = sol.exe,sol.exe,,0
++
++[Accessories_Multimedia]
++%mplayer% = mplay32.exe,mplay32.exe,,0
++%sndrec32% = sndrec32.exe,sndrec32.exe,,0
++%sndvol32% = sndvol32.exe,sndvol32.exe,,0
 +
 +[Apps]
 +%iexplore% = %24%\apps\iexplore.exe,%24%\apps\iexplore.exe,,0
