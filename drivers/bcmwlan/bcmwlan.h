@@ -191,6 +191,7 @@ typedef struct _WLAN_ADAPTER {
     BOOLEAN LinkChanged;
     LONG Rssi;
     ULONG JoinAttempts;
+    ULONG JoinFailures;
     LARGE_INTEGER JoinStarted;
     LARGE_INTEGER NextJoin;
     ULONG LastEvent;
@@ -241,6 +242,7 @@ typedef struct _WLAN_ADAPTER {
 
     HANDLE LogFile;
     ULONG LogLines;
+    ULONG Notices;
 
     //
     // The statistics.
@@ -256,6 +258,12 @@ typedef struct _WLAN_ADAPTER {
 //
 // The log (bcmwlan.c).
 //
+
+VOID
+WlanNotice(
+    IN PWLAN_ADAPTER Adapter,
+    IN PCHAR Text
+    );
 
 VOID
 WlanLog(

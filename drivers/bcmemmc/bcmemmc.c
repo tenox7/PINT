@@ -9,11 +9,11 @@ Abstract:
     This is the miniport driver for the SD card of the Raspberry Pi, on the
     controller the ARC firmware found it on and describes as the ScsiAdapter
     of the system: the SD host controller (SDHOST, "BCM2835-SDHOST") of the
-    BCM2836 and BCM2837 in the Raspberry Pi 2 and 3, from which the VideoCore
-    boots and which leaves the EMMC to the wireless chip of the Pi 3 and
-    Zero 2 W; the EMMC (an Arasan SD host controller, SDHCI 3.0,
-    "BCM2835-EMMC"), to which the firmware connects the slot when no card
-    answers on the SDHOST, and the card controller of QEMU's raspi4b; or the
+    BCM2837 in the Raspberry Pi 3 and Zero 2 W, from which the VideoCore
+    boots and which leaves the EMMC to the wireless chip; the EMMC (an Arasan
+    SD host controller, SDHCI 3.0, "BCM2835-EMMC"), to which the firmware
+    connects the slot on a board without the wireless chip (Pi 2) or when no
+    card answers on the SDHOST, and the card controller of QEMU's raspi4b; or the
     EMMC2 of the BCM2711 in the Raspberry Pi 4 (SDHCI 3.0 too,
     "BCM2711-EMMC2"), which holds the card slot of every BCM2711 board. The
     controllers are told apart by the offset of their registers into the
@@ -227,7 +227,7 @@ Environment:
 #define MAXIMUM_TRANSFER    0x10000
 #define TRANSFER_PAGES      (MAXIMUM_TRANSFER / 0x1000)
 #define TIMEOUT_US          1000000
-#define BLOCK_TIMEOUT_US    100000
+#define BLOCK_TIMEOUT_US    10000
 
 typedef struct _HW_DEVICE_EXTENSION {
     PULONG Registers;
@@ -748,7 +748,11 @@ SdhostSetBusWidth(
 // Move the next block of the current request through the FIFO, in bursts of
 // up to 8 words as its level allows; a misaligned buffer goes through the
 // bounce block. The FIFO fills, or drains, at the SD clock: a block takes
-// some 160 microseconds at 25 MHz on the 4-bit bus.
+// some 160 microseconds at 25 MHz on the 4-bit bus, and a card that stops
+// within one is given up after BLOCK_TIMEOUT_US. The block moves in the
+// interrupt service routine: a move at a lower level (CallEnableInterrupts)
+// would need the controller's interrupts off meanwhile, and the end of a
+// block that comes then is not noted (so in QEMU's model of the controller).
 //
 
 static BOOLEAN

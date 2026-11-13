@@ -9,11 +9,11 @@ Windows NT 3.5 ported to 32-bit ARM (ARMv7-A) on the Raspberry Pi 2, 3 and 4, wi
 - Tested: Pi 2 Model B v1.1 (BCM2836, Cortex-A7), Pi 2 Model B v1.2, Pi 3 Model B v1.2, v1.3 and B+ v1.3 (BCM2837,
   Cortex-A53), Pi 4 Model B v1.4 and Pi 400 (BCM2711, Cortex-A72: USB-A ports and Ethernet; NT uses the first GB of
   memory) and QEMU `raspi2b`, `raspi3b`, `raspi3ap`, `raspi4b`.
-- Untested, should work: 3A+, Zero 2 W (BCM2837), CM4 (BCM2711).
+- Also tested: Zero 2 W (BCM2837). Untested, should work: 3A+ (BCM2837), CM4 (BCM2711).
 - NT runs its multiprocessor kernel on all four cores of every model.
-- On the Pi 2, 3 and Zero 2 W the SD card runs on the BCM2836/7's SD host controller (SDHOST), where the GPU
-  firmware boots from, which leaves the Arasan EMMC controller to the on-board wireless chip of the Pi 3 and
-  Zero 2 W. The Pi 4's card is on its EMMC2.
+- On the boards with the wireless chip (Pi 3, Zero 2 W) the SD card runs on the BCM2837's SD host controller
+  (SDHOST), where the GPU firmware boots from, which leaves the Arasan EMMC controller to the chip. The Pi 2 keeps
+  its card on the EMMC. The Pi 4's card is on its EMMC2.
 - Not planned:
   - Pi 1, Zero, Zero W: ARMv6 (ARM1176), no Thumb-2.
   - Pi 5, Pi 500: the Cortex-A76 runs 32-bit code only in user mode.
@@ -85,9 +85,13 @@ Adapter (`drivers/bcmwlan`), with TCP/IP and DHCP. Set the network in `config.tx
     wifi_country=US         (the regulatory domain; XX by default)
     debug_wifi=1            (log to C:\WLAN.LOG)
 
+With no `wifi_ssid` the adapter is not started. A network that cannot be joined (wrong name or passphrase) is
+noted in `C:\WLAN.LOG` even without `debug_wifi`.
+
 The chip's firmware files are Raspberry Pi OS's, licensed for Raspberry Pi hardware only: the image build fetches
-them, and the repository does not hold them. On the Pi 2, 3 and Zero 2 W the SD card runs on the SD host controller
-(SDHOST), which leaves the EMMC controller to the wireless chip.
+them, and the repository does not hold them (the QEMU package's disk is made without them). On the Pi 3 and
+Zero 2 W the SD card runs on the SD host controller (SDHOST), which leaves the EMMC controller to the wireless
+chip; the Pi 2 keeps it on the EMMC.
 
 ## Sound
 
@@ -104,15 +108,15 @@ makes it from NT's file when the image is built). NT's sounds and `CANYON.MID` a
 ## FTP server
 
 NT 3.5's FTP Server is installed with its Control Panel applet (FTP Server) and does not start by itself:
-`net start ftpsvc`. `anonymous` logs on with any password (the account `FTP_RASPI`, which the first boot makes), and so
-do the accounts of the machine; the root is `C:\`, read and write, so start it only on a network you trust. In
+`net start ftpsvc`. The accounts of the machine log on (`Administrator`), to every drive, read and write, starting
+at `C:\`; anonymous access is off, and the applet turns it on with an account you name. In
 FileZilla, set the site's server type to a DOS/Windows one: the server reports drive paths (`C:/`).
 
 ## Crash dumps
 
 Off by default. With both settings in `config.txt`, NT writes its memory at a STOP screen and saves it as
-`C:\WINNT\MEMORY.DMP` at the next start; C: needs about twice the limit free. `tools/dumpinfo.py MEMORY.DMP` prints the
-STOP code, the registers and the loaded drivers.
+`C:\WINNT\MEMORY.DMP` at the next start; C: needs about twice the limit free. `tools/dumpinfo.pl MEMORY.DMP` prints the
+STOP code, the registers and the loaded drivers. On NT 3.5 they are untested on real hardware.
 
     crash_dump=1
     total_mem=256           (the Pi firmware's memory limit, in MB: required)

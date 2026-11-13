@@ -286,15 +286,14 @@
 +            //
 +            // The FTP Server of NT 3.5 (ftpsvc.dll, in tcpsvcs.exe) as OEMNSVFT.INF installs it,
 +            // with these differences: it starts on demand (Services in Control Panel, or NET
-+            // START FTPSVC), anonymous logons are allowed beside those of the accounts of the
-+            // machine, and every drive is read and written (the masks have a bit for each drive
++            // START FTPSVC), it takes the accounts of the machine and no anonymous user, and
++            // every drive is read and written by them (the masks have a bit for each drive
 +            // letter; setup leaves them 0, no drive), to bring files to the machine. The home
-+            // directory is the service's default, the root of C: (no HomeDirectory value). The
-+            // anonymous user is FTP_RASPI, which the first boot makes (REGISTRY.INI) with the
-+            // LSA secret that holds its password (FTPANON), without which the service allows
-+            // no anonymous logon. Directories are listed as ls -l does, which every client
-+            // reads; the MS-DOS style of the default prints the year 2026 as 126. The FTP
-+            // Server applet of Control Panel changes these.
++            // directory is the service's default, the root of C: (no HomeDirectory value). No
++            // account is made for an anonymous user: the FTP Server applet of Control Panel
++            // allows one, names its account and stores its password. Directories are listed
++            // as ls -l does, which every client reads; the MS-DOS style of the default prints
++            // the year 2026 as 126.
 +            //
 +            FTPSVC
 +                Type = REG_DWORD 0x00000020
@@ -309,8 +308,8 @@
 +                    Disabled
 +                Parameters
 +                    MaxConnections = REG_DWORD 20
-+                    AllowAnonymous = REG_DWORD 1
-+                    AnonymousUsername = FTP_RASPI
++                    AllowAnonymous = REG_DWORD 0
++                    AnonymousUsername = Guest
 +                    AnonymousOnly = REG_DWORD 0
 +                    ReadAccessMask = REG_DWORD 0x03FFFFFF
 +                    WriteAccessMask = REG_DWORD 0x03FFFFFF
