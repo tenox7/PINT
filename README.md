@@ -86,7 +86,8 @@ Adapter (`drivers/bcmwlan`), with TCP/IP and DHCP. Set the network in `config.tx
     debug_wifi=1            (log to C:\WLAN.LOG)
 
 With no `wifi_ssid` the adapter is not started. A network that cannot be joined (wrong name or passphrase) is
-noted in `C:\WLAN.LOG` even without `debug_wifi`.
+noted in `C:\WLAN.LOG` even without `debug_wifi`. On a board with no Ethernet (3A+, Zero 2 W) and no `wifi_ssid`, the network
+services have no adapter, and NT says at each start that a service or driver failed, until a network is set.
 
 The chip's firmware files are Raspberry Pi OS's, licensed for Raspberry Pi hardware only: the image build fetches
 them, and the repository does not hold them (the QEMU package's disk is made without them). On the Pi 3 and
