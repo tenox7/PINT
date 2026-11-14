@@ -3,9 +3,9 @@
 # an input of the port is newer. First the tools of the build, ksarm.h and the stubs and
 # headers of MIDL, which every later step takes; the C run-time; the registry hives; the
 # kernel, the HAL, the OS loader and the ARC firmware; the components of NT (build-nt.sh);
-# the tools of the SDK (build-sdktools.sh); then the INFs, the images rebased as the build
-# lab rebased a build (sdcard/rebase.sh), the system disk, updated in place, keeping what
-# NT wrote on it (make-sd-image.sh -u), and the setup card (make-setup-image.sh).
+# the tools of the SDK (build-sdktools.sh); the extras (build-extras.sh); then the INFs, the
+# images rebased as the build lab rebased a build (sdcard/rebase.sh), the system disk, updated
+# in place, keeping what NT wrote on it (make-sd-image.sh -u), and the setup card (make-setup-image.sh).
 # build-all.sh builds everything from scratch.
 #
 # Usage:  build/build-update.sh    # J jobs at once (default 8, J=1 in order), CJ compiles each (default 12)
@@ -52,6 +52,7 @@ barrier
 
 $R/build/build-nt.sh
 $R/build/build-sdktools.sh
+$R/build/build-extras.sh
 
 # the INFs (XDOSNET, a tool of theirs, links setupapi.lib), the images of the system and the
 # SDK tools rebased, the system disk, the setup card

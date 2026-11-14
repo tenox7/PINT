@@ -6,7 +6,8 @@ with Microsoft C for ARM (MSVC 14.44, the last with an ARM32 target): on Windows
 Studio 2022, or in Docker (tenox7/pint40sdk).
 
 It has the headers of Windows NT 4.0 (Win32, the C run-time, OpenGL, POSIX) as PINT builds
-with them, PINT's libraries (the import libraries of its DLLs and its C run-times), the
+with them, ahead of the compiler's own (intrin.h, stdint.h, sal.h...), PINT's libraries (the
+import libraries of its DLLs and its C run-times), the
 win32.mak of the Win32 SDK with ARM in it, and its own cl and link: they run those of
 Microsoft C for ARM and mark each image for Windows NT 4.0 (the linker for ARM marks it 6.02,
 which NT 4.0 does not start). No MFC.

@@ -1,17 +1,33 @@
 #ntdiff private/windows/setup/syssetup/strtmenu.c
-=1 1 183
+=1 1 84
++    IN PCWSTR WorkingDir,
+=1 85 10
++                      WorkingDir,
+=1 96 88
 +    IN BOOL   CommonGroup,
 +    IN BOOL   Desktop
-=1 185 51
+=1 185 9
++    PCWSTR WorkingDir;
+=1 194 26
++            //
++            // The sixth field, after <upgrade>, is the directory the item
++            // starts in; without it, the user's home directory.
++            //
++            WorkingDir = pSetupGetField(&InfContext,6);
++            if(WorkingDir && !*WorkingDir) {
++                WorkingDir = NULL;
++            }
+=1 219 17
 +                    b = b && (Desktop
 +                           ? AddDesktopItem( CommonGroup,
 +                                             Description,
 =1 238 3
-+                                             NULL,
++                                             WorkingDir,
 +                                             0,
 +                                             SW_SHOWNORMAL )
 +                           : CreateMenuItem( Description,
 =1 237 4
++                                             WorkingDir,
 +                                             CommonGroup ));
 =1 242 57
 +            b = b && AddItemsToGroup(InfHandle,GroupDescription,GroupId,CommonGroup,FALSE);

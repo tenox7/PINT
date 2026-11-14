@@ -5,7 +5,8 @@ The PINT 4.0 SDK. It builds programs and DLLs for [PINT 4.0](https://github.com/
 target) under Wine. It runs natively on arm64 (Apple Silicon) and on amd64.
 
 It has:
-- the headers of Windows NT 4.0 (Win32, the C run-time, OpenGL, POSIX), as PINT builds with them
+- the headers of Windows NT 4.0 (Win32, the C run-time, OpenGL, POSIX), as PINT builds with them, ahead of the
+  compiler's own (`intrin.h`, `stdint.h`, `sal.h`...)
 - PINT's libraries: the import libraries of its DLLs and its C run-times
 - the win32.mak of the Win32 SDK, with ARM in it
 - its own cl and link: they run those of Microsoft C for ARM and mark each image for Windows NT 4.0 (the linker for

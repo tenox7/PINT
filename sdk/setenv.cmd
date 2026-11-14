@@ -1,7 +1,8 @@
 @echo off
 rem setenv.cmd: this command prompt builds programs for PINT 4.0, Windows NT 4.0 on ARM.
 rem It runs vcvarsall.bat of the Visual Studio with Microsoft C for ARM (unless a prompt of
-rem Visual Studio already runs), then takes the headers, libraries, cl and link of this SDK.
+rem Visual Studio already runs), then takes the headers (then those of the compiler),
+rem libraries, cl and link of this SDK.
 rem Then nmake (win32.mak), cl, link and rc build for PINT.
 set PINTSDK=%~dp0
 set PINTSDK=%PINTSDK:~0,-1%
@@ -20,7 +21,7 @@ if not exist "%PINTVS%\VC\Auxiliary\Build\vcvarsall.bat" goto novs
 call "%PINTVS%\VC\Auxiliary\Build\vcvarsall.bat" %PINTHOST%_arm >nul
 :sdk
 if not exist "%VCToolsInstallDir%bin\Host%PINTHOST%\arm\cl.exe" goto novs
-set INCLUDE=%PINTSDK%\include;%PINTSDK%\include\crt
+set INCLUDE=%PINTSDK%\include;%PINTSDK%\include\crt;%VCToolsInstallDir%include
 set LIB=%PINTSDK%\lib
 set CPU=ARM
 set PATH=%PINTSDK%\bin\%PINTHOST%;%VCToolsInstallDir%bin\Host%PINTHOST%\arm;%PATH%

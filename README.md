@@ -86,6 +86,16 @@ NT 4.0 does not start). No MFC. `build/make-sdk.sh` makes `obj/pint40sdk.zip` fo
 or cl) and, in `obj/sdk/docker`, the Docker image tenox7/pint40sdk on tenox7/msvc-arm32
 (`docker build -t tenox7/pint40sdk obj/sdk/docker`). `sdk/README.txt` has the details.
 
+## Extras
+
+Programs too big for this repository build with the SDK when their checkout, or a link to it, is in `extras/` under
+the name of their recipe (`extras/NAME.sh`): `sabreNT` (Sabre), `openttdNT` (OpenTTD), `popNT` (Prince of Persia,
+with `SDL4NT`). They go into `\GAMES` and Programs > Games, which NT makes at the first boot. Without its checkout, an
+extra leaves the disk when it is made anew (`sdcard/make-sd-image.sh` without `-u`).
+
+    git clone https://github.com/tenox7/sabreNT extras/sabreNT     # or: ln -s ~/src/sabreNT extras/sabreNT
+    build/build-update.sh
+
 ## Roadmap
 
 - Wireless

@@ -37,17 +37,20 @@ for f in bootcode.bin start.elf fixup.dat bcm2709-rpi-2-b.dtb start4.elf fixup4.
 done
 
 if [[ "${1:-}" = -u && -f "$IMG" && -f "$STAMP" && -z "$(find ../obj/gen/hives ../ported/oak make-sd-image.sh -newer "$STAMP" -print -quit)" ]]; then
-  new=$(cd .. && find sdcard/root sdcard/config.txt sdcard/firmware obj/arcfw.bin -type f -newer obj/stamp/sd-image)
-  echo ">> updating $IMG: $(echo $new | wc -w | tr -d ' ') files"
-  [[ -z "$new" ]] || docker run --rm -v "$ROOT":/work -w /work --entrypoint bash tenox7/msvc-arm32 -c '
+  # a file a line: names may have spaces (the files of the extras)
+  list=$(cd .. && find sdcard/root sdcard/config.txt sdcard/firmware obj/arcfw.bin -type f -newer obj/stamp/sd-image)
+  new=(); while IFS= read -r f; do [[ -z "$f" ]] || new+=("$f"); done <<< "$list"
+  echo ">> updating $IMG: ${#new[@]} files"
+  (( ${#new[@]} == 0 )) || docker run --rm -v "$ROOT":/work -w /work --entrypoint bash tenox7/msvc-arm32 -c '
 set -e
 I=obj/nt-arcfw-sd.img@@1M
 for f in "$@"; do
   case $f in sdcard/root/*) d=${f#sdcard/root/} ;; *) d=${f##*/} ;; esac
-  p=; for c in $(dirname $d | tr / " "); do [ $c = . ] || { p=$p/$c; mmd -D s -i $I ::$p 2>/dev/null || true; }; done
-  mcopy -D o -i $I $f ::/$d
+  p=; IFS=/ read -ra cs <<< "$(dirname "$d")"
+  for c in "${cs[@]}"; do [ "$c" = . ] || { p=$p/$c; mmd -D s -i $I "::$p" 2>/dev/null || true; }; done
+  mcopy -D o -i $I "$f" "::/$d"
   echo "   $d"
-done' _ $new
+done' _ "${new[@]}"
   touch "$STAMP"
   exit 0
 fi

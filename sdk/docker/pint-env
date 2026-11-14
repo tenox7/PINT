@@ -1,13 +1,13 @@
 # pint-env (sourced): the environment of the PINT 4.0 SDK for the tools under Wine: its
-# headers and libraries, CPU=ARM for win32.mak, PINTSDK, and the Windows PATH (WINEPATH):
-# the SDK's cl and link of the host's Windows (x64, arm64), Microsoft C for ARM, the
-# Windows SDK's rc.
+# headers, then those of the compiler (intrin.h, stdint.h, sal.h...), its libraries, CPU=ARM
+# for win32.mak, PINTSDK, and the Windows PATH (WINEPATH): the SDK's cl and link of the
+# host's Windows (x64, arm64), Microsoft C for ARM, the Windows SDK's rc.
 case $(uname -m) in aarch64) PINTHOST=arm64 ;; *) PINTHOST=x64 ;; esac
 pint_w() { printf 'Z:%s' "$1" | tr / '\\'; }
 pint_b=$(ls -d ${MSVC:-/opt/msvc}/VC/Tools/MSVC/*/bin/Host$PINTHOST/arm 2>/dev/null | tail -1)
 pint_k=$(ls -d ${MSVC:-/opt/msvc}/kits/bin/*/$PINTHOST 2>/dev/null | tail -1)
 PINTSDK=$(pint_w /opt/pint40sdk)
 export PINTHOST PINTSDK CPU=ARM
-export INCLUDE="$PINTSDK\\include;$PINTSDK\\include\\crt" LIB="$PINTSDK\\lib"
+export INCLUDE="$PINTSDK\\include;$PINTSDK\\include\\crt${pint_b:+;$(pint_w ${pint_b%/bin/*}/include)}" LIB="$PINTSDK\\lib"
 export WINEPATH="$(pint_w /opt/pint40sdk/bin/$PINTHOST)${pint_b:+;$(pint_w $pint_b)}${pint_k:+;$(pint_w $pint_k)}"
 unset pint_b pint_k

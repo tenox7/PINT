@@ -24,6 +24,10 @@ sdcard/root/SDKTOOLS/
 sdcard/root/GAMES/
 sdcard/root/APPS/
 
+# the checkouts of the extras (build/build-extras.sh), or links to them; kept are their recipes
+extras/*
+!extras/*.sh
+
 # screen dumps
 *.ppm
 
