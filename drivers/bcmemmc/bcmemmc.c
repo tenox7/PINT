@@ -227,7 +227,7 @@ Environment:
 #define MAXIMUM_TRANSFER    0x10000
 #define TRANSFER_PAGES      (MAXIMUM_TRANSFER / 0x1000)
 #define TIMEOUT_US          1000000
-#define BLOCK_TIMEOUT_US    10000
+#define BLOCK_TIMEOUT_US    100000
 
 typedef struct _HW_DEVICE_EXTENSION {
     PULONG Registers;
@@ -748,8 +748,10 @@ SdhostSetBusWidth(
 // Move the next block of the current request through the FIFO, in bursts of
 // up to 8 words as its level allows; a misaligned buffer goes through the
 // bounce block. The FIFO fills, or drains, at the SD clock: a block takes
-// some 160 microseconds at 25 MHz on the 4-bit bus, and a card that stops
-// within one is given up after BLOCK_TIMEOUT_US. The block moves in the
+// some 160 microseconds at 25 MHz on the 4-bit bus. A card still busy with
+// the block before holds a write's next block back, for as long as it is
+// busy: a card that stops within a block is given up only after
+// BLOCK_TIMEOUT_US, a pause rather than a failed write. The block moves in the
 // interrupt service routine: a move at a lower level (CallEnableInterrupts)
 // would need the controller's interrupts off meanwhile, and the end of a
 // block that comes then is not noted (so in QEMU's model of the controller).
