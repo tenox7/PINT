@@ -960,12 +960,12 @@
 +    // function); the wireless chip keeps the EMMC on GPIO 34-39.
 +    //
 +
++    MailboxSetPowerState(POWER_DEVID_SD, TRUE);
 +    if (SdBoardHasWireless()) {
 +        for (i = 48; i <= 53; i += 1) {
 +            SdSetPinFunction(i, GPIO_ALT0);
 +        }
 +
-+        MailboxSetPowerState(POWER_DEVID_SD, TRUE);
 +        SdHost = &SdhostHost;
 +        SdBase = PERIPHERAL_BASE + SDHOST_OFFSET;
 +        SdBaseClock = MailboxGetMaxClockRate(CLOCK_ID_CORE);
