@@ -106,9 +106,7 @@ wave output, a mixer (the volume icon and Volume Control) and an FM synthesizer 
     debug_sound=1           (log to C:\SOUND.LOG)
 
 NT 4.0's logon and logoff sounds are not in the source tree: copy `Windows NT Logon Sound.wav` and `Windows NT Logoff
-Sound.wav` from `\WINNT\Media` of an NT 4.0 install into `private/windows/media/sounds` before building. The image
-holds the logoff sound as `Original Windows NT Logoff Sound.wav`, which does not play: the shell waits for the sound before
-shutting down, a silent pause with no speaker connected. Rename it to `Windows NT Logoff Sound.wav` to hear it.
+Sound.wav` from `\WINNT\Media` of an NT 4.0 install into `private/windows/media/sounds` before building.
 
 ## FTP server
 

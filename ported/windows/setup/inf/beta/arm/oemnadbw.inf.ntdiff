@@ -28,4 +28,6 @@
 +    Debug-Output "OEMNADBW.INF: STF_LANGUAGE is: "$(!STF_LANGUAGE)
 =1 277 44
 +            Debug-Output "Cannot configure the bcmwlan driver software."
-=1 322 641
+=1 322 136
++            $(NetEventDLL), "", "", 0
+=1 459 504

@@ -137,9 +137,6 @@ M=/nt/private/windows/media
 cp $M/synth/synth.pat $M/midimap/midimap.cfg /tmp/sd/WINNT/System32/
 mkdir -p /tmp/sd/WINNT/Media
 cp $M/sounds/*.wav $M/sounds/*.mid /tmp/sd/WINNT/Media/
-# the logoff sound goes under another name, so that it does not play: the shell waits for it before
-# shutting down, which is a silent pause of some seconds with no speaker (renamed back, it plays)
-[ ! -f "/tmp/sd/WINNT/Media/Windows NT Logoff Sound.wav" ] || mv "/tmp/sd/WINNT/Media/Windows NT Logoff Sound.wav" "/tmp/sd/WINNT/Media/Original Windows NT Logoff Sound.wav"
 cp $M/avi/clock.avi /tmp/sd/WINNT/
 # the hive of the profile of a new user, which GUI setup saves from the default hive (SaveHive
 # of HKEY_USERS\.DEFAULT, syssetup.c); the profile directories are made at the first boot
