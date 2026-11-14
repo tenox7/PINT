@@ -48,7 +48,9 @@ sed "s/\$/\r/" /nt/private/windows/shell/fontfldr/fontext/bld/desktop.inx > /tmp
 perl setupfiles.pl $G/layout.inf $G/txtsetup.sif desktop.ini=/tmp/gen/desktop.ini > /tmp/files.txt 2> /tmp/missing.txt ||
   { grep -v "^missing [^(]*$" /tmp/missing.txt || true; exit 1; }
 n=0
-while read -r s d; do mkdir -p /tmp/sd/$(dirname $d); cp $s /tmp/sd/$d; n=$((n+1)); done < /tmp/files.txt
+while IFS= read -r l; do d=${l##* }; s=${l% *}; mkdir -p /tmp/sd/$(dirname $d); cp "$s" /tmp/sd/$d; n=$((n+1)); done < /tmp/files.txt
+# the logon and logoff sounds, where the tree has none (setupfiles.pl): no lines of them in the INFs
+for w in logoff logon; do [ -f /tmp/sd/arm/$w.wav ] || sed -i "/^$w\.wav /d" /tmp/sd/arm/layout.inf /tmp/sd/arm/txtsetup.sif; done
 echo "   $n files in \\arm, $(grep -c "^missing" /tmp/missing.txt) files of layout.inf not on the disk (obj/setup-missing.txt)"
 sed "s/^missing //" /tmp/missing.txt > ../obj/setup-missing.txt
 # the file sizes of layout.inf, as the release put them in (bom\infsize over the flat shares: \arm is the

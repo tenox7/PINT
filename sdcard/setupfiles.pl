@@ -24,7 +24,7 @@ my %special = (
     'userdiff'     => "$R/obj/gen/hives/SETUP/USERDIFF",
     'setupreg.hiv' => "$R/obj/gen/hives/SETUPREG.HIV",
 );
-my %pick = map { my ($n, $p) = split / /; ($n, "/nt/$p") } (
+my %pick = map { my ($n, $p) = split / /, $_, 2; ($n, "/nt/$p") } (
     'adp.bin private/ntos/ndis/digi/images/adp.bin',
     'idp_xfs.bin private/ntos/ndis/digi/images/idp_xfs.bin',
     'backgrnd.gif private/inet/ohnt/setupnt/backgrnd.gif',
@@ -37,6 +37,8 @@ my %pick = map { my ($n, $p) = split / /; ($n, "/nt/$p") } (
     'cross.cur private/windows/shell/control/cursors/anis/cross.cur',
     'hibeam.cur private/windows/shell/control/cursors/anis/hibeam.cur',
     'ding.wav private/windows/media/sounds/ding.wav',
+    'logoff.wav private/windows/media/sounds/Windows NT Logoff Sound.wav',
+    'logon.wav private/windows/media/sounds/Windows NT Logon Sound.wav',
     'midimap.cfg private/windows/media/midimap/midimap.cfg',
     'net.hlp private/net/netcmd/net.hlp',
     'readme.wri private/windows/setup/readme/readme.wri',
@@ -48,6 +50,9 @@ my %pick = map { my ($n, $p) = split / /; ($n, "/nt/$p") } (
 );
 # and the fonts of both ntgdi\fonts and winnls\fontsup\system: those of ntgdi\fonts
 my @prefer = ('/nt/private/ntos/w32/ntgdi/fonts/');
+# the logon and logoff sounds are not in the source tree (README, Sound): without them the disk
+# has no such files, and make-setup-image.sh takes their lines out of its INFs
+my %optional = map { ($_, 1) } ('logoff.wav', 'logon.wav');
 for (@made) { my ($n, $f) = split /=/, $_, 2; $special{lc $n} = $f; }
 
 sub sections {
@@ -116,6 +121,7 @@ for my $n (@order) {
     my @f = @{$e{$n}};
     my ($sub, $dir, $tm, $target) = ($f[1] // '', $f[7] // '', $f[9] // '', lc($f[10] // '') || $n);
     my $src = $special{$n} // $pick{$n};
+    if ($optional{$n} && !-f $src) { print STDERR "missing $n\n"; next; }
     if (!defined $src && $dir ne '' && defined $dirs{$dir}) {
         my $p = $dirs{$dir} eq '\\' ? "winnt/$target" : 'winnt/' . lc($dirs{$dir} =~ tr/\\/\//r) . "/$target";
         $src = $inst{$p};
