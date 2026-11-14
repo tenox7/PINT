@@ -118,7 +118,6 @@ FileZilla, set the site's server type to a DOS/Windows one: the server reports d
 Off by default. With both settings in `config.txt`, NT writes its memory at a STOP screen and saves it as
 `C:\WINNT\MEMORY.DMP` at the next start; C: needs about twice the limit free. `tools/dumpinfo.pl MEMORY.DMP` prints the
 STOP code, the registers and the loaded drivers. `myfault now` stops NT with a STOP screen on demand, to try it.
-On NT 3.5 they are untested on real hardware.
 
     crash_dump=1
     total_mem=256           (the Pi firmware's memory limit, in MB: required)
