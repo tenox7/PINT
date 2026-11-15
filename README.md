@@ -108,6 +108,14 @@ wave output, a mixer (the volume icon and Volume Control) and an FM synthesizer 
 NT 4.0's logon and logoff sounds are not in the source tree: copy `Windows NT Logon Sound.wav` and `Windows NT Logoff
 Sound.wav` from `\WINNT\Media` of an NT 4.0 install into `private/windows/media/sounds` before building.
 
+## RDP server
+
+ntrdps (https://github.com/tenox7/ntrdps), an RDP server, lets an RDP client use NT's desktop, as VNC does. It is off
+by default: its installer, `C:\NTRDPS\ntrdpset.exe`, is on the disk, and nothing is installed until you run it. To turn
+it on, run the installer, click Install (it adds its service and its mirror display driver) and let it restart NT. RDP
+clients then log on as Administrator (password `password`). Remove, in the same installer, turns it off again. Use it
+only on a network you trust. It builds as an extra (Extras, below).
+
 ## FTP server
 
 The FTP Publishing Service of Peer Web Services is installed with Internet Service Manager (Start > Programs >
@@ -140,10 +148,8 @@ their recipe (`extras/NAME.sh`):
 
 - `sabreNT` (Sabre), `openttdNT` (OpenTTD), `popNT` (Prince of Persia, with `SDL4NT`) build with the SDK. They go into
   `\GAMES` and Programs > Games, which NT makes at the first boot.
-- `NTRDPS` (https://github.com/tenox7/ntrdps), an RDP server for the console, builds in the environment of the NT
-  build. Its installer, `\NTRDPS\ntrdpset.exe`, is on the disk; nothing is installed until you run it. Install adds
-  its service and its mirror driver, then offers a restart; after it, RDP clients log on to the console as
-  Administrator (password `password`). Use it only on a network you trust.
+- `NTRDPS` (https://github.com/tenox7/ntrdps) builds in the environment of the NT build, into `\NTRDPS` (RDP
+  server, above).
 
 Without its checkout, an extra leaves the disk when it is made anew (`sdcard/make-sd-image.sh` without `-u`).
 
