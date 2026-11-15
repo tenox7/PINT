@@ -161,10 +161,10 @@ Programs too big for this repository build when their checkout, or a link to it,
 their recipe (`extras/NAME.sh`), with `build/build-update.sh`. Without its checkout, an extra leaves the disk when it is
 made anew (`sdcard/make-sd-image.sh` without `-u`).
 
-- `NTRDPS` (https://github.com/tenox7/ntrdps), an RDP server for the console. It goes into `\NTRDPS`; the first run
-  installs its service, its layered display driver and its account, and from then on RDP clients log on to the console
-  as Administrator (password `password`). NT 3.5 cannot check a password for it, so ntrdps keeps its own:
-  `C:\NTRDPS\ntrdps -setlogin` changes it. Use it only on a network you trust.
+- `NTRDPS` (https://github.com/tenox7/ntrdps), an RDP server for the console. Its installer, `\NTRDPS\NTRDPSET.EXE`,
+  is on the disk; nothing is installed until you run it. Install adds its service and its layered display driver,
+  asks for the user name and password RDP clients must give (NT 3.5 cannot check a Windows password for it, so
+  ntrdps keeps its own), then offers a restart. Use it only on a network you trust.
 
       git clone https://github.com/tenox7/ntrdps extras/NTRDPS     # or: ln -s ~/src/ntrdps extras/NTRDPS
       build/build-update.sh
