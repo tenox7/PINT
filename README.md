@@ -135,10 +135,16 @@ or cl) and, in `obj/sdk/docker`, the Docker image tenox7/pint40sdk on tenox7/msv
 
 ## Extras
 
-Programs too big for this repository build with the SDK when their checkout, or a link to it, is in `extras/` under
-the name of their recipe (`extras/NAME.sh`): `sabreNT` (Sabre), `openttdNT` (OpenTTD), `popNT` (Prince of Persia,
-with `SDL4NT`). They go into `\GAMES` and Programs > Games, which NT makes at the first boot. Without its checkout, an
-extra leaves the disk when it is made anew (`sdcard/make-sd-image.sh` without `-u`).
+Programs too big for this repository build when their checkout, or a link to it, is in `extras/` under the name of
+their recipe (`extras/NAME.sh`):
+
+- `sabreNT` (Sabre), `openttdNT` (OpenTTD), `popNT` (Prince of Persia, with `SDL4NT`) build with the SDK. They go into
+  `\GAMES` and Programs > Games, which NT makes at the first boot.
+- `NTRDPS` (https://github.com/tenox7/ntrdps), an RDP server for the console, builds in the environment of the NT
+  build. It goes into `\NTRDPS`; the first run installs its service and its mirror driver, and from then on RDP
+  clients log on to the console as Administrator (password `password`). Use it only on a network you trust.
+
+Without its checkout, an extra leaves the disk when it is made anew (`sdcard/make-sd-image.sh` without `-u`).
 
     git clone https://github.com/tenox7/sabreNT extras/sabreNT     # or: ln -s ~/src/sabreNT extras/sabreNT
     build/build-update.sh
