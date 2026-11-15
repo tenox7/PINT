@@ -12,9 +12,6 @@
 #   NEEDS  the extras it takes, built first (default none)
 #   DEST   its directory in sdcard/root, and FILES, what goes there from the build copy (default
 #          none)
-#   FIRSTRUN  the commands that install it at the first boot, one a line: the end of winlogon.cmd
-#          (InsertScript of REGISTRY.INI), before its restart; sdcard/make-sd-image.sh adds those
-#          of every extra built (obj/extras/firstrun)
 # An extra builds anew, in a copy without .git and without the objects, libraries and programs
 # of other builds (those its git does not track: a file of the repository with such a name is
 # kept, as Sabre's 3D models lib/*.OBJ), when what it takes of its checkout, its recipe (and its
@@ -27,7 +24,7 @@
 set -euo pipefail
 R=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 E=$R/extras O=$R/obj/extras G=$R/sdcard/root
-recipe() { BUILD=nmake ENV=sdk COPY=. DIR=$1 NEEDS= DEST= FILES= FIRSTRUN=; . $E/$1.sh; }
+recipe() { BUILD=nmake ENV=sdk COPY=. DIR=$1 NEEDS= DEST= FILES=; . $E/$1.sh; }
 
 # one extra, the step of each
 if [ $# -gt 0 ]; then
@@ -92,7 +89,7 @@ for f in $E/*.sh; do
     [ -n "$NEEDS" ] && N+=($n) || P+=($n)
     [ $ENV = nt ] || SDK=1
 done
-[ ${#P[@]} -gt 0 ] || [ ${#N[@]} -gt 0 ] || { rm -f $O/firstrun; exit 0; }
+[ ${#P[@]} -gt 0 ] || [ ${#N[@]} -gt 0 ] || exit 0
 
 [ -z "$SDK" ] || step pint40sdk $R/sdk $R/obj/um $R/crt/cxx/newarray.cxx -- $B/make-sdk.sh
 extra() {
@@ -108,13 +105,3 @@ for n in ${P[@]+"${P[@]}"}; do extra $n; done
 barrier
 for n in ${N[@]+"${N[@]}"}; do extra $n; done
 barrier
-
-# the commands of the first run of the extras built, for the system disk
-t=$O/firstrun.new
-: > $t
-for n in ${P[@]+"${P[@]}"} ${N[@]+"${N[@]}"}; do
-    recipe $n
-    [ -z "$FIRSTRUN" ] || printf '%s\n' "$FIRSTRUN" >> $t
-done
-if [ -s $t ]; then cmp -s $t $O/firstrun || mv $t $O/firstrun; else rm -f $O/firstrun; fi
-rm -f $t

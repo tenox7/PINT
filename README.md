@@ -141,8 +141,9 @@ their recipe (`extras/NAME.sh`):
 - `sabreNT` (Sabre), `openttdNT` (OpenTTD), `popNT` (Prince of Persia, with `SDL4NT`) build with the SDK. They go into
   `\GAMES` and Programs > Games, which NT makes at the first boot.
 - `NTRDPS` (https://github.com/tenox7/ntrdps), an RDP server for the console, builds in the environment of the NT
-  build. It goes into `\NTRDPS`; the first run installs its service and its mirror driver, and from then on RDP
-  clients log on to the console as Administrator (password `password`). Use it only on a network you trust.
+  build. Its installer, `\NTRDPS\ntrdpset.exe`, is on the disk; nothing is installed until you run it. Install adds
+  its service and its mirror driver, then offers a restart; after it, RDP clients log on to the console as
+  Administrator (password `password`). Use it only on a network you trust.
 
 Without its checkout, an extra leaves the disk when it is made anew (`sdcard/make-sd-image.sh` without `-u`).
 

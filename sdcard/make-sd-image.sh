@@ -4,12 +4,12 @@
 # sdcard/root (\os\winnt40: OSLOADER and the HAL; \WINNT\...) with the registry hives of
 # obj/gen/hives and the NLS tables, fonts and other data files of the NT tree where NT 4.0 Setup
 # puts them (\WINNT\System32, \WINNT\System32\config, \WINNT\Fonts), the hive of the Default User profile,
-# and the setup aid of a developer install for the first boot (ported/oak/registry.ini with the
-# commands that install the extras, obj/extras/firstrun; the program groups in \WINNT\IDW).
+# and the setup aid of a developer install for the first boot (ported/oak/registry.ini, the
+# program groups in \WINNT\IDW).
 # FAT16 because both the GPU firmware and NT read it.
 # Flash it for a real Pi 2, 3 or 4, or attach it in QEMU with -drive if=sd. With -u the disk of
 # the last build is updated in place, keeping what NT wrote on it: the files built since
-# go in (a new disk when the hives, REGISTRY.INI or this script changed).
+# go in (a new disk when the hives or this script changed).
 #
 # Usage:  cd RASPI/sdcard && ./make-sd-image.sh [-u]           # -> ../obj/nt-arcfw-sd.img
 # Flash:  sudo dd if=../obj/nt-arcfw-sd.img of=/dev/rdiskN bs=4m   (diskutil list)
@@ -57,11 +57,7 @@ for m in 43430.BIN:cypress/cyfmac43430-sdio.bin 43430.CLM:cypress/cyfmac43430-sd
   [[ -s "$WL/${m%%:*}" ]] || { echo ">> fetching ${m#*:}"; curl -fsSL -o "$WL/${m%%:*}" "$wlbase/${m#*:}"; }
 done
 
-# the commands of the first run of the extras (build/build-extras.sh) as the last disk has them
-FR=../obj/extras/firstrun FRS=../obj/stamp/sd-firstrun
-samefr() { if [[ -f $FR ]]; then cmp -s $FR $FRS; else [[ ! -f $FRS ]]; fi; }
-
-if [[ "${1:-}" = -u && -f "$IMG" && -f "$STAMP" && -z "$(find ../obj/gen/hives ../ported/oak make-sd-image.sh -newer "$STAMP" -print -quit)" ]] && samefr; then
+if [[ "${1:-}" = -u && -f "$IMG" && -f "$STAMP" && -z "$(find ../obj/gen/hives ../ported/oak make-sd-image.sh -newer "$STAMP" -print -quit)" ]]; then
   # a file a line: names may have spaces (the files of the extras)
   list=$(cd .. && find sdcard/root sdcard/config.txt sdcard/firmware obj/arcfw.bin -type f -newer obj/stamp/sd-image)
   new=(); while IFS= read -r f; do [[ -z "$f" ]] || new+=("$f"); done <<< "$list"
@@ -146,18 +142,8 @@ cp $M/avi/clock.avi /tmp/sd/WINNT/
 # of HKEY_USERS\.DEFAULT, syssetup.c); the profile directories are made at the first boot
 mkdir -p "/tmp/sd/WINNT/Profiles/Default User"
 cp ../obj/gen/hives/DEFAULT "/tmp/sd/WINNT/Profiles/Default User/NTUSER.DAT"
-# the first boot: REGISTRY.INI (made from its edit script by every build) and the groups it names;
-# the commands that install the extras go in its InsertScript, at the end of winlogon.cmd (!), after
-# those of the port and before its message of the restart (!@)
+# the first boot: REGISTRY.INI (made from its edit script by every build) and the groups it names
 cp ../ported/oak/registry.ini /tmp/sd/WINNT/REGISTRY.INI
-if [ -f ../obj/extras/firstrun ]; then
-  awk -v f=../obj/extras/firstrun "function add() { for (i = 0; i < n; i++) printf \"    !%s%s\n\", c[i], e; n = 0 }
-      BEGIN { while ((getline l < f) > 0) c[n++] = l }
-      s && n && (/^    !@/ || /^[^ ]/) { add() }
-      /^InsertScript\r?$/ { s = 1; e = /\r$/ ? \"\r\" : \"\" }
-      { print }
-      END { if (!s) print \"InsertScript\" e; add() }" ../ported/oak/registry.ini > /tmp/sd/WINNT/REGISTRY.INI
-fi
 mkdir -p /tmp/sd/WINNT/IDW
 for g in main accesori games admin; do cp /nt/private/windows/shell/progman/$g.grp /tmp/sd/WINNT/IDW/; done
 
@@ -179,5 +165,4 @@ echo "--- partition table ---"; sfdisk -l "$IMG"
 echo "--- FAT contents ---"; mdir -i /tmp/part.img ::
 '
 touch "$STAMP"
-if [[ -f $FR ]]; then cp $FR $FRS; else rm -f $FRS; fi
 echo ">> built $IMG ($(du -h "$IMG" | cut -f1))."
