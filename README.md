@@ -106,6 +106,15 @@ QEMU it is silent. In `config.txt`:
 MIDI files play through the MIDI Mapper, whose setup `Raspberry Pi` the image's `MIDIMAP.CFG` holds (`tools/midimap.pl`
 makes it from NT's file when the image is built). NT's sounds and `CANYON.MID` are in `\WINNT`.
 
+## RDP server
+
+ntrdps (https://github.com/tenox7/ntrdps), an RDP server, lets an RDP client use NT's desktop, as VNC does. It is off
+by default: its installer, `C:\NTRDPS\NTRDPSET.EXE`, is on the disk, and nothing is installed until you run it. To turn
+it on, run the installer, click Install (it adds its service and its layered display driver), give the user name and
+password RDP clients must use (NT 3.5 cannot check a Windows password for it, so ntrdps keeps its own) and let it
+restart NT. Remove, in the same installer, turns it off again. Use it only on a network you trust. It builds as an
+extra (Extras, below).
+
 ## FTP server
 
 NT 3.5's FTP Server is installed with its Control Panel applet (FTP Server) and does not start by itself:
@@ -161,10 +170,7 @@ Programs too big for this repository build when their checkout, or a link to it,
 their recipe (`extras/NAME.sh`), with `build/build-update.sh`. Without its checkout, an extra leaves the disk when it is
 made anew (`sdcard/make-sd-image.sh` without `-u`).
 
-- `NTRDPS` (https://github.com/tenox7/ntrdps), an RDP server for the console. Its installer, `\NTRDPS\NTRDPSET.EXE`,
-  is on the disk; nothing is installed until you run it. Install adds its service and its layered display driver,
-  asks for the user name and password RDP clients must give (NT 3.5 cannot check a Windows password for it, so
-  ntrdps keeps its own), then offers a restart. Use it only on a network you trust.
+- `NTRDPS` (https://github.com/tenox7/ntrdps) builds into `\NTRDPS` (RDP server, above).
 
       git clone https://github.com/tenox7/ntrdps extras/NTRDPS     # or: ln -s ~/src/ntrdps extras/NTRDPS
       build/build-update.sh
