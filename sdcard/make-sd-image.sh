@@ -4,11 +4,11 @@
 # sdcard/root (\WINNT\...) with the registry hives of obj/gen/hives, the NLS tables and fonts
 # of the NT tree, the help files of the programs and the setup aid of a developer install
 # (ported/oak/registry.ini, the program groups in \WINNT\IDW, the games of apps/games in \GAMES
-# in the Games group and the VNC viewer and Internet Explorer in \APPS in Main: tools/grp.pl). FAT16 because both
-# the GPU firmware and NT 3.5 read it.
+# in the Games group and the VNC viewer and Internet Explorer in \APPS in Main: tools/grp.pl; the commands that
+# install the extras, obj/extras/firstrun, in REGISTRY.INI). FAT16 because both the GPU firmware and NT 3.5 read it.
 # Flash it for a real Pi 2, 3 or 4, or attach it in QEMU with -drive if=sd. With -u the disk of
 # the last build is updated in place, keeping what NT wrote on it: the files built since
-# go in (a new disk when the hives or this script changed).
+# go in (a new disk when the hives, REGISTRY.INI or this script changed).
 #
 # Usage:  cd RASPI/sdcard && ./make-sd-image.sh [-u]           # -> ../obj/nt-arcfw-sd.img
 # Flash:  sudo dd if=../obj/nt-arcfw-sd.img of=/dev/rdiskN bs=4m   (diskutil list)
@@ -56,18 +56,25 @@ for m in 43430.BIN:cypress/cyfmac43430-sdio.bin 43430.CLM:cypress/cyfmac43430-sd
   [[ -s "$WL/${m%%:*}" ]] || { echo ">> fetching ${m#*:}"; curl -fsSL -o "$WL/${m%%:*}" "$wlbase/${m#*:}"; }
 done
 
-if [[ "${1:-}" = -u && -f "$IMG" && -f "$STAMP" && -z "$(find ../obj/gen/hives ../ported/oak make-sd-image.sh -newer "$STAMP" -print -quit)" ]]; then
-  new=$(cd .. && find sdcard/root sdcard/config.txt sdcard/firmware obj/arcfw.bin -type f -newer obj/stamp/sd-image)
-  echo ">> updating $IMG: $(echo $new | wc -w | tr -d ' ') files"
-  [[ -z "$new" ]] || docker run --rm -v "$ROOT":/work -w /work --entrypoint bash tenox7/msvc-arm32 -c '
+# the commands of the first run of the extras (build/build-extras.sh) as the last disk has them
+FR=../obj/extras/firstrun FRS=../obj/stamp/sd-firstrun
+samefr() { if [[ -f $FR ]]; then cmp -s $FR $FRS; else [[ ! -f $FRS ]]; fi; }
+
+if [[ "${1:-}" = -u && -f "$IMG" && -f "$STAMP" && -z "$(find ../obj/gen/hives ../ported/oak make-sd-image.sh -newer "$STAMP" -print -quit)" ]] && samefr; then
+  # a file a line: names may have spaces (the files of the extras)
+  list=$(cd .. && find sdcard/root sdcard/config.txt sdcard/firmware obj/arcfw.bin -type f -newer obj/stamp/sd-image)
+  new=(); while IFS= read -r f; do [[ -z "$f" ]] || new+=("$f"); done <<< "$list"
+  echo ">> updating $IMG: ${#new[@]} files"
+  (( ${#new[@]} == 0 )) || docker run --rm -v "$ROOT":/work -w /work --entrypoint bash tenox7/msvc-arm32 -c '
 set -e
 I=obj/nt-arcfw-sd.img@@1M
 for f in "$@"; do
   case $f in sdcard/root/*) d=${f#sdcard/root/} ;; *) d=${f##*/} ;; esac
-  p=; for c in $(dirname $d | tr / " "); do [ $c = . ] || { p=$p/$c; mmd -D s -i $I ::$p 2>/dev/null || true; }; done
-  mcopy -D o -i $I $f ::/$d
+  p=; IFS=/ read -ra cs <<< "$(dirname "$d")"
+  for c in "${cs[@]}"; do [ "$c" = . ] || { p=$p/$c; mmd -D s -i $I "::$p" 2>/dev/null || true; }; done
+  mcopy -D o -i $I "$f" "::/$d"
   echo "   $d"
-done' _ $new
+done' _ "${new[@]}"
   touch "$STAMP"
   exit 0
 fi
@@ -97,7 +104,17 @@ cp $F/L_10646.TTF /tmp/sd/WINNT/System/
 mkdir -p /tmp/sd/WINNT/System32/config
 cp ../obj/gen/hives/SYSTEM ../obj/gen/hives/SOFTWARE ../obj/gen/hives/DEFAULT /tmp/sd/WINNT/System32/config/
 perl ../tools/ntdiff.pl apply /nt ../ported/oak/registry.ini.ntdiff
+# the commands that install the extras go in its InsertScript, at the end of winlogon.cmd (!), after
+# those of the port and before a message of the restart (!@)
 cp ../ported/oak/registry.ini /tmp/sd/WINNT/REGISTRY.INI
+if [ -f ../obj/extras/firstrun ]; then
+  awk -v f=../obj/extras/firstrun "function add() { for (i = 0; i < n; i++) printf \"    !%s%s\n\", c[i], e; n = 0 }
+      BEGIN { while ((getline l < f) > 0) c[n++] = l }
+      s && n && (/^    !@/ || /^[^ ]/) { add() }
+      /^InsertScript\r?$/ { s = 1; e = /\r$/ ? \"\r\" : \"\" }
+      { print }
+      END { if (!s) print \"InsertScript\" e; add() }" ../ported/oak/registry.ini > /tmp/sd/WINNT/REGISTRY.INI
+fi
 mkdir -p /tmp/sd/WINNT/IDW && cp /nt/PRIVATE/WINDOWS/SHELL/PROGMAN/*.GRP /tmp/sd/WINNT/IDW/
 # the games of apps/games (\GAMES, on the system drive: HOMEDRIVE, as winlogon sets it without a home directory)
 # in the Games group
@@ -137,4 +154,5 @@ echo "--- partition table ---"; sfdisk -l "$IMG"
 echo "--- FAT contents ---"; mdir -i /tmp/part.img ::
 '
 touch "$STAMP"
+if [[ -f $FR ]]; then cp $FR $FRS; else rm -f $FRS; fi
 echo ">> built $IMG ($(du -h "$IMG" | cut -f1))."
