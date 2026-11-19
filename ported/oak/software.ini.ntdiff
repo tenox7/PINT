@@ -30,7 +30,7 @@
 +#endif // defined(_RASPI_) && !defined(_NETIDW_SETUP_)
 =1 881 365
 +#if defined(_RASPI_)
-+                    Taskman=taskman.exe /tasklist
++                    Taskman=C:\APPS\TASKMAN\TASKMAN.EXE /tasklist
 +#endif // defined(_RASPI_)
 =1 1246 162
 +#if defined(_RASPI_)

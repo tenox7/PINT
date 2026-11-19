@@ -50,6 +50,7 @@ bundled QEMU.
     build/run.sh                  # console on serial in this terminal (Ctrl-A X quits)
     build/run.sh -device usb-kbd  # console on the HDMI window + USB keyboard
     M=raspi3b build/run.sh        # a Pi 3B (M=raspi3ap: a 3A+, M=raspi4b: a Pi 4B, QEMU 11.1 or later)
+    IMG=disk.img build/run.sh     # another system disk
     build/run.sh -h               # the common options; the others go to QEMU
 
 The firmware puts the console on HDMI when a USB keyboard is present, otherwise on serial. run.sh always attaches a USB
@@ -112,8 +113,8 @@ ntrdps (https://github.com/tenox7/ntrdps), an RDP server, lets an RDP client use
 by default: its installer, `C:\NTRDPS\NTRDPSET.EXE`, is on the disk, and nothing is installed until you run it. To turn
 it on, run the installer, click Install (it adds its service and its layered display driver), give the user name and
 password RDP clients must use (NT 3.5 cannot check a Windows password for it, so ntrdps keeps its own) and let it
-restart NT. Remove, in the same installer, turns it off again. Use it only on a network you trust. It builds as an
-extra (Extras, below).
+restart NT. Remove, in the same installer, turns it off again. Use it only on a network you trust. It comes from its
+own release (Apps and games, below).
 
 ## FTP server
 
@@ -133,47 +134,69 @@ STOP code, the registers and the loaded drivers. `myfault now` stops NT with a S
 
 ## Task Manager
 
-Ctrl+Esc, or a double-click on the desktop, opens an NT 4-style task manager (`apps/taskman`, TASKMAN.EXE) in place of
-Program Manager's Task List: Applications (Switch To, End Task), Processes (End Process, Set Priority, more columns
-under View) and Performance (CPU and memory history, a graph per CPU). The default hive names it in
-`Winlogon\Taskman`; unchecking its Options > Replace Task List brings the Task List back at the next logon.
-
-## Games
-
-Program Manager's Games group has, beside Solitaire, Minesweeper and FreeCell, the games of `apps/games`, in `\GAMES`:
-2048, Breakout, Bubble Breaker, Moon Lander, Missile Command, Snake (NTSNAKE.EXE: SNAKE.EXE is the Entertainment
-Pack's), Tankz, NT Rigue, RISCque, Sokoban, RISCoban and WiNTown, a port of Micropolis. They were written for NT 4 and
-changed to the API of NT 3.5 in October 2026. WiNTown and the Micropolis simulator are under the GPL 3.0 with Electronic
-Arts' additional terms (`apps/games/wintown/LICENSE`); the other games are public domain.
-
-## VNC viewer
-
-`\APPS\TENOXVNC.EXE` (TenoxVNC in the Main group) is the Win32 build of TenoxVNC (`apps/tenoxvnc`, from
-github.com/tenox7/tenoxvnc), a VNC viewer. Run without a server, it asks for one (`host`, `host:display` or
-`host::port`), with the password, encoding and colors; F8 opens its menu (full screen, Ctrl+Alt+Del, clipboard,
-settings). It is under the GPL 2.0 (`apps/tenoxvnc/LICENCE.TXT`), its zlib and IJG JPEG decoders under their own terms
-(`LICENSE.zlib`, `README.jpeg`).
-
-## ntfetch
-
-`\APPS\NTFETCH.EXE` (ntfetch in the Main group) is ntfetch (`apps/ntfetch`, from github.com/tenox7/ntfetch): the
-system at a glance, in one window in the style of WinMSD; `ntfetch --text > FILE` writes it as text.
+Ctrl+Esc, or a double-click on the desktop, opens an NT 4-style task manager (`\APPS\TASKMAN\TASKMAN.EXE`, from
+https://github.com/tenox7/nt31taskman) in place of Program Manager's Task List: Applications (Switch To, End Task),
+Processes (End Process, Set Priority, more columns under View) and Performance (CPU and memory history, a graph per
+CPU). The default hive names it in `Winlogon\Taskman`; unchecking its Options > Replace Task List brings the Task List
+back at the next logon. It comes from its own release (Apps and games, below).
 
 ## SDK tools
 
 The tools of the NT source's `PRIVATE\SDKTOOLS` that build for ARM are in `\SDKTOOLS` (`build/build-sdktools.sh`), not on
 the PATH.
 
-## Extras
+## SDK
 
-Programs too big for this repository build when their checkout, or a link to it, is in `extras/` under the name of
-their recipe (`extras/NAME.sh`), with `build/build-update.sh`. Without its checkout, an extra leaves the disk when it is
-made anew (`sdcard/make-sd-image.sh` without `-u`).
+The PINT 3.5 SDK builds programs, DLLs and drivers for PINT outside this tree with Microsoft C for ARM (MSVC 14.44 of
+Visual Studio 2022; Visual Studio 2026 has no ARM32 compiler). It has the NT 3.5 headers, PINT's libraries, the Win32
+SDK's ntwin32.mak with ARM, a driver kit, and its own cl and link, which mark each image for NT 3.5 (the ARM linker
+marks it 6.02, which NT 3.5 does not start). No MFC. `build/make-sdk.sh` makes `obj/pint35sdk.zip` for Windows
+(`setenv.cmd`, then nmake or cl) and, in `obj/sdk/docker`, the Docker image tenox7/pint35sdk on tenox7/msvc-arm32
+(`docker build -t tenox7/pint35sdk obj/sdk/docker`). `sdk/README.txt` has the details.
 
-- `NTRDPS` (https://github.com/tenox7/ntrdps) builds into `\NTRDPS` (RDP server, above).
+## Apps and games
 
-      git clone https://github.com/tenox7/ntrdps extras/NTRDPS     # or: ln -s ~/src/ntrdps extras/NTRDPS
-      build/build-update.sh
+The apps and games come from their own repositories on GitHub, which build them with the SDK and put them in their
+releases. Each has a recipe here, `extras/NAME.sh`. The build (`build/build-extras.sh`, in `build/build-update.sh`)
+downloads what a recipe names from the newest release that has it, and checks each file against the SHA-256 that GitHub
+has of it. When GitHub does not answer, the build keeps what it has. GitHub answers 60 requests an hour; set
+`GITHUB_TOKEN` to build more often.
+
+- `\APPS`, in Program Manager's Main group, each in its own folder: TenoxVNC (https://github.com/tenox7/tenoxvnc, a
+  VNC viewer), ntfetch (https://github.com/tenox7/ntfetch), ntrdpc (https://github.com/tenox7/ntrdpc, an RDP client),
+  PuTTY (https://github.com/tenox7/puttyNT, with Plink, PSCP, PSFTP, Pageant and PuTTYgen) and the task manager
+  (above). Internet Explorer 1.5 is there too; it is built here (`apps/ie`).
+- `\GAMES`, in the Games group, each in its own folder: the 11 games of https://github.com/tenox7/ntgames, WiNTown
+  (https://github.com/tenox7/wintown), Sabre (https://github.com/tenox7/sabreNT) and OpenTTD
+  (https://github.com/tenox7/openttdNT, in a window: NT 3.5 changes no display modes). Prince of Persia
+  (https://github.com/tenox7/popNT) runs on PINT 4.0 only (its SDL needs NT 4.0).
+- `\NTRDPS`: the installer of ntrdps (https://github.com/tenox7/ntrdps), the RDP server (above).
+
+An item of a group starts in the folder of its program. A recipe without `REPO` builds its extra in the environment of
+the NT build instead, from its checkout in `extras/` (or a link to it).
+
+## Adding a program
+
+Programs from other GitHub repositories can go on the image too: name the repositories in `APPS` when the image is
+made.
+
+    APPS="OWNER/NAME OWNER/NAME2" sdcard/make-sd-image.sh
+
+Of each repository, the build downloads the newest release (not a draft or a pre-release) that has one file with
+`pint35` in its name, and checks it against the SHA-256 that GitHub has of it:
+
+- a program (`.exe`) goes to `\APPS\NAME\NAME.EXE`
+- a `.zip` is unpacked into `\APPS\NAME`, without the one folder it may hold
+
+Each program of Windows (not of the console) gets an item in Program Manager's Main group, which starts in its
+folder. The item has the name of the repository, or of the program when it comes from a .zip. The first run of a new
+disk makes the items; `build/build-update.sh`, which updates the disk in place, takes `APPS` too but copies only the
+files. When GitHub does not answer, the build keeps what it downloaded before. A repository that PINT downloads
+already (such as tenox7/wintown) is left out, and so is a name that PINT has in `\APPS` (such as ntfetch).
+
+To make a program for this, build it with the SDK (above) and put it in a GitHub release with `pint35` in the file
+name, such as `myapp-pint35.exe` (and `myapp-pint40.exe` for PINT 4.0, in the same release). The next image takes a
+new release by itself. Add only programs whose license allows giving them away with the image.
 
 ## Roadmap
 

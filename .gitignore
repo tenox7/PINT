@@ -26,6 +26,7 @@ extras/*
 sdcard/root/WINNT/System32/Drivers/BCMWLAN/
 
 # the sources made from their edit scripts over the NT tree (*.ntdiff, tools/ntdiff.pl)
+sdk/ntwin32.mak
 arcfw/arm/fwio.c
 arcfw/arm/fwload.c
 arcfw/arm/fwp.h

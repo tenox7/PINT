@@ -1,0 +1,34 @@
+#ntdiff PRIVATE/WINDOWS/MEDIA/AVI/AVIFILE/NTWIN32.MAK
+#crlf
+=1 1 54
++# ARM (Thumb-2) systems: PINT, Windows NT on the Raspberry Pi
++!IF "$(CPU)" == "ARM"
++CPUTYPE = 4
+=1 53 35
++# binary declarations for use on ARM (Thumb-2) systems: Microsoft C for ARM,
++# through the cl of the PINT 3.5 SDK
++!IF "$(CPU)" == "ARM"
++cc     = cl
+=1 86 9
++# on ARM: the link of the PINT 3.5 SDK and the lib of Microsoft C for ARM;
++# that link takes .res files
++!IF "$(CPU)" == "ARM"
++link   = link
++implib = lib
++cvtres = REM !!! CVTRES is not necessary on ARM: link takes the .res file !!!
+=1 57 3
+=1 96 66
++!IF "$(CPU)" == "ARM"
++cflags = $(ccommon) -D_ARM_=1
+=1 161 85
++# The compiler for ARM defines _MT itself, its run-time being multithreaded only:
++# a compile for LIBC, the single-threaded run-time, undefines it (stcrt.h). The
++# PINT 3.5 SDK has no CRTDLL: cl's -MD names msvcrt, which NT 3.5 does not have.
++!IF "$(CPU)" == "ARM"
++cvars      = -DWIN32 $(noansi) -FIstcrt.h
++cvarsmt    = -DWIN32 $(noansi) -D_MT -MT
++!ENDIF
+=1 245 40
++# declarations for use on ARM (Thumb-2) systems
++!IF "$(CPU)" == "ARM"
+=1 281 121

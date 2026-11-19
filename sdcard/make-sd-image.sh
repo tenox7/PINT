@@ -3,14 +3,15 @@
 # config.txt, the ARC firmware (arcfw.bin, the kernel= image) and the NT tree in
 # sdcard/root (\WINNT\...) with the registry hives of obj/gen/hives, the NLS tables and fonts
 # of the NT tree, the help files of the programs and the setup aid of a developer install
-# (ported/oak/registry.ini, the program groups in \WINNT\IDW, the games of apps/games in \GAMES
-# in the Games group and the VNC viewer and Internet Explorer in \APPS in Main: tools/grp.pl). FAT16 because both
-# the GPU firmware and NT 3.5 read it.
+# (ported/oak/registry.ini, the program groups in \WINNT\IDW, with the games of \GAMES in the Games
+# group and the apps of \APPS in Main: tools/grp.pl). FAT16 because both the GPU firmware and NT 3.5 read it.
 # Flash it for a real Pi 2, 3 or 4, or attach it in QEMU with -drive if=sd. With -u the disk of
 # the last build is updated in place, keeping what NT wrote on it: the files built since
-# go in (a new disk when the hives or this script changed).
+# go in (a new disk when the hives or this script changed). APPS="OWNER/NAME ..." adds the
+# programs of the newest releases of those GitHub repositories, each in its folder of \APPS with its
+# items in Main (build/make-apps.sh); -u copies their files only.
 #
-# Usage:  cd RASPI/sdcard && ./make-sd-image.sh [-u]           # -> ../obj/nt-arcfw-sd.img
+# Usage:  cd RASPI/sdcard && [APPS="OWNER/NAME ..."] ./make-sd-image.sh [-u]   # -> ../obj/nt-arcfw-sd.img
 # Flash:  sudo dd if=../obj/nt-arcfw-sd.img of=/dev/rdiskN bs=4m   (diskutil list)
 set -euo pipefail
 
@@ -56,16 +57,20 @@ for m in 43430.BIN:cypress/cyfmac43430-sdio.bin 43430.CLM:cypress/cyfmac43430-sd
   [[ -s "$WL/${m%%:*}" ]] || { echo ">> fetching ${m#*:}"; curl -fsSL -o "$WL/${m%%:*}" "$wlbase/${m#*:}"; }
 done
 
+# the programs that APPS names, from their GitHub releases, in obj/apps (obj/apps/list)
+bash ../build/make-apps.sh
+
 if [[ "${1:-}" = -u && -f "$IMG" && -f "$STAMP" && -z "$(find ../obj/gen/hives ../ported/oak make-sd-image.sh -newer "$STAMP" -print -quit)" ]]; then
-  # a file a line: names may have spaces (the files of the extras)
-  list=$(cd .. && find sdcard/root sdcard/config.txt sdcard/firmware obj/arcfw.bin -type f -newer obj/stamp/sd-image)
+  # a file a line: names may have spaces (the files of the extras); the programs of APPS go in each time
+  list=$(cd .. && find sdcard/root sdcard/config.txt sdcard/firmware obj/arcfw.bin -type f -newer obj/stamp/sd-image
+         [ ! -f obj/apps/list ] || cut -d"|" -f1 obj/apps/list | while read -r d; do find "obj/apps/$d" -type f; done)
   new=(); while IFS= read -r f; do [[ -z "$f" ]] || new+=("$f"); done <<< "$list"
   echo ">> updating $IMG: ${#new[@]} files"
   (( ${#new[@]} == 0 )) || docker run --rm -v "$ROOT":/work -w /work --entrypoint bash tenox7/msvc-arm32 -c '
 set -e
 I=obj/nt-arcfw-sd.img@@1M
 for f in "$@"; do
-  case $f in sdcard/root/*) d=${f#sdcard/root/} ;; *) d=${f##*/} ;; esac
+  case $f in sdcard/root/*) d=${f#sdcard/root/} ;; obj/apps/*) d=APPS/${f#obj/apps/} ;; *) d=${f##*/} ;; esac
   p=; IFS=/ read -ra cs <<< "$(dirname "$d")"
   for c in "${cs[@]}"; do [ "$c" = . ] || { p=$p/$c; mmd -D s -i $I "::$p" 2>/dev/null || true; }; done
   mcopy -D o -i $I "$f" "::/$d"
@@ -102,14 +107,29 @@ cp ../obj/gen/hives/SYSTEM ../obj/gen/hives/SOFTWARE ../obj/gen/hives/DEFAULT /t
 perl ../tools/ntdiff.pl apply /nt ../ported/oak/registry.ini.ntdiff
 cp ../ported/oak/registry.ini /tmp/sd/WINNT/REGISTRY.INI
 mkdir -p /tmp/sd/WINNT/IDW && cp /nt/PRIVATE/WINDOWS/SHELL/PROGMAN/*.GRP /tmp/sd/WINNT/IDW/
-# the games of apps/games (\GAMES, on the system drive: HOMEDRIVE, as winlogon sets it without a home directory)
-# in the Games group
-perl ../tools/grp.pl /tmp/sd/WINNT/IDW/GAMES.GRP /tmp/sd/GAMES "%HOMEDRIVE%\\GAMES" 5 2048=2048 Breakout=breakout "Bubble Breaker=bubbles" \
-    "Moon Lander=lander" "Missile Command=misl" Snake=ntsnake Tankz=tankz "NT Rigue=ntrigue" RISCque=riscque Sokoban=sokoban \
-    RISCoban=riscoban WiNTown=wintown
-# the VNC viewer of apps/tenoxvnc, Internet Explorer of apps/ie and ntfetch of apps/ntfetch (\APPS) in the Main group
-perl ../tools/grp.pl /tmp/sd/WINNT/IDW/MAIN.GRP /tmp/sd/APPS "%HOMEDRIVE%\\APPS" 6 TenoxVNC=tenoxvnc "Internet Explorer=iexplore" \
-    ntfetch=ntfetch
+# the games (\GAMES) in the Games group, the apps (\APPS) in Main: those of the extras (build-extras.sh), each in its
+# folder, and Internet Explorer of apps/ie. On the system drive (HOMEDRIVE, as winlogon sets it without a home
+# directory); an item starts in the folder of its program. An extra that is not on the disk has no item.
+# grp GROUP DIR COLUMNS NAME=PROGRAM...: the items of the programs of \DIR in GROUP.GRP
+grp() { local g=$1 d=$2; shift 2; [ -d /tmp/sd/$d ] || return 0
+        perl ../tools/grp.pl /tmp/sd/WINNT/IDW/$g.GRP /tmp/sd/$d "%HOMEDRIVE%\\${d//\//\\}" "$@"; }
+grp GAMES GAMES/NTGAMES 5 2048=2048 Breakout=breakout "Bubble Breaker=bubbles" "Moon Lander=lander" "Missile Command=misl" \
+    Snake=snake Tankz=tankz "NT Rigue=ntrigue" RISCque=riscque Sokoban=sokoban RISCoban=riscoban
+grp GAMES GAMES/WINTOWN 5 WiNTown=wintown
+grp GAMES GAMES/SABRE 5 Sabre=sabre
+grp GAMES GAMES/OPENTTD 5 OpenTTD=ttd
+grp MAIN APPS/TENOXVNC 6 TenoxVNC=tenoxvnc
+grp MAIN APPS 6 "Internet Explorer=iexplore"
+grp MAIN APPS/NTFETCH 6 ntfetch=ntfetch
+grp MAIN APPS/NTRDPC 6 ntrdpc=ntrdpc
+grp MAIN APPS/PUTTY 6 PuTTY=putty
+# the programs of APPS (build/make-apps.sh), each in its folder of \APPS, in Main
+if [ -f ../obj/apps/list ]; then
+  while IFS="|" read -r d items; do
+    mkdir -p /tmp/sd/APPS/$d && cp -R ../obj/apps/$d/. /tmp/sd/APPS/$d/
+    [ -z "$items" ] || grp MAIN APPS/$d 6 $items
+  done < ../obj/apps/list
+fi
 # the help files of the programs, where setup puts them
 for h in WINHELP/HLP/WINHELP SHELL/PROGMAN/PROGMAN SHELL/WINFILE/WINFILE SHELL/CONTROL/CONTROL SHELL/ACCESORY/NOTEPAD/NOTEPAD \
          SHELL/ACCESORY/CALC/CALC SHELL/ACCESORY/SPECHARS/CHARMAP SHELL/GAMES/SOL/SOL EP/WINMINE/HELP/WINMINE EP/FREECELL/FREECELL \

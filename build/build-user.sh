@@ -95,26 +95,18 @@ lib $W NETDDE/SRC/TOOLKIT; dll $W NETDDE/SRC/NDEAPI/CLIENT; lib $W NETDDE/SRC/ND
 lib $W NETDDE/SRC/NTDDECMN; dll $W NETDDE/SRC/NDDENB32; lib $W NETDDE/SRC/NDEAPI/SERVER
 for a in NETDDE:netdde DDESHARE:ddeshare; do lib $W NETDDE/SRC/${a%%:*}; exe $W NETDDE/SRC/${a%%:*} ${a#*:}; done
 
-# the common controls and the cards, then the accessories, the games, File Manager and winver; the task manager
-# (apps/taskman) in place of the Task List, which Program Manager does not start when Winlogon\Taskman names it
+# the common controls and the cards, then the accessories, the games, File Manager and winver (the task manager and
+# the other apps and games of PINT come from their own releases: build-extras.sh)
 dll $W SHELL/MSCTLS; dll $W EP/CARDDLL; dll $W EP/ABOUTWEP
 for a in SHELL/ACCESORY/NOTEPAD:notepad SHELL/ACCESORY/CALC:calc SHELL/ACCESORY/CLOCK:clock SHELL/ACCESORY/SPECHARS:charmap \
          SHELL/GAMES/SOL:sol EP/WINMINE:winmine EP/FREECELL:freecell SHELL/WINFILE:winfile \
          SHELL/WINVER:winver SHELL/GAMES/REVERSI:reversi EP/CRUEL:cruel EP/GOLF:golf EP/PEGGED:pegged EP/SNAKE:snake \
          EP/TICTAC:tictac EP/OLDTP:taipei; do pair $W $a; done
-exe /work/RASPI/apps taskman taskman
-# the games of apps/games, in \GAMES (in the Games group: sdcard/make-sd-image.sh)
-for a in 2048:2048 breakout:breakout bubbles:bubbles lander:lander missile:misl snake:ntsnake tankz:tankz ntrigue:ntrigue \
-         riscque:riscque sokoban:sokoban riscoban:riscoban wintown:wintown; do DEST=GAMES exe /work/RASPI/apps games/${a%%:*} ${a#*:}; done
-# the VNC viewer of apps/tenoxvnc (its Win32 build in win32), in \APPS
-DEST=APPS exe /work/RASPI/apps tenoxvnc/win32 tenoxvnc
 # Internet Explorer 1.5 (Spyglass Mosaic) of apps/ie, in \APPS: the engine (iesh), the Win32
 # GUI (iew32), HTTP Basic auth (iebasic) and the BearSSL TLS client (iebssl) link, with the
 # OEM glue and emosaic.rc, into IEXPLORE.EXE (a UMAPPL in apps/ie/make)
 for c in ie/shared ie/win32 ie/basic ie/bearssl ie/make; do lib /work/RASPI/apps $c; done
 DEST=APPS exe /work/RASPI/apps ie/make iexplore
-# ntfetch (the system at a glance, in the style of WinMSD) of apps/ntfetch, in \APPS
-DEST=APPS exe /work/RASPI/apps ntfetch ntfetch
 
 # WinHelp and its full-text search
 for c in MVAPI FTENGINE FTUI; do dll $W WINHELP/$c; done
