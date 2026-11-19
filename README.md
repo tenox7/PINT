@@ -114,7 +114,7 @@ ntrdps (https://github.com/tenox7/ntrdps), an RDP server, lets an RDP client use
 by default: its installer, `C:\NTRDPS\ntrdpset.exe`, is on the disk, and nothing is installed until you run it. To turn
 it on, run the installer, click Install (it adds its service and its mirror display driver) and let it restart NT. RDP
 clients then log on as Administrator (password `password`). Remove, in the same installer, turns it off again. Use it
-only on a network you trust. It builds as an extra (Extras, below).
+only on a network you trust. It comes from its own release (Apps and games, below).
 
 ## FTP server
 
@@ -141,20 +141,49 @@ NT 4.0 does not start). No MFC. `build/make-sdk.sh` makes `obj/pint40sdk.zip` fo
 or cl) and, in `obj/sdk/docker`, the Docker image tenox7/pint40sdk on tenox7/msvc-arm32
 (`docker build -t tenox7/pint40sdk obj/sdk/docker`). `sdk/README.txt` has the details.
 
-## Extras
+## Apps and games
 
-Programs too big for this repository build when their checkout, or a link to it, is in `extras/` under the name of
-their recipe (`extras/NAME.sh`):
+The apps and games come from their own repositories on GitHub, which build them with the SDK and put them in their
+releases. Each has a recipe here, `extras/NAME.sh`. The build (`build/build-extras.sh`, in `build/build-update.sh`)
+downloads what a recipe names from the newest release that has it, and checks each file against the SHA-256 that GitHub
+has of it. When GitHub does not answer, the build keeps what it has. GitHub answers 60 requests an hour; set
+`GITHUB_TOKEN` to build more often.
 
-- `sabreNT` (Sabre), `openttdNT` (OpenTTD), `popNT` (Prince of Persia, with `SDL4NT`) build with the SDK. They go into
-  `\GAMES` and Programs > Games, which NT makes at the first boot.
-- `NTRDPS` (https://github.com/tenox7/ntrdps) builds in the environment of the NT build, into `\NTRDPS` (RDP
-  server, above).
+- `\APPS`, in Programs > Apps and on the desktop, each in its own folder: TenoxVNC (https://github.com/tenox7/tenoxvnc,
+  a VNC viewer), ntfetch (https://github.com/tenox7/ntfetch), ntrdpc (https://github.com/tenox7/ntrdpc, an RDP
+  client) and PuTTY (https://github.com/tenox7/puttyNT, with Plink, PSCP, PSFTP, Pageant and PuTTYgen). Internet
+  Explorer 1.5 is there too; it is built here, from the source tree's Mosaic.
+- `\GAMES`, in Programs > Games, each in its own folder: the 11 games of https://github.com/tenox7/ntgames, WiNTown
+  (https://github.com/tenox7/wintown), Sabre (https://github.com/tenox7/sabreNT), OpenTTD
+  (https://github.com/tenox7/openttdNT) and Prince of Persia (https://github.com/tenox7/popNT). Pinball (3D Pinball
+  for Windows - Space Cadet, https://github.com/tenox7/PINTBALL) is in `\GAMES\PINTBALL` too, but its item is in
+  Accessories > Games, where NT 4.0 had it.
+- `\NTRDPS`: the installer of ntrdps (https://github.com/tenox7/ntrdps), the RDP server (above).
 
-Without its checkout, an extra leaves the disk when it is made anew (`sdcard/make-sd-image.sh` without `-u`).
+A recipe without `REPO` builds its extra with the SDK instead, from its checkout in `extras/` (or a link to it).
 
-    git clone https://github.com/tenox7/sabreNT extras/sabreNT     # or: ln -s ~/src/sabreNT extras/sabreNT
-    build/build-update.sh
+## Adding a program
+
+Programs from other GitHub repositories can go on the image too: name the repositories in `APPS` when the image is
+made.
+
+    APPS="OWNER/NAME OWNER/NAME2" sdcard/make-sd-image.sh
+
+Of each repository, the build downloads the newest release (not a draft or a pre-release) that has one file with
+`pint40` in its name, and checks it against the SHA-256 that GitHub has of it:
+
+- a program (`.exe`) goes to `\APPS\NAME\name.exe`
+- a `.zip` is unpacked into `\APPS\NAME`, without the one folder it may hold
+
+Each program of Windows (not of the console) gets an item in Programs > Apps, which starts in its folder. The item has
+the name of the repository, or of the program when it comes from a .zip. The first run of a new disk makes the items;
+`build/build-update.sh`, which updates the disk in place, takes `APPS` too but copies only the files. When GitHub does
+not answer, the build keeps what it downloaded before. A repository that PINT downloads already (such as
+tenox7/wintown) is left out, and so is a name that PINT has in `\APPS` (such as ntfetch).
+
+To make a program for this, build it with the SDK (above) and put it in a GitHub release with `pint40` in the file
+name, such as `myapp-pint40.exe` (and `myapp-pint35.exe` for PINT 3.5, in the same release). The next image takes a
+new release by itself. Add only programs whose license allows giving them away with the image.
 
 ## Roadmap
 

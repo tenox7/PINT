@@ -2,10 +2,14 @@
 #crlf
 =1 1 16
 +apps = "Apps"
-=1 17 55
+=1 17 50
++pinball = "Pinball"
+=1 67 5
 +tenoxvnc = "TenoxVNC"
 +iexplore = "Internet Explorer"
 +ntfetch = "ntfetch"
++ntrdpc = "ntrdpc"
++putty = "PuTTY"
 +inetmgr = "Internet Service Manager"
 +game2048 = "2048"
 +breakout = "Breakout"

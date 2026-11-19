@@ -12,18 +12,18 @@
 +%inetmgr% = %11%\inetsrv\inetmgr.exe,%11%\inetsrv\inetmgr.exe,,0
 =1 398 14
 +[Games]
-+%game2048% = %24%\games\2048.exe,%24%\games\2048.exe,,0
-+%breakout% = %24%\games\breakout.exe,%24%\games\breakout.exe,,0
-+%bubbles% = %24%\games\bubbles.exe,%24%\games\bubbles.exe,,0
-+%lander% = %24%\games\lander.exe,%24%\games\lander.exe,,0
-+%missile% = %24%\games\misl.exe,%24%\games\misl.exe,,0
-+%snake% = %24%\games\ntsnake.exe,%24%\games\ntsnake.exe,,0
-+%tankz% = %24%\games\tankz.exe,%24%\games\tankz.exe,,0
-+%ntrigue% = %24%\games\ntrigue.exe,%24%\games\ntrigue.exe,,0
-+%riscque% = %24%\games\riscque.exe,%24%\games\riscque.exe,,0
-+%sokoban% = %24%\games\sokoban.exe,%24%\games\sokoban.exe,,0
-+%riscoban% = %24%\games\riscoban.exe,%24%\games\riscoban.exe,,0
-+%wintown% = %24%\games\wintown.exe,%24%\games\wintown.exe,,0
++%game2048% = %24%\games\ntgames\2048.exe,%24%\games\ntgames\2048.exe,,0
++%breakout% = %24%\games\ntgames\breakout.exe,%24%\games\ntgames\breakout.exe,,0
++%bubbles% = %24%\games\ntgames\bubbles.exe,%24%\games\ntgames\bubbles.exe,,0
++%lander% = %24%\games\ntgames\lander.exe,%24%\games\ntgames\lander.exe,,0
++%missile% = %24%\games\ntgames\misl.exe,%24%\games\ntgames\misl.exe,,0
++%snake% = %24%\games\ntgames\snake.exe,%24%\games\ntgames\snake.exe,,0
++%tankz% = %24%\games\ntgames\tankz.exe,%24%\games\ntgames\tankz.exe,,0
++%ntrigue% = %24%\games\ntgames\ntrigue.exe,%24%\games\ntgames\ntrigue.exe,,0
++%riscque% = %24%\games\ntgames\riscque.exe,%24%\games\ntgames\riscque.exe,,0
++%sokoban% = %24%\games\ntgames\sokoban.exe,%24%\games\ntgames\sokoban.exe,,0
++%riscoban% = %24%\games\ntgames\riscoban.exe,%24%\games\ntgames\riscoban.exe,,0
++%wintown% = %24%\games\wintown\wintown.exe,%24%\games\wintown\wintown.exe,,0
 +%sabre% = %24%\games\sabre\sabre.exe,%24%\games\sabre\sabre.exe,,0,,%24%\games\sabre
 +%prince% = %24%\games\pop\prince.exe,%24%\games\pop\prince.exe,,0,,%24%\games\pop
 +%openttd% = %24%\games\openttd\ttd.exe,%24%\games\openttd\ttd.exe,,0,,%24%\games\openttd
@@ -31,6 +31,7 @@
 +[Accessories_Games]
 +%freecell% = freecell.exe,freecell.exe,,0
 +%winmine% = winmine.exe,winmine.exe,,0
++%pinball% = %24%\games\pintball\pintball.exe,%24%\games\pintball\pintball.exe,,0,,%24%\games\pintball
 +%sol% = sol.exe,sol.exe,,0
 +
 +[Accessories_Multimedia]
@@ -40,13 +41,17 @@
 +
 +[Apps]
 +%iexplore% = %24%\apps\iexplore.exe,%24%\apps\iexplore.exe,,0
-+%tenoxvnc% = %24%\apps\tenoxvnc.exe,%24%\apps\tenoxvnc.exe,,0
-+%ntfetch% = %24%\apps\ntfetch.exe,%24%\apps\ntfetch.exe,,0
++%tenoxvnc% = %24%\apps\tenoxvnc\tenoxvnc.exe,%24%\apps\tenoxvnc\tenoxvnc.exe,,0
++%ntfetch% = %24%\apps\ntfetch\ntfetch.exe,%24%\apps\ntfetch\ntfetch.exe,,0
++%ntrdpc% = %24%\apps\ntrdpc\ntrdpc.exe,%24%\apps\ntrdpc\ntrdpc.exe,,0
++%putty% = %24%\apps\putty\putty.exe,%24%\apps\putty\putty.exe,,0
 +
 +[DesktopItems]
 +%iexplore% = %24%\apps\iexplore.exe,%24%\apps\iexplore.exe,,0
-+%ntfetch% = %24%\apps\ntfetch.exe,%24%\apps\ntfetch.exe,,0
-+%tenoxvnc% = %24%\apps\tenoxvnc.exe,%24%\apps\tenoxvnc.exe,,0
++%ntfetch% = %24%\apps\ntfetch\ntfetch.exe,%24%\apps\ntfetch\ntfetch.exe,,0
++%tenoxvnc% = %24%\apps\tenoxvnc\tenoxvnc.exe,%24%\apps\tenoxvnc\tenoxvnc.exe,,0
++%ntrdpc% = %24%\apps\ntrdpc\ntrdpc.exe,%24%\apps\ntrdpc\ntrdpc.exe,,0
++%putty% = %24%\apps\putty\putty.exe,%24%\apps\putty\putty.exe,,0
 =1 411 77
 =1 488 1 0 @@:@a:
 =1 488 1 0 @@:@i:

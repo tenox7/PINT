@@ -1,8 +1,8 @@
 #!/usr/bin/perl
 # inputs.pl RASPI ROOT COMPONENT [link|exe]: the inputs of the build step of a component (stamp.sh). One of the port
 # (ROOT under /work/RASPI) is its directory and what it shares in the directories of the port its SOURCES INCLUDES
-# names: their files and the directories in them that are no component (apps/games: arch.h, the levels of
-# Sokoban). One of the NT tree is the port's versions of its sources and of its
+# names: their files and the directories in them that are no component.
+# One of the NT tree is the port's versions of its sources and of its
 # parent's (ported, or apps for the applications: portdir.sh) and its ARM sources (kernel/<component>.arm
 # or the sources.arm of its port directory, and the files it lists). With link (a DLL, a driver) or exe (a
 # program), also the libraries it links, as the linker finds them: those of its SOURCES (of a DLL or driver the

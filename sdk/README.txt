@@ -10,7 +10,7 @@ with them, ahead of the compiler's own (intrin.h, stdint.h, sal.h...), PINT's li
 import libraries of its DLLs and its C run-times), the
 win32.mak of the Win32 SDK with ARM in it, and its own cl and link: they run those of
 Microsoft C for ARM and mark each image for Windows NT 4.0 (the linker for ARM marks it 6.02,
-which NT 4.0 does not start). No MFC.
+which NT 4.0 does not start). No MFC. Its driver kit builds drivers (Drivers, below).
 
 
 Windows
@@ -64,6 +64,27 @@ debug versions; nmake NODEBUG=1 builds without debug information.
 
 The samples (samples\) build with nmake: hello, winhello (a window, a menu, a dialog), dll
 (a DLL and a program that calls it) and cpp (C++).
+
+
+Drivers
+-------
+
+include\ddk has the headers of the DDK of Windows NT 4.0 (ntddk.h, miniport.h, video.h,
+winddi.h, ndis.h, srb.h...), lib the libraries of kernel mode: ntoskrnl.lib, hal.lib,
+videoprt.lib, win32k.lib, ndis.lib, scsiport.lib and libcntpr.lib (the run-time of kernel
+mode and the helpers of the compiler, for a driver that cannot import them from ntoskrnl: a
+display driver imports from win32k.sys alone). Compile with include\ddk first and the
+defines the NT build gives a driver, and link with link:
+
+    cl -c -kernel -Zl -I%PINTSDK%\include\ddk -DCONDITION_HANDLING=1 -DNT_INST=0 -DWIN32=100
+       -D_NT1X_=100 -DWINNT=1 -D_WIN32_WINNT=0x0400 -DDEVL=1 -DFPO=1 -FIwarning.h drv.c
+    link -driver -nodefaultlib -subsystem:native -base:0x10000 -entry:DriverEntry
+       -out:drv.sys drv.obj ntoskrnl.lib hal.lib
+
+A display driver links with -dll -entry:DrvEnableDriver, win32k.lib and libcntpr.lib, a
+video miniport with videoprt.lib and libcntpr.lib. The SDK's link lays a driver out on 0x20,
+as the NT build linked every driver (-align:0x20, which the linker for ARM refuses below a
+page); -align:0x1000 keeps the page.
 
 
 Running on PINT

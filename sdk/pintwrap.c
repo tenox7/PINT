@@ -13,6 +13,11 @@
  * the version off a -subsystem:NAME,X.Y (win32.mak's -subsystem:console,$(APPVER)), which
  * the linker would warn about, and give it to the image.
  *
+ * A driver (-driver) is laid out on 0x20, as the NT build linked every driver (makefile.def's
+ * -align:$(DRIVER_ALIGNMENT)), and an image linked with -align:N below a page on N: the linker
+ * for ARM refuses that (LNK1246), so both take the option off the command and do it after it.
+ * -align:0x1000 (a page or more) is the linker's.
+ *
  * KERNEL32 and SHELL32 only, no C run-time: built with clang for the Windows of the host
  * (x64, arm64), which may be Wine.
  */
@@ -68,8 +73,9 @@ static const wchar_t ClLibraries[] = L"kernel32.lib user32.lib gdi32.lib winspoo
 
 static wchar_t Self[1024], Tool[64], Real[1024], Path[32768], Skip[8192], Out[1024];
 static wchar_t *Tokens[MAX_TOKENS];
-static int TokenCount, Cl, Dll, HasLink;
+static int TokenCount, Cl, Dll, HasLink, Driver;
 static unsigned Major = 4, Minor = 0;
+static DWORD Align;
 
 static void *alloc(SIZE_T n) { return HeapAlloc(GetProcessHeap(), 8, n); }
 static int len(const wchar_t *s) { int n = 0; while (s[n]) n++; return n; }
@@ -208,6 +214,37 @@ static void version(const wchar_t *s)
     Major = a, Minor = d == 1 ? b * 10 : b;
 }
 
+/* a number, decimal or 0x hexadecimal (0 when it is none) */
+static DWORD number(const wchar_t *s)
+{
+    DWORD v = 0;
+    if (s[0] == '0' && (s[1] == 'x' || s[1] == 'X'))
+        for (s += 2; ; s++) {
+            wchar_t c = lower(*s);
+            if (c >= '0' && c <= '9') v = v * 16 + c - '0';
+            else if (c >= 'a' && c <= 'f') v = v * 16 + c - 'a' + 10;
+            else break;
+        }
+    else
+        while (*s >= '0' && *s <= '9') v = v * 10 + *s++ - '0';
+    return v;
+}
+
+/* take each -align:N off a command line */
+static void unalign(wchar_t *s)
+{
+    int i = 0, j;
+    wchar_t *d, *e;
+    while (s[i]) {
+        if (option(s + i) && (i == 0 || s[i - 1] == ' ' || s[i - 1] == '\t') && prefix(s + i + 1, L"align:", 1)) {
+            for (j = i; s[j] && s[j] != ' ' && s[j] != '\t'; j++) ;
+            for (d = s + i, e = s + j; (*d++ = *e++); ) ;
+            continue;
+        }
+        i++;
+    }
+}
+
 /* take the version off each -subsystem:NAME,X.Y of a command line */
 static void unversion(wchar_t *s)
 {
@@ -250,6 +287,8 @@ static void output(void)
             if ((v = prefix(t, L"out:", 1))) out = v;
             else if (ieq(t, L"dll")) Dll = 1;
             else if (prefix(t, L"subsystem:", 1)) version(t);
+            else if (ieq(t, L"driver") || prefix(t, L"driver:", 1)) Driver = 1;
+            else if ((v = prefix(t, L"align:", 1))) Align = number(v);
             continue;
         }
         if (ieq(t, L"link")) {
@@ -291,6 +330,95 @@ static void output(void)
 static unsigned rd16(const unsigned char *p) { return p[0] | p[1] << 8; }
 static DWORD rd32(const unsigned char *p) { return rd16(p) | (DWORD)rd16(p + 2) << 16; }
 static void wr16(unsigned char *p, unsigned v) { p[0] = (unsigned char)v, p[1] = (unsigned char)(v >> 8); }
+static void wr32(unsigned char *p, DWORD v) { wr16(p, v & 0xFFFF), wr16(p + 2, v >> 16); }
+static DWORD up(DWORD v, DWORD a) { return (v + a - 1) & ~(a - 1); }
+static void copy(unsigned char *d, const unsigned char *s, DWORD n)
+{
+    while (n--) *(volatile unsigned char *)d++ = *s++;
+}
+
+/* lay an ARM image out on AL, as the linker's -align below a page does (tools/pe2img -align
+   of PINT): the section and file alignment become AL, and each section lies in the file at
+   its address with its uninitialized data, so that the file is the image as mapped, one
+   subsection to the memory manager (MM\CREASECT.C). Debug data that is not mapped follows
+   the sections. mark() makes the checksum again. */
+static int lay(const wchar_t *f, DWORD al)
+{
+    HANDLE h = CreateFileW(f, 0x80000000, 1, 0, 3, 0, 0);
+    DWORD n, hi, got, pe, nsec, hdrs, end, size, i, dbg, ndbg, add = 0, va, vs, rs;
+    unsigned char *b, *o, *sec, *img, *s, *d;
+
+    if (h == BAD_HANDLE) return 0;
+    n = GetFileSize(h, &hi);
+    b = alloc(n + 1);
+    got = 0;
+    if (hi || n < 0x200 || !ReadFile(h, b, n, &got, 0)) got = 0;
+    CloseHandle(h);
+    if (got != n || n < 0x200) return 0;
+    pe = rd32(b + 0x3C);
+    if (b[0] != 'M' || b[1] != 'Z' || pe > n - 0x100 || rd32(b + pe) != 0x4550) return 0;
+    o = b + pe + 24;
+    nsec = rd16(b + pe + 6);
+    sec = o + rd16(b + pe + 20);
+    if (rd16(o) != 0x10B || (al & (al - 1)) || al > rd32(o + 32) || rd32(o + 96 + 4 * 8 + 4)) return 0;
+    if (sec + nsec * 40 > b + n) return 0;
+    hdrs = up(rd32(o + 60), al);
+    end = hdrs;
+    for (i = 0; i < nsec; i++) {
+        s = sec + i * 40;
+        va = rd32(s + 12), vs = rd32(s + 8), rs = rd32(s + 16);
+        if ((va & (al - 1)) || va < end || rd32(s + 20) + rs > n) return 0;
+        end = va + up(vs > rs ? vs : rs, al);
+    }
+    if (end > rd32(o + 56)) return 0;
+    dbg = rd32(o + 96 + 6 * 8);
+    ndbg = rd32(o + 96 + 6 * 8 + 4) / 28;
+    for (i = 0; dbg && i < ndbg; i++) {
+        d = 0;
+        for (s = sec; s < sec + nsec * 40; s += 40)
+            if (dbg >= rd32(s + 12) && dbg < rd32(s + 12) + rd32(s + 16))
+                d = b + rd32(s + 20) + dbg - rd32(s + 12) + i * 28;
+        if (!d || d + 28 > b + n) return 0;
+        if (!rd32(d + 20) && rd32(d + 24)) {
+            if (rd32(d + 24) + rd32(d + 16) > n) return 0;
+            add += up(rd32(d + 16), al);
+        }
+    }
+    img = alloc(end + add);
+    copy(img, b, rd32(o + 60));
+    for (i = 0; i < nsec; i++) {
+        s = sec + i * 40;
+        if (rd32(s + 20)) copy(img + rd32(s + 12), b + rd32(s + 20), rd32(s + 16));
+    }
+    /* the headers of the new layout, in the copy */
+    o = img + pe + 24;
+    s = o + rd16(img + pe + 20);
+    wr32(o + 32, al);
+    wr32(o + 36, al);
+    wr32(o + 60, hdrs);
+    for (i = 0; i < nsec; i++, s += 40) {
+        vs = rd32(s + 8), rs = rd32(s + 16);
+        wr32(s + 16, up(vs > rs ? vs : rs, al));
+        wr32(s + 20, rd32(s + 12));
+    }
+    size = end;
+    for (i = 0; dbg && i < ndbg; i++) {
+        d = img + dbg + i * 28;
+        if (rd32(d + 20))
+            wr32(d + 24, rd32(d + 20));
+        else if (rd32(d + 24)) {
+            copy(img + size, b + rd32(d + 24), rd32(d + 16));
+            wr32(d + 24, size);
+            size += up(rd32(d + 16), al);
+        }
+    }
+    h = CreateFileW(f, 0x40000000, 0, 0, 2, 0, 0);
+    if (h == BAD_HANDLE) return 0;
+    got = 0;
+    WriteFile(h, img, size, &got, 0);
+    CloseHandle(h);
+    return got == size;
+}
 
 /* mark an ARM image for Windows NT 4.0: OS version 4.00, the subsystem version asked for
    (4.00 when none), and its checksum (when it has one: -release) made again */
@@ -336,7 +464,7 @@ void start(void)
     const wchar_t *n, *e;
     STARTUPINFOW si;
     PROCESS_INFORMATION pi;
-    DWORD code = 1, i;
+    DWORD code = 1, i, al;
 
     SetConsoleCtrlHandler(ctrl, 1);
     GetModuleFileNameW(0, Self, 1000);
@@ -363,7 +491,9 @@ void start(void)
     add(add(add(add(add(cmd, L"\""), Real), L"\" "), Cl ? ClOptions : L""), Cl ? L" " : L"");
     add(cmd + len(cmd), args);
     unversion(cmd);
-    if (Cl && Out[0]) add(add(cmd + len(cmd), HasLink ? L" " : L" /link "), ClLibraries);
+    al = Align ? (Align < 0x1000 ? Align : 0) : Driver ? 0x20 : 0;
+    if (Align && Align < 0x1000) unalign(cmd);
+    if (Cl && Out[0] && !Driver) add(add(cmd + len(cmd), HasLink ? L" " : L" /link "), ClLibraries);
 
     for (i = 0; i < sizeof si; i++) ((volatile unsigned char *)&si)[i] = 0;
     si.cb = sizeof si;
@@ -373,6 +503,10 @@ void start(void)
     }
     WaitForSingleObject(pi.hProcess, 0xFFFFFFFF);
     GetExitCodeProcess(pi.hProcess, &code);
+    if (code == 0 && Out[0] && al && !lay(Out, al)) {
+        say(L"cannot lay the image out on its alignment: ", Out);
+        code = 1;
+    }
     if (code == 0 && Out[0] && !mark(Out)) {
         say(L"cannot mark for Windows NT 4.0: ", Out);
         code = 1;

@@ -11,6 +11,8 @@ It has:
 - the win32.mak of the Win32 SDK, with ARM in it
 - its own cl and link: they run those of Microsoft C for ARM and mark each image for Windows NT 4.0 (the linker for
   ARM marks it 6.02, which NT 4.0 does not start)
+- a driver kit: the headers of NT 4.0's DDK (`include/ddk`) and the libraries of kernel mode; the SDK's README has
+  how to build a driver
 - samples in /opt/pint40sdk/samples: hello, winhello (a window, a menu, a dialog), dll, cpp
 
 No MFC. The image contains no Microsoft software: `msvc-setup` downloads Microsoft C for ARM from Microsoft into a

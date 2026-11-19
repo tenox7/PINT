@@ -9,9 +9,11 @@
 # FAT16 because both the GPU firmware and NT read it.
 # Flash it for a real Pi 2, 3 or 4, or attach it in QEMU with -drive if=sd. With -u the disk of
 # the last build is updated in place, keeping what NT wrote on it: the files built since
-# go in (a new disk when the hives or this script changed).
+# go in (a new disk when the hives or this script changed). APPS="OWNER/NAME ..." adds the
+# programs of the newest releases of those GitHub repositories, each in its folder of \APPS with its
+# items in Programs > Apps (build/make-apps.sh); -u copies their files only.
 #
-# Usage:  cd RASPI/sdcard && ./make-sd-image.sh [-u]           # -> ../obj/nt-arcfw-sd.img
+# Usage:  cd RASPI/sdcard && [APPS="OWNER/NAME ..."] ./make-sd-image.sh [-u]   # -> ../obj/nt-arcfw-sd.img
 # Flash:  sudo dd if=../obj/nt-arcfw-sd.img of=/dev/rdiskN bs=4m   (diskutil list)
 set -euo pipefail
 
@@ -57,9 +59,13 @@ for m in 43430.BIN:cypress/cyfmac43430-sdio.bin 43430.CLM:cypress/cyfmac43430-sd
   [[ -s "$WL/${m%%:*}" ]] || { echo ">> fetching ${m#*:}"; curl -fsSL -o "$WL/${m%%:*}" "$wlbase/${m#*:}"; }
 done
 
+# the programs that APPS names, from their GitHub releases, in obj/apps (obj/apps/list, apps.inf)
+bash ../build/make-apps.sh
+
 if [[ "${1:-}" = -u && -f "$IMG" && -f "$STAMP" && -z "$(find ../obj/gen/hives ../ported/oak make-sd-image.sh -newer "$STAMP" -print -quit)" ]]; then
-  # a file a line: names may have spaces (the files of the extras)
-  list=$(cd .. && find sdcard/root sdcard/config.txt sdcard/firmware obj/arcfw.bin -type f -newer obj/stamp/sd-image)
+  # a file a line: names may have spaces (the files of the extras); the programs of APPS go in each time
+  list=$(cd .. && find sdcard/root sdcard/config.txt sdcard/firmware obj/arcfw.bin -type f -newer obj/stamp/sd-image
+         [ ! -f obj/apps/list ] || cut -d"|" -f1 obj/apps/list | while read -r d; do find "obj/apps/$d" -type f; done)
   new=(); while IFS= read -r f; do [[ -z "$f" ]] || new+=("$f"); done <<< "$list"
   echo ">> updating $IMG: ${#new[@]} files"
   (( ${#new[@]} == 0 )) || docker run --rm -v "$ROOT":/work -w /work --entrypoint bash tenox7/msvc-arm32 -c '
@@ -68,7 +74,7 @@ I=obj/nt-arcfw-sd.img@@1M
 mmd -D s -i $I "::/Program Files" 2>/dev/null || true
 mmd -D s -i $I "::/Program Files/Common Files" 2>/dev/null || true
 for f in "$@"; do
-  case $f in sdcard/root/*) d=${f#sdcard/root/} ;; *) d=${f##*/} ;; esac
+  case $f in sdcard/root/*) d=${f#sdcard/root/} ;; obj/apps/*) d=APPS/${f#obj/apps/} ;; *) d=${f##*/} ;; esac
   p=; IFS=/ read -ra cs <<< "$(dirname "$d")"
   for c in "${cs[@]}"; do [ "$c" = . ] || { p=$p/$c; mmd -D s -i $I "::$p" 2>/dev/null || true; }; done
   mcopy -D o -i $I "$f" "::/$d"
@@ -146,6 +152,14 @@ cp ../obj/gen/hives/DEFAULT "/tmp/sd/WINNT/Profiles/Default User/NTUSER.DAT"
 cp ../ported/oak/registry.ini /tmp/sd/WINNT/REGISTRY.INI
 mkdir -p /tmp/sd/WINNT/IDW
 for g in main accesori games admin; do cp /nt/private/windows/shell/progman/$g.grp /tmp/sd/WINNT/IDW/; done
+# the programs of APPS (build/make-apps.sh), each in its folder of \APPS, in Programs > Apps: their lines go
+# into [Apps] of syssetup.inf, which makes the items at the first boot
+if [ -f ../obj/apps/list ]; then
+  while IFS="|" read -r d items; do
+    mkdir -p /tmp/sd/APPS/$d && cp -R ../obj/apps/$d/. /tmp/sd/APPS/$d/
+  done < ../obj/apps/list
+  sed -i "/^\[Apps\]/r ../obj/apps/apps.inf" /tmp/sd/WINNT/INF/SYSSETUP.INF
+fi
 
 dd if=/dev/zero of="$IMG" bs=1M count="$SIZE_MB" status=none
 printf "label: dos\nstart=2048, type=06, bootable\n" | sfdisk "$IMG" >/dev/null

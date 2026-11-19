@@ -10,6 +10,10 @@
 #   and delete[] (crt/cxx/newarray.cxx: the C++ of today calls them), the static libraries
 #   of the SDK and its link objects. Not in it: MFC, the libraries of NetDDE (nddeapi),
 #   printing (win32spl), the VDM (vdmdbg), pdh (no pdh.dll on PINT), ntdll and crtdll.
+# - The driver kit: the headers of NT 4.0's DDK in include\ddk (those of public\oak\inc, those the
+#   header pass makes for drivers, as ntddk.h and miniport.h, and those of private\ntos\inc they
+#   include or the DDK had, as video.h), and the libraries of kernel mode (obj): the import
+#   libraries of ntoskrnl, the HAL, videoprt, win32k, ndis and scsiport, and libcntpr.
 # - The SDK's cl and link (sdk/pintwrap.c), with clang for Windows on x64 and arm64.
 #
 # Usage:  build/make-sdk.sh
@@ -42,6 +46,17 @@ for l in advapi32 comctl32 comdlg32 ddraw dlcapi dplay dsound gdi32 glu32 imageh
     cp $U/$l.lib $O/lib/
 done
 cp $U/binmode.obj $U/commode.obj $U/setargv.obj $O/lib/
+
+echo ">> driver kit"
+mkdir -p $O/include/ddk
+cp /tmp/f/oak/*.h $O/include/ddk/
+for h in ntddk.h bugcodes.h ntiologc.h exlevels.h miniport.h minitape.h video.h srb.h scsi.h tape.h \
+    ndis.h afilter.h efilter.h tfilter.h ffilter.h ndisqos.h; do
+    cp /tmp/f/priv/$h $O/include/ddk/
+done
+for l in ntoskrnl hal videoprt win32k ndis scsiport libcntpr; do
+    cp /work/RASPI/obj/$l.lib $O/lib/
+done
 ntcc /tmp/newarray.obj /work/RASPI/crt/cxx/newarray.cxx
 for l in libc libcmt msvcrt; do
     lib -nologo -out:$O/lib/$l.lib $U/$l.lib /tmp/newarray.obj > /tmp/lib.err 2>&1 || { cat /tmp/lib.err; exit 1; }

@@ -165,6 +165,13 @@
 +    This routine asks the VideoCore for the resolution of its frame buffer,
 +    then for a 32 bit per pixel frame buffer of that resolution, and records
 +    the frame buffer and the resolution it granted.
++
++    It asks for BGR pixels (red in bits 16 to 23), the layout of the 32 bit
++    displays of Windows NT and of its DIBs. Before Service Pack 3, GDI gives
++    the desktop the palette of the last display driver it loads; a mirroring
++    driver gets no palette of the display and makes the usual one, BGR, so on
++    an RGB frame buffer red and blue were swapped. The HAL and the display
++    driver take the order the VideoCore grants.
 =1 297 3
 +    ESUCCESS if a frame buffer was allocated, otherwise EINVAL.
 =1 301 4
@@ -210,7 +217,7 @@
 +    Message[Index++] = TAG_SET_PIXEL_ORDER;
 +    Message[Index++] = 4;
 +    Message[Index++] = 4;
-+    Message[Index++] = BCM_PIXEL_ORDER_RGB;
++    Message[Index++] = BCM_PIXEL_ORDER_BGR;
 +    BufferIndex = Index;
 +    Message[Index++] = TAG_ALLOCATE_BUFFER;
 +    Message[Index++] = 8;
