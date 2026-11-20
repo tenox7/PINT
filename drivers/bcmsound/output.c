@@ -8,9 +8,9 @@ Abstract:
 
     The outputs of the sound driver: the ring of the DMA channel and its
     interrupt, the 3.5 mm jack (the two channels of a PWM, fed by the DMA
-    channel), HDMI (hdmi.c), and the silent output (a timer in place of the
-    interrupt), and the engine that mixes the wave output and the FM
-    synthesizer into the ring.
+    channel), HDMI (hdmi.c), and the silent output (a timer and the
+    performance counter in place of the interrupt), and the engine that
+    mixes the wave output and the FM synthesizer into the ring.
 
     The jack (as Circle drives it): the PWM's clock is PLLD divided to
     250 MHz (125 MHz on a BCM2711), and its range is the clock divided by the
@@ -647,6 +647,7 @@ EngineStart(
     )
 {
     LARGE_INTEGER Due;
+    LARGE_INTEGER Frequency;
     ULONG TransferInformation;
     ULONG Destination;
 
@@ -654,8 +655,11 @@ EngineStart(
     GlobalInfo->HalvesDone = 0;
 
     if (GlobalInfo->Output == OUTPUT_NONE) {
-        Due.QuadPart = -(LONGLONG)RING_HALF_TIME;
-        KeSetTimerEx(&GlobalInfo->Timer, Due, (RING_HALF_TIME + 5000) / 10000, &GlobalInfo->TimerDpc);
+        GlobalInfo->SilentCount = KeQueryPerformanceCounter(&Frequency);
+        GlobalInfo->SilentHalf = (ULONGLONG)Frequency.QuadPart * RING_FRAMES;
+        GlobalInfo->SilentTime = 0;
+        Due.QuadPart = -SILENT_TIMER_TIME;
+        KeSetTimerEx(&GlobalInfo->Timer, Due, SILENT_TIMER_TIME / 10000, &GlobalInfo->TimerDpc);
         GlobalInfo->Running = TRUE;
         return TRUE;
     }
@@ -786,6 +790,54 @@ Return Value:
     return TRUE;
 }
 
+static BOOLEAN
+SilentHalfDue(
+    IN PGLOBAL_DEVICE_INFO GlobalInfo
+    )
+
+/*++
+
+Routine Description:
+
+    This routine tells whether the time of a half of the silent output has
+    passed, by the performance counter, and takes that half's time if so.
+    The timer of the silent output runs every clock tick, because NT ends a
+    timer only at a clock tick (10 ms): a timer of a half's time (21 ms)
+    would end only every third tick. A half plays at the first tick after
+    its time. At most SILENT_CATCH_UP halves wait to play late: the time of
+    a longer stop (the debugger) is not played, as with the DMA channel of
+    the other outputs, which plays its ring again meanwhile. It is called
+    holding the lock of the engine.
+
+Arguments:
+
+    GlobalInfo - Supplies the global device information.
+
+Return Value:
+
+    TRUE if a half is to be played, else FALSE.
+
+--*/
+
+{
+    LARGE_INTEGER Count;
+
+    Count = KeQueryPerformanceCounter(NULL);
+    GlobalInfo->SilentTime += (ULONGLONG)(Count.QuadPart - GlobalInfo->SilentCount.QuadPart) * OUTPUT_RATE;
+    GlobalInfo->SilentCount = Count;
+    if (GlobalInfo->SilentTime > SILENT_CATCH_UP * GlobalInfo->SilentHalf) {
+        GlobalInfo->SilentTime = SILENT_CATCH_UP * GlobalInfo->SilentHalf;
+    }
+
+    if (GlobalInfo->SilentTime < GlobalInfo->SilentHalf) {
+        return FALSE;
+    }
+
+    GlobalInfo->SilentTime -= GlobalInfo->SilentHalf;
+    GlobalInfo->HalvesDone += 1;
+    return TRUE;
+}
+
 static VOID
 OutputEngineDeferred(
     IN PKDPC Dpc,
@@ -801,7 +853,9 @@ Routine Description:
     This routine follows the end of a half of the ring: it mixes that half
     again, to play after the current one; it calls soundlib's deferred
     routine when the wave output passed into the other half of its buffer,
-    and stops the engine when nothing has played for a whole ring.
+    and stops the engine when nothing has played for a whole ring. For the
+    silent output it runs every clock tick, and does this when the time of
+    a half has passed (SilentHalfDue).
 
 Arguments:
 
@@ -824,6 +878,11 @@ Return Value:
 
     KeAcquireSpinLockAtDpcLevel(&GlobalInfo->EngineLock);
     if (!GlobalInfo->Running) {
+        KeReleaseSpinLockFromDpcLevel(&GlobalInfo->EngineLock);
+        return;
+    }
+
+    if (GlobalInfo->Output == OUTPUT_NONE && !SilentHalfDue(GlobalInfo)) {
         KeReleaseSpinLockFromDpcLevel(&GlobalInfo->EngineLock);
         return;
     }

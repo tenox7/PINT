@@ -85,8 +85,9 @@ Abstract:
 //
 // The buffers: soundlib's holds an eighth of a second (it is told of each
 // half played), at most 48 kHz, 16-bit stereo; a half of the ring holds
-// RING_FRAMES frames of the output, each two 32-bit words (21 ms), its time
-// in units of 100 ns.
+// RING_FRAMES frames of the output (21 ms), each two 32-bit words. The timer
+// of the silent output runs every clock tick, SILENT_TIMER_TIME (10 ms in
+// units of 100 ns); after a stop it catches up at most SILENT_CATCH_UP halves.
 //
 
 #define OUTPUT_RATE                     48000
@@ -95,7 +96,8 @@ Abstract:
 #define RING_FRAME_SIZE                 8
 #define RING_HALF_SIZE                  (RING_FRAMES * RING_FRAME_SIZE)
 #define RING_BUFFER_SIZE                (2 * RING_HALF_SIZE + PAGE_SIZE)
-#define RING_HALF_TIME                  (RING_FRAMES * 10000000 / OUTPUT_RATE)
+#define SILENT_TIMER_TIME               100000
+#define SILENT_CATCH_UP                 8
 
 //
 // The BCM2835 DMA controller: a channel's registers and its control blocks.
@@ -201,8 +203,11 @@ typedef struct _GLOBAL_DEVICE_INFO {
 
     //
     // The engine: its lock (of the reading of the wave output and of the
-    // synthesizer), its deferred routine, the timer of the silent output,
-    // whether it runs, the halves played and the halves with nothing to play.
+    // synthesizer), its deferred routine, the timer of the silent output and
+    // its clock (the performance counter when the timer last ran; the time
+    // not yet played and the time of a half, both in frames times the
+    // frequency of the counter), whether it runs, the halves played and the
+    // halves with nothing to play.
     //
 
     BOOLEAN EngineInitialized;
@@ -210,6 +215,9 @@ typedef struct _GLOBAL_DEVICE_INFO {
     KDPC EngineDpc;
     KTIMER Timer;
     KDPC TimerDpc;
+    LARGE_INTEGER SilentCount;
+    ULONGLONG SilentTime;
+    ULONGLONG SilentHalf;
     BOOLEAN Running;
     volatile ULONG HalvesDone;
     ULONG IdleHalves;
