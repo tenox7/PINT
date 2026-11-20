@@ -1,0 +1,14 @@
+#ntdiff PRIVATE/NTOS/MM/ALPHA/HYPERMAP.C
+#crlf
+=1 1 182
++    PKEVENT WaitEvent;
+=1 183 32
++        // Capture the event while the PFN lock is held: the thread that
++        // unmaps the image header clears the field as soon as it gets the
++        // lock, on another processor before this one reads it.
++        //
++
++        WaitEvent = MmWorkingSetList->WaitingForImageMapping;
+=1 213 8
++        KeWaitForSingleObject(WaitEvent,
+=1 222 160

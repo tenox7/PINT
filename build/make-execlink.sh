@@ -64,7 +64,7 @@ for e in EX:/work/PRIVATE/NTOS/EX/MIPS/SPLOCKS.C EX:/work/PRIVATE/NTOS/EX/MIPS/P
          PS:/work/PRIVATE/NTOS/PS/MIPS/KULOOKUP.C PS:/work/PRIVATE/NTOS/PS/MIPS/PSLDT.C \
          PS:/work/PRIVATE/NTOS/PS/MIPS/PSVDM.C CONFIG:config/initarm.c \
          EX:ex/fmutex.c EX:ex/intrlock.c EX:ex/gettick.c EX:ex/evpair.c EX:ex/raisests.c \
-         MM:mm/initarm.c MM:mm/dataarm.c MM:/work/PRIVATE/NTOS/MM/ALPHA/HYPERMAP.C \
+         MM:mm/initarm.c MM:mm/dataarm.c MM:/work/RASPI/ported/ntos/mm/alpha/hypermap.c \
          MM:/work/PRIVATE/NTOS/MM/MIPS/SETDIRTY.C MM:/work/PRIVATE/NTOS/MM/MIPS/DEBUGSUP.C LPC:lpc/lpcmove.c \
          KD:/work/PRIVATE/NTOS/KD/MIPS/KDCMSUP.C KD:/work/PRIVATE/NTOS/KD/MIPS/KDREBOOT.C \
          KD:kd/kdtrap.c KD:kd/kdcpuapi.c RTL:/work/PRIVATE/NTOS/RTL/MIPS/DEBUG.C KE:ke/flush.c \
