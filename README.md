@@ -151,8 +151,9 @@ has of it. When GitHub does not answer, the build keeps what it has. GitHub answ
 
 - `\APPS`, in Programs > Apps and on the desktop, each in its own folder: TenoxVNC (https://github.com/tenox7/tenoxvnc,
   a VNC viewer), ntfetch (https://github.com/tenox7/ntfetch), ntrdpc (https://github.com/tenox7/ntrdpc, an RDP
-  client) and PuTTY (https://github.com/tenox7/puttyNT, with Plink, PSCP, PSFTP, Pageant and PuTTYgen). Internet
-  Explorer 1.5 is there too; it is built here, from the source tree's Mosaic.
+  client), PuTTY (https://github.com/tenox7/puttyNT, with Plink, PSCP, PSFTP, Pageant and PuTTYgen) and CoolPlayer
+  (https://github.com/tenox7/coolplayer, an MP3 and Ogg Vorbis player). Internet Explorer 1.5 is there too; it is
+  built here, from the source tree's Mosaic.
 - `\GAMES`, in Programs > Games, each in its own folder: the 11 games of https://github.com/tenox7/ntgames, WiNTown
   (https://github.com/tenox7/wintown), Sabre (https://github.com/tenox7/sabreNT), OpenTTD
   (https://github.com/tenox7/openttdNT) and Prince of Persia (https://github.com/tenox7/popNT). Pinball (3D Pinball

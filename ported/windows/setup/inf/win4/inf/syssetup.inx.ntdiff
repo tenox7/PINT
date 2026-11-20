@@ -45,6 +45,7 @@
 +%ntfetch% = %24%\apps\ntfetch\ntfetch.exe,%24%\apps\ntfetch\ntfetch.exe,,0
 +%ntrdpc% = %24%\apps\ntrdpc\ntrdpc.exe,%24%\apps\ntrdpc\ntrdpc.exe,,0
 +%putty% = %24%\apps\putty\putty.exe,%24%\apps\putty\putty.exe,,0
++%coolplayer% = %24%\apps\coolplayer\coolplayer.exe,%24%\apps\coolplayer\coolplayer.exe,,0
 +
 +[DesktopItems]
 +%iexplore% = %24%\apps\iexplore.exe,%24%\apps\iexplore.exe,,0
@@ -52,6 +53,7 @@
 +%tenoxvnc% = %24%\apps\tenoxvnc\tenoxvnc.exe,%24%\apps\tenoxvnc\tenoxvnc.exe,,0
 +%ntrdpc% = %24%\apps\ntrdpc\ntrdpc.exe,%24%\apps\ntrdpc\ntrdpc.exe,,0
 +%putty% = %24%\apps\putty\putty.exe,%24%\apps\putty\putty.exe,,0
++%coolplayer% = %24%\apps\coolplayer\coolplayer.exe,%24%\apps\coolplayer\coolplayer.exe,,0
 =1 411 77
 =1 488 1 0 @@:@a:
 =1 488 1 0 @@:@i:

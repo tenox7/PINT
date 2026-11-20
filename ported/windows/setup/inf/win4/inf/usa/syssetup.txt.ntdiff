@@ -10,6 +10,7 @@
 +ntfetch = "ntfetch"
 +ntrdpc = "ntrdpc"
 +putty = "PuTTY"
++coolplayer = "CoolPlayer"
 +inetmgr = "Internet Service Manager"
 +game2048 = "2048"
 +breakout = "Breakout"
