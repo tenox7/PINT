@@ -69,7 +69,645 @@
 +                            class = REG_MULTI_SZ "bcmwlanAdapter basic"
 +                            InfOption = BCMWLAN
 +#endif // defined(_RASPI_)
-=1 1922 386
+=1 1922 3
++                        Display = (GMT) Dublin, Edinburgh, Lisbon, London
+=1 1926 3
++                        TZI = REG_BINARY 0x2C 0x00000000 0x00000000 0xFFFFFFC4 0x000A0000 0x00050000 0x00000002 0x00000000 0x00030000 0x00050000 0x00000001 0x00000000
++
++                    Romance Standard Time
++                        Display = (GMT+01:00) Brussels, Copenhagen, Madrid, Paris
+=1 1933 3
++                        TZI = REG_BINARY 0x2C 0xFFFFFFC4 0x00000000 0xFFFFFFC4 0x000A0000 0x00050000 0x00000003 0x00000000 0x00030000 0x00050000 0x00000002 0x00000000
+=1 1937 2
++                        Display = (GMT+01:00) Belgrade, Bratislava, Budapest, Ljubljana, Prague
+=1 1940 3
++                        TZI = REG_BINARY 0x2C 0xFFFFFFC4 0x00000000 0xFFFFFFC4 0x000A0000 0x00050000 0x00000003 0x00000000 0x00030000 0x00050000 0x00000002 0x00000000
+=1 1944 2
++                        Display = (GMT+01:00) Amsterdam, Berlin, Bern, Rome, Stockholm, Vienna
+=1 1947 3
++                        TZI = REG_BINARY 0x2C 0xFFFFFFC4 0x00000000 0xFFFFFFC4 0x000A0000 0x00050000 0x00000003 0x00000000 0x00030000 0x00050000 0x00000002 0x00000000
+=1 1951 2
++                        Display = (GMT+02:00) Chisinau
+=1 1954 3
++                        TZI = REG_BINARY 0x2C 0xFFFFFF88 0x00000000 0xFFFFFFC4 0x000A0000 0x00050000 0x00000004 0x00000000 0x00030000 0x00050000 0x00000003 0x00000000
++
++                    GFT Standard Time
++                        Display = (GMT+02:00) Athens, Bucharest
+=1 1961 3
++                        TZI = REG_BINARY 0x2C 0xFFFFFF88 0x00000000 0xFFFFFFC4 0x000A0000 0x00050000 0x00000004 0x00000000 0x00030000 0x00050000 0x00000003 0x00000000
+=1 1965 6
+=1 2139 2
+=1 1973 5
++                        TZI = REG_BINARY 0x2C 0x000000F0 0x00000000 0xFFFFFFC4 0x000B0000 0x00010000 0x00000002 0x00000000 0x00030000 0x00020000 0x00000002 0x00000000
+=1 1979 6
++                        TZI = REG_BINARY 0x2C 0x0000012C 0x00000000 0xFFFFFFC4 0x000B0000 0x00010000 0x00000002 0x00000000 0x00030000 0x00020000 0x00000002 0x00000000
+=1 1986 6
++                        TZI = REG_BINARY 0x2C 0x00000168 0x00000000 0xFFFFFFC4 0x000B0000 0x00010000 0x00000002 0x00000000 0x00030000 0x00020000 0x00000002 0x00000000
+=1 1993 6
++                        TZI = REG_BINARY 0x2C 0x000001A4 0x00000000 0xFFFFFFC4 0x000B0000 0x00010000 0x00000002 0x00000000 0x00030000 0x00020000 0x00000002 0x00000000
++
++                    Pacific Standard Time
++                        Display = (GMT-08:00) Pacific Time (US & Canada)
+=1 2003 3
++                        TZI = REG_BINARY 0x2C 0x000001E0 0x00000000 0xFFFFFFC4 0x000B0000 0x00010000 0x00000002 0x00000000 0x00030000 0x00020000 0x00000002 0x00000000
+=1 2007 6
++                        TZI = REG_BINARY 0x2C 0x0000021C 0x00000000 0xFFFFFFC4 0x000B0000 0x00010000 0x00000002 0x00000000 0x00030000 0x00020000 0x00000002 0x00000000
+=1 2014 9
++                        Display = (GMT+13:00) Samoa
+=1 2024 3
++                        TZI = REG_BINARY 0x2C 0xFFFFFCF4 0x00000000 0xFFFFFFC4 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+=1 2028 2
++                        Display = (GMT+12:00) Auckland, Wellington
+=1 2031 3
++                        TZI = REG_BINARY 0x2C 0xFFFFFD30 0x00000000 0xFFFFFFC4 0x00040000 0x00010000 0x00000003 0x00000000 0x00090000 0x00050000 0x00000002 0x00000000
++
++                    Sydney Standard Time
++                        Display = (GMT+10:00) Canberra, Melbourne, Sydney
+=1 2038 3
++                        TZI = REG_BINARY 0x2C 0xFFFFFDA8 0x00000000 0xFFFFFFC4 0x00040000 0x00010000 0x00000003 0x00000000 0x000A0000 0x00010000 0x00000002 0x00000000
+=1 2042 6
++                        TZI = REG_BINARY 0x2C 0xFFFFFDC6 0x00000000 0xFFFFFFC4 0x00040000 0x00010000 0x00000003 0x00000000 0x000A0000 0x00010000 0x00000002 0x00000000
++
++                    Tokyo Standard Time
++                        Display = (GMT+09:00) Osaka, Sapporo, Tokyo
+=1 2052 6
++                        Display = (GMT+08:00) Taipei
+=1 2059 6
++                        Display = (GMT+07:00) Bangkok, Hanoi, Jakarta
+=1 2066 6
++                        Display = (GMT+05:30) Chennai, Kolkata, Mumbai, New Delhi
+=1 2073 6
++                        Display = (GMT+04:00) Abu Dhabi, Muscat
+=1 2080 10
++                        TZI = REG_BINARY 0x2C 0xFFFFFF2E 0x00000000 0xFFFFFFC4 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+=1 2091 2
++                        Display = (GMT+03:00) Kuwait, Riyadh
+=1 2094 6
++                        Display = (GMT+02:00) Jerusalem
+=1 2101 3
++                        TZI = REG_BINARY 0x2C 0xFFFFFF88 0x00000000 0xFFFFFFC4 0x000A0000 0x00050000 0x00000002 0x00000000 0x00030000 0x00040005 0x00000002 0x00000000
+=1 2105 6
++                        TZI = REG_BINARY 0x2C 0x000000D2 0x00000000 0xFFFFFFC4 0x000B0000 0x00010000 0x00000002 0x00000000 0x00030000 0x00020000 0x00000002 0x00000000
++
++                    Azores Standard Time
++                        Display = (GMT-01:00) Azores
+=1 2115 3
++                        TZI = REG_BINARY 0x2C 0x0000003C 0x00000000 0xFFFFFFC4 0x000A0000 0x00050000 0x00000001 0x00000000 0x00030000 0x00050000 0x00000000 0x00000000
+=1 2119 2
++                        Display = (GMT-02:00) Coordinated Universal Time-02
+=1 2122 3
++                        TZI = REG_BINARY 0x2C 0x00000078 0x00000000 0xFFFFFFC4 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
++
++                    GMT Standard Time
++                        Display = (GMT) Monrovia, Reykjavik
+=1 2129 6
++                        Display = (GMT-03:00) Cayenne, Fortaleza
+=1 2136 6
++                        Display = (GMT-04:00) Georgetown, La Paz, Manaus, San Juan
+=1 2143 10
++                        TZI = REG_BINARY 0x2C 0x0000012C 0x00000000 0xFFFFFFC4 0x000B0000 0x00010000 0x00000002 0x00000000 0x00030000 0x00020000 0x00000002 0x00000000
+=1 2154 2
++                        Display = (GMT-05:00) Bogota, Lima, Quito, Rio Branco
+=1 2157 13
++                        Display = (GMT-06:00) Guadalajara, Mexico City, Monterrey
+=1 2171 13
++                        Display = (GMT-12:00) International Date Line West
+=1 2185 6
++                        Display = (GMT+12:00) Fiji
+=1 2192 6
++                        Display = (GMT+11:00) Solomon Is., New Caledonia
+=1 2199 10
++                        TZI = REG_BINARY 0x2C 0xFFFFFDA8 0x00000000 0xFFFFFFC4 0x00040000 0x00010000 0x00000003 0x00000000 0x000A0000 0x00010000 0x00000002 0x00000000
+=1 2210 2
++                        Display = (GMT+10:00) Guam, Port Moresby
+=1 2213 13
++                        Display = (GMT+08:00) Beijing, Chongqing, Hong Kong, Urumqi
+=1 2227 3
+=1 2062 2
+=1 2232 1
++                        Display = (GMT+06:00) Astana
+=1 2234 6
++                        Display = (GMT+05:00) Ashgabat, Tashkent
+=1 2241 17
++                        TZI = REG_BINARY 0x2C 0xFFFFFF88 0x00000000 0xFFFFFFC4 0x000A0000 0x00050004 0x003B0017 0x03E7003B 0x00040000 0x00050005 0x00000000 0x00000000
+=1 2259 9
+=2 1184 2
++                        MapID = 6,7
+=1 2096 3
++                    UTC-11
++                        Display = (GMT-11:00) Coordinated Universal Time-11
++                        Dlt = UTC-11
++                        MapID = -1,-1
+=1 2026 3
++                    Aleutian Standard Time
++                        Display = (GMT-10:00) Aleutian Islands
++                        Dlt = Aleutian Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0x00000258 0x00000000 0xFFFFFFC4 0x000B0000 0x00010000 0x00000002 0x00000000 0x00030000 0x00020000 0x00000002 0x00000000
++
++                    Marquesas Standard Time
++                        Display = (GMT-09:30) Marquesas Islands
++                        Dlt = Marquesas Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0x0000023A 0x00000000 0xFFFFFFC4 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
++
++                    UTC-09
++                        Display = (GMT-09:00) Coordinated Universal Time-09
++                        Dlt = UTC-09
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0x0000021C 0x00000000 0xFFFFFFC4 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
++
++                    Pacific Standard Time (Mexico)
++                        Display = (GMT-08:00) Baja California
++                        Dlt = Pacific Daylight Time (Mexico)
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0x000001E0 0x00000000 0xFFFFFFC4 0x000B0000 0x00010000 0x00000002 0x00000000 0x00030000 0x00020000 0x00000002 0x00000000
++
++                    UTC-08
++                        Display = (GMT-08:00) Coordinated Universal Time-08
++                        Dlt = UTC-08
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0x000001E0 0x00000000 0xFFFFFFC4 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
++
++                    Mountain Standard Time (Mexico)
++                        Display = (GMT-07:00) La Paz, Mazatlan
++                        Dlt = Mountain Daylight Time (Mexico)
++                        MapID = -1,-1
+=1 2180 3
++                    British Columbia Standard Time
++                        Display = (GMT-07:00) Pacific Time (British Columbia)
++                        Dlt = British Columbia Daylight Time
++                        MapID = -1,-1
+=1 2180 3
++                    Yukon Standard Time
++                        Display = (GMT-07:00) Yukon
++                        Dlt = Yukon Daylight Time
++                        MapID = -1,-1
+=1 2180 3
++                    Alberta Standard Time
++                        Display = (GMT-06:00) Mountain Time (Alberta)
++                        Dlt = Alberta Daylight Time
++                        MapID = -1,-1
+=1 2166 3
++                    Central America Standard Time
++                        Display = (GMT-06:00) Central America
++                        Dlt = Central America Daylight Time
++                        MapID = -1,-1
+=1 2166 3
++                    Easter Island Standard Time
++                        Display = (GMT-06:00) Easter Island
++                        Dlt = Easter Island Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0x00000168 0x00000000 0xFFFFFFC4 0x00040000 0x00010006 0x00000016 0x00000000 0x00090000 0x00010006 0x00000016 0x00000000
++
++                    Manitoba Standard Time
++                        Display = (GMT-05:00) Manitoba
++                        Dlt = Manitoba Daylight Time
++                        MapID = -1,-1
+=1 2152 3
++                    Eastern Standard Time (Mexico)
++                        Display = (GMT-05:00) Chetumal
++                        Dlt = Eastern Daylight Time (Mexico)
++                        MapID = -1,-1
+=1 2152 3
++                    Haiti Standard Time
++                        Display = (GMT-05:00) Haiti
++                        Dlt = Haiti Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0x0000012C 0x00000000 0xFFFFFFC4 0x000B0000 0x00010000 0x00000002 0x00000000 0x00030000 0x00020000 0x00000002 0x00000000
++
++                    Cuba Standard Time
++                        Display = (GMT-05:00) Havana
++                        Dlt = Cuba Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0x0000012C 0x00000000 0xFFFFFFC4 0x000B0000 0x00010000 0x00000001 0x00000000 0x00030000 0x00020000 0x00000000 0x00000000
++
++                    Turks And Caicos Standard Time
++                        Display = (GMT-05:00) Turks and Caicos
++                        Dlt = Turks And Caicos Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0x0000012C 0x00000000 0xFFFFFFC4 0x000B0000 0x00010000 0x00000002 0x00000000 0x00030000 0x00020000 0x00000002 0x00000000
++
++                    Paraguay Standard Time
++                        Display = (GMT-04:00) Asuncion
++                        Dlt = Paraguay Daylight Time
++                        MapID = -1,-1
+=1 2138 3
++                    Venezuela Standard Time
++                        Display = (GMT-04:00) Caracas
++                        Dlt = Venezuela Daylight Time
++                        MapID = -1,-1
+=1 2145 3
++                    Central Brazilian Standard Time
++                        Display = (GMT-04:00) Cuiaba
++                        Dlt = Central Brazilian Daylight Time
++                        MapID = -1,-1
+=1 2145 3
++                    Pacific SA Standard Time
++                        Display = (GMT-04:00) Santiago
++                        Dlt = Pacific SA Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0x000000F0 0x00000000 0xFFFFFFC4 0x00040000 0x00010006 0x003B0017 0x03E7003B 0x00090000 0x00010006 0x003B0017 0x03E7003B
++
++                    Tocantins Standard Time
++                        Display = (GMT-03:00) Araguaina
++                        Dlt = Tocantins Daylight Time
++                        MapID = -1,-1
+=1 2138 3
++                    Argentina Standard Time
++                        Display = (GMT-03:00) City of Buenos Aires
++                        Dlt = Argentina Daylight Time
++                        MapID = -1,-1
+=1 2138 3
++                    Greenland Standard Time
++                        Display = (GMT-03:00) Greenland
++                        Dlt = Greenland Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0x00000078 0x00000000 0xFFFFFFC4 0x000A0000 0x00050000 0x00000000 0x00000000 0x00030000 0x00050006 0x00000017 0x00000000
++
++                    Montevideo Standard Time
++                        Display = (GMT-03:00) Montevideo
++                        Dlt = Montevideo Daylight Time
++                        MapID = -1,-1
+=1 2138 3
++                    Magallanes Standard Time
++                        Display = (GMT-03:00) Punta Arenas
++                        Dlt = Magallanes Daylight Time
++                        MapID = -1,-1
+=1 2138 3
++                    Saint Pierre Standard Time
++                        Display = (GMT-03:00) Saint Pierre and Miquelon
++                        Dlt = Saint Pierre Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0x000000B4 0x00000000 0xFFFFFFC4 0x000B0000 0x00010000 0x00000002 0x00000000 0x00030000 0x00020000 0x00000002 0x00000000
++
++                    Bahia Standard Time
++                        Display = (GMT-03:00) Salvador
++                        Dlt = Bahia Daylight Time
++                        MapID = -1,-1
+=1 2138 3
++                    Cape Verde Standard Time
++                        Display = (GMT-01:00) Cabo Verde Is.
++                        Dlt = Cape Verde Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0x0000003C 0x00000000 0xFFFFFFC4 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
++
++                    UTC
++                        Display = (GMT) Coordinated Universal Time
++                        Dlt = UTC
++                        MapID = -1,-1
+=1 2131 3
++                    Sao Tome Standard Time
++                        Display = (GMT) Sao Tome
++                        Dlt = Sao Tome Daylight Time
++                        MapID = -1,-1
+=1 2131 3
++                    Morocco Standard Time
++                        Display = (GMT+01:00) Casablanca
++                        Dlt = Morocco Daylight Time
++                        MapID = -1,-1
+=1 2131 3
++                    Central European Standard Time
++                        Display = (GMT+01:00) Sarajevo, Skopje, Warsaw, Zagreb
++                        Dlt = Central European Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0xFFFFFFC4 0x00000000 0xFFFFFFC4 0x000A0000 0x00050000 0x00000003 0x00000000 0x00030000 0x00050000 0x00000002 0x00000000
++
++                    W. Central Africa Standard Time
++                        Display = (GMT+01:00) West Central Africa
++                        Dlt = W. Central Africa Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0xFFFFFFC4 0x00000000 0xFFFFFFC4 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
++
++                    Jordan Standard Time
++                        Display = (GMT+02:00) Amman
++                        Dlt = Jordan Daylight Time
++                        MapID = -1,-1
+=1 2096 3
++                    Middle East Standard Time
++                        Display = (GMT+02:00) Beirut
++                        Dlt = Middle East Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0xFFFFFF88 0x00000000 0xFFFFFFC4 0x000A0000 0x00050000 0x00000000 0x00000000 0x00030000 0x00050000 0x00000000 0x00000000
++
++                    Syria Standard Time
++                        Display = (GMT+02:00) Damascus
++                        Dlt = Syria Daylight Time
++                        MapID = -1,-1
+=1 2096 3
++                    West Bank Standard Time
++                        Display = (GMT+02:00) Gaza, Hebron
++                        Dlt = West Bank Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0xFFFFFF88 0x00000000 0xFFFFFFC4 0x000A0000 0x00050006 0x00000002 0x00000000 0x00030000 0x00050006 0x00000002 0x00000000
++
++                    FLE Standard Time
++                        Display = (GMT+02:00) Helsinki, Kyiv, Riga, Sofia, Tallinn, Vilnius
++                        Dlt = FLE Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0xFFFFFF88 0x00000000 0xFFFFFFC4 0x000A0000 0x00050000 0x00000004 0x00000000 0x00030000 0x00050000 0x00000003 0x00000000
++
++                    South Sudan Standard Time
++                        Display = (GMT+02:00) Juba
++                        Dlt = South Sudan Daylight Time
++                        MapID = -1,-1
+=1 2264 3
++                    Kaliningrad Standard Time
++                        Display = (GMT+02:00) Kaliningrad
++                        Dlt = Kaliningrad Daylight Time
++                        MapID = -1,-1
+=1 2264 3
++                    Sudan Standard Time
++                        Display = (GMT+02:00) Khartoum
++                        Dlt = Sudan Daylight Time
++                        MapID = -1,-1
+=1 2264 3
++                    Libya Standard Time
++                        Display = (GMT+02:00) Tripoli
++                        Dlt = Libya Daylight Time
++                        MapID = -1,-1
+=1 2264 3
++                    Namibia Standard Time
++                        Display = (GMT+02:00) Windhoek
++                        Dlt = Namibia Daylight Time
++                        MapID = -1,-1
+=1 2264 3
++                    Arabic Standard Time
++                        Display = (GMT+03:00) Baghdad
++                        Dlt = Arabic Daylight Time
++                        MapID = -1,-1
+=1 2096 3
++                    Turkey Standard Time
++                        Display = (GMT+03:00) Istanbul
++                        Dlt = Turkey Daylight Time
++                        MapID = -1,-1
+=1 2096 3
++                    Belarus Standard Time
++                        Display = (GMT+03:00) Minsk
++                        Dlt = Belarus Daylight Time
++                        MapID = -1,-1
+=1 2096 3
++                    E. Africa Standard Time
++                        Display = (GMT+03:00) Nairobi
++                        Dlt = E. Africa Daylight Time
++                        MapID = -1,-1
+=1 2096 3
++                    Astrakhan Standard Time
++                        Display = (GMT+04:00) Astrakhan, Ulyanovsk
++                        Dlt = Astrakhan Daylight Time
++                        MapID = -1,-1
+=1 2082 3
++                    Azerbaijan Standard Time
++                        Display = (GMT+04:00) Baku
++                        Dlt = Azerbaijan Daylight Time
++                        MapID = -1,-1
+=1 2082 3
++                    Russia Time Zone 3
++                        Display = (GMT+04:00) Izhevsk, Samara
++                        Dlt = Russia Time Zone 3
++                        MapID = -1,-1
+=1 2082 3
++                    Mauritius Standard Time
++                        Display = (GMT+04:00) Port Louis
++                        Dlt = Mauritius Daylight Time
++                        MapID = -1,-1
+=1 2082 3
++                    Saratov Standard Time
++                        Display = (GMT+04:00) Saratov
++                        Dlt = Saratov Daylight Time
++                        MapID = -1,-1
+=1 2082 3
++                    Georgian Standard Time
++                        Display = (GMT+04:00) Tbilisi
++                        Dlt = Georgian Daylight Time
++                        MapID = -1,-1
+=1 2082 3
++                    Volgograd Standard Time
++                        Display = (GMT+04:00) Volgograd
++                        Dlt = Volgograd Daylight Time
++                        MapID = -1,-1
+=1 2096 3
++                    Caucasus Standard Time
++                        Display = (GMT+04:00) Yerevan
++                        Dlt = Caucasus Daylight Time
++                        MapID = -1,-1
+=1 2082 3
++                    Ekaterinburg Standard Time
++                        Display = (GMT+05:00) Ekaterinburg
++                        Dlt = Ekaterinburg Daylight Time
++                        MapID = -1,-1
+=1 2243 3
++                    Pakistan Standard Time
++                        Display = (GMT+05:00) Islamabad, Karachi
++                        Dlt = Pakistan Daylight Time
++                        MapID = -1,-1
+=1 2243 3
++                    Qyzylorda Standard Time
++                        Display = (GMT+05:00) Qyzylorda
++                        Dlt = Qyzylorda Daylight Time
++                        MapID = -1,-1
+=1 2243 3
++                    Sri Lanka Standard Time
++                        Display = (GMT+05:30) Sri Jayawardenepura
++                        Dlt = Sri Lanka Daylight Time
++                        MapID = -1,-1
+=1 2075 3
++                    Nepal Standard Time
++                        Display = (GMT+05:45) Kathmandu
++                        Dlt = Nepal Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0xFFFFFEA7 0x00000000 0xFFFFFFC4 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
++
++                    Bangladesh Standard Time
++                        Display = (GMT+06:00) Dhaka
++                        Dlt = Bangladesh Daylight Time
++                        MapID = -1,-1
+=1 2236 3
++                    Omsk Standard Time
++                        Display = (GMT+06:00) Omsk
++                        Dlt = Omsk Daylight Time
++                        MapID = -1,-1
+=1 2236 3
++                    Myanmar Standard Time
++                        Display = (GMT+06:30) Yangon (Rangoon)
++                        Dlt = Myanmar Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0xFFFFFE7A 0x00000000 0xFFFFFFC4 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
++
++                    Altai Standard Time
++                        Display = (GMT+07:00) Barnaul, Gorno-Altaysk
++                        Dlt = Altai Daylight Time
++                        MapID = -1,-1
+=1 2068 3
++                    W. Mongolia Standard Time
++                        Display = (GMT+07:00) Hovd
++                        Dlt = W. Mongolia Daylight Time
++                        MapID = -1,-1
+=1 2068 3
++                    North Asia Standard Time
++                        Display = (GMT+07:00) Krasnoyarsk
++                        Dlt = North Asia Daylight Time
++                        MapID = -1,-1
+=1 2068 3
++                    N. Central Asia Standard Time
++                        Display = (GMT+07:00) Novosibirsk
++                        Dlt = N. Central Asia Daylight Time
++                        MapID = -1,-1
+=1 2068 3
++                    Tomsk Standard Time
++                        Display = (GMT+07:00) Tomsk
++                        Dlt = Tomsk Daylight Time
++                        MapID = -1,-1
+=1 2068 3
++                    North Asia East Standard Time
++                        Display = (GMT+08:00) Irkutsk
++                        Dlt = North Asia East Daylight Time
++                        MapID = -1,-1
+=1 2061 3
++                    Singapore Standard Time
++                        Display = (GMT+08:00) Kuala Lumpur, Singapore
++                        Dlt = Singapore Daylight Time
++                        MapID = -1,-1
+=1 2061 3
++                    W. Australia Standard Time
++                        Display = (GMT+08:00) Perth
++                        Dlt = W. Australia Daylight Time
++                        MapID = -1,-1
+=1 2061 3
++                    Ulaanbaatar Standard Time
++                        Display = (GMT+08:00) Ulaanbaatar
++                        Dlt = Ulaanbaatar Daylight Time
++                        MapID = -1,-1
+=1 2061 3
++                    Aus Central W. Standard Time
++                        Display = (GMT+08:45) Eucla
++                        Dlt = Aus Central W. Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0xFFFFFDF3 0x00000000 0xFFFFFFC4 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
++
++                    Transbaikal Standard Time
++                        Display = (GMT+09:00) Chita
++                        Dlt = Transbaikal Daylight Time
++                        MapID = -1,-1
+=1 2054 3
++                    North Korea Standard Time
++                        Display = (GMT+09:00) Pyongyang
++                        Dlt = North Korea Daylight Time
++                        MapID = -1,-1
+=1 2054 3
++                    Korea Standard Time
++                        Display = (GMT+09:00) Seoul
++                        Dlt = Korea Daylight Time
++                        MapID = -1,-1
+=1 2054 3
++                    Yakutsk Standard Time
++                        Display = (GMT+09:00) Yakutsk
++                        Dlt = Yakutsk Daylight Time
++                        MapID = -1,-1
+=1 2054 3
++                    E. Australia Standard Time
++                        Display = (GMT+10:00) Brisbane
++                        Dlt = E. Australia Daylight Time
++                        MapID = -1,-1
+=1 2215 3
++                    Vladivostok Standard Time
++                        Display = (GMT+10:00) Vladivostok
++                        Dlt = Vladivostok Daylight Time
++                        MapID = -1,-1
+=1 2215 3
++                    Lord Howe Standard Time
++                        Display = (GMT+10:30) Lord Howe Island
++                        Dlt = Lord Howe Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0xFFFFFD8A 0x00000000 0xFFFFFFE2 0x00040000 0x00010000 0x00000002 0x00000000 0x000A0000 0x00010000 0x00000002 0x00000000
++
++                    Bougainville Standard Time
++                        Display = (GMT+11:00) Bougainville Island
++                        Dlt = Bougainville Daylight Time
++                        MapID = -1,-1
+=1 2201 3
++                    Russia Time Zone 10
++                        Display = (GMT+11:00) Chokurdakh
++                        Dlt = Russia Time Zone 10
++                        MapID = -1,-1
+=1 2201 3
++                    Magadan Standard Time
++                        Display = (GMT+11:00) Magadan
++                        Dlt = Magadan Daylight Time
++                        MapID = -1,-1
+=1 2201 3
++                    Norfolk Standard Time
++                        Display = (GMT+11:00) Norfolk Island
++                        Dlt = Norfolk Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0xFFFFFD6C 0x00000000 0xFFFFFFC4 0x00040000 0x00010000 0x00000003 0x00000000 0x000A0000 0x00010000 0x00000002 0x00000000
++
++                    Sakhalin Standard Time
++                        Display = (GMT+11:00) Sakhalin
++                        Dlt = Sakhalin Daylight Time
++                        MapID = -1,-1
+=1 2201 3
++                    Russia Time Zone 11
++                        Display = (GMT+12:00) Anadyr, Petropavlovsk-Kamchatsky
++                        Dlt = Russia Time Zone 11
++                        MapID = -1,-1
+=1 2194 3
++                    UTC+12
++                        Display = (GMT+12:00) Coordinated Universal Time+12
++                        Dlt = UTC+12
++                        MapID = -1,-1
+=1 2194 3
++                    Chatham Islands Standard Time
++                        Display = (GMT+12:45) Chatham Islands
++                        Dlt = Chatham Islands Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0xFFFFFD03 0x00000000 0xFFFFFFC4 0x00040000 0x00010000 0x002D0003 0x00000000 0x00090000 0x00050000 0x002D0002 0x00000000
++
++                    UTC+13
++                        Display = (GMT+13:00) Coordinated Universal Time+13
++                        Dlt = UTC+13
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0xFFFFFCF4 0x00000000 0xFFFFFFC4 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
++
++                    Tonga Standard Time
++                        Display = (GMT+13:00) Nuku'alofa
++                        Dlt = Tonga Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0xFFFFFCF4 0x00000000 0xFFFFFFC4 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
++
++                    Line Islands Standard Time
++                        Display = (GMT+14:00) Kiritimati Island
++                        Dlt = Line Islands Daylight Time
++                        MapID = -1,-1
++
++                        TZI = REG_BINARY 0x2C 0xFFFFFCB8 0x00000000 0xFFFFFFC4 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+=1 2273 35
 +#if defined(_RASPI_)
 +//
 +// The first boot of the Pi is a developer's first boot, as with the developer hives of
