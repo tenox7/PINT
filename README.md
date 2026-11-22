@@ -140,6 +140,29 @@ Processes (End Process, Set Priority, more columns under View) and Performance (
 CPU). The default hive names it in `Winlogon\Taskman`; unchecking its Options > Replace Task List brings the Task List
 back at the next logon. It comes from its own release (Apps and games, below).
 
+## Time zones
+
+The registry's time zones are the 142 of Windows today (Unicode CLDR `windowsZones.xml`), each one's rule
+computed from the IANA tz database (2026f) by `tools/xptimezones.pl`, which also makes a `.reg` to update
+a system already installed. The system's own zone keys are kept and take today's rules; the zones it lacked
+are added (among them Canada's of 2026: British Columbia, Alberta with the Northwest Territories, Manitoba;
+and Yukon). After importing such a `.reg`, choose the time zone again in Date and Time: the system keeps
+its own copy of the current zone's rule until then.
+
+The system keeps one rule a zone for every year: "the n-th (or last) weekday of a month, at a local time"
+(the per-year rules of Windows, "dynamic DST", came with Vista). Three zones change their clocks relative
+to another day, which no such rule matches every year; in the years listed the change comes a week off:
+
+| Zone | Real rule | Rule kept | Years a week off (2028-2047) |
+| --- | --- | --- | --- |
+| Greenland Standard Time (Nuuk) | 01:00 UTC on the last Sunday of March and October (23:00 local the Saturday before) | last Saturday, 23:00 | start of DST in 2029, 2035, 2040, 2046 (late) |
+| Israel Standard Time | the Friday before the last Sunday of March, 02:00 | 4th Friday of March | start of DST in 2030, 2041, 2047 (early) |
+| West Bank Standard Time | the Saturday before the last Sunday of March and of October | last Saturday | start in 2029, 2035, 2040, 2046; end in 2036-2039, 2043 |
+
+Every other zone is right for every year. To regenerate the list when tz changes: get the release
+(`tzdata*.tar.gz` from data.iana.org), compile it with `zic -d DIR`, take CLDR's `windowsZones.xml`, and
+run the tool as its header says.
+
 ## SDK tools
 
 The tools of the NT source's `PRIVATE\SDKTOOLS` that build for ARM are in `\SDKTOOLS` (`build/build-sdktools.sh`), not on
