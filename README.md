@@ -198,6 +198,34 @@ To make a program for this, build it with the SDK (above) and put it in a GitHub
 name, such as `myapp-pint35.exe` (and `myapp-pint40.exe` for PINT 4.0, in the same release). The next image takes a
 new release by itself. Add only programs whose license allows giving them away with the image.
 
+## Adding a program to PINT
+
+A program can also come with every image of PINT 3.5. Its GitHub repository builds it with the SDK and puts it in its
+releases, as above. Then a pull request to branch `782` adds it here, in three files. After that, each image takes the
+newest release by itself.
+
+`extras/myapp.sh`, its recipe (`build/build-extras.sh` has all that a recipe can set):
+
+    # MyApp, what it is, https://github.com/OWNER/myapp: its build for PINT 3.5, from the newest release that has
+    # it, into \APPS\MYAPP, with its LICENSE. In the Main group (sdcard/make-sd-image.sh).
+    REPO=OWNER/myapp
+    GET="myapp.exe=myapp-arm-pint35.exe LICENSE=/LICENSE"
+    BUILD='perl -pi -e "s/\r*\$/\r/" LICENSE'
+    DEST=APPS/MYAPP
+    FILES="myapp.exe LICENSE"
+
+`GET` names what the recipe takes of the release: `NAME=PATTERN`, a file of the release, as NAME; `PATTERN`, a
+`.zip` of the release, unpacked; `NAME=/PATH`, the file PATH of the repository at that release. `BUILD` is optional;
+it runs where the files are, here to give the license the line ends of Windows. A game goes to `GAMES/NAME`.
+
+`sdcard/make-sd-image.sh`, its item in the Main group: a line after the other `grp MAIN` lines. `MyApp` is the name of
+the item, `myapp` that of the program (`myapp.exe`). A game takes `grp GAMES GAMES/MYAPP 5 ...`, in the Games group.
+
+    grp MAIN APPS/MYAPP 6 MyApp=myapp
+
+Last, `README.md`: a line in Apps and games (above). For PINT 4.0, send another pull request, to branch `1381`; its
+README has its steps.
+
 ## Roadmap
 
 - Pi 4: memory above the first GB, the USB-C port, USB Ethernet adapters.
