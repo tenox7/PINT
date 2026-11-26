@@ -186,6 +186,40 @@ To make a program for this, build it with the SDK (above) and put it in a GitHub
 name, such as `myapp-pint40.exe` (and `myapp-pint35.exe` for PINT 3.5, in the same release). The next image takes a
 new release by itself. Add only programs whose license allows giving them away with the image.
 
+## Adding a program to PINT
+
+A program can also come with every image of PINT 4.0. Its GitHub repository builds it with the SDK and puts it in its
+releases, as above. Then a pull request to branch `1381` adds it here, in four files, as CoolPlayer's did
+(https://github.com/tenox7/PINT/commit/d42e0c5). After that, each image takes the newest release by itself.
+
+`extras/myapp.sh`, its recipe (`build/build-extras.sh` has all that a recipe can set):
+
+    # MyApp, what it is, https://github.com/OWNER/myapp: its build for PINT 4.0, from the newest release that has
+    # it, into \APPS\MYAPP, with its LICENSE. In Programs > Apps (syssetup.inf).
+    REPO=OWNER/myapp
+    GET="myapp.exe=myapp-arm-pint40.exe LICENSE=/LICENSE"
+    BUILD='perl -pi -e "s/\r*\$/\r/" LICENSE'
+    DEST=APPS/MYAPP
+    FILES="myapp.exe LICENSE"
+
+`GET` names what the recipe takes of the release: `NAME=PATTERN`, a file of the release, as NAME; `PATTERN`, a
+`.zip` of the release, unpacked; `NAME=/PATH`, the file PATH of the repository at that release. `BUILD` is optional;
+it runs where the files are, here to give the license the line ends of Windows. A game goes to `GAMES/NAME`.
+
+`ported/windows/setup/inf/win4/inf/syssetup.inx.ntdiff`, its item: a line in the `+[Apps]` block (a game: in
+`+[Games]`). The same line in `+[DesktopItems]` puts it on the desktop too, and `,,%24%\apps\myapp` at its end starts
+it in its folder.
+
+    +%myapp% = %24%\apps\myapp\myapp.exe,%24%\apps\myapp\myapp.exe,,0
+
+`ported/windows/setup/inf/win4/inf/usa/syssetup.txt.ntdiff`, the name of its item:
+
+    +myapp = "MyApp"
+
+These two files are edit scripts over the NT source: add lines only inside their `+` blocks, and do not change the `=`
+lines. Last, `README.md`: a line in Apps and games (above). For PINT 3.5, send another pull request, to branch `782`;
+its README has its steps.
+
 ## Roadmap
 
 - Wireless: WPA3, setup from Control Panel
