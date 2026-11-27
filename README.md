@@ -185,9 +185,8 @@ has of it. When GitHub does not answer, the build keeps what it has. GitHub answ
   (https://github.com/tenox7/wintown), Sabre (https://github.com/tenox7/sabreNT), OpenTTD
   (https://github.com/tenox7/openttdNT), Prince of Persia (https://github.com/tenox7/popNT) and ScummVM 2.9.1
   (https://github.com/danifunker/nt4ports, for classic adventure games from their own data files; no games come with
-  it). Pinball (3D Pinball
-  for Windows - Space Cadet, https://github.com/tenox7/PINTBALL) is in `\GAMES\PINTBALL` too, but its item is in
-  Accessories > Games, where NT 4.0 had it.
+  it). Pinball (3D Pinball for Windows - Space Cadet, https://github.com/tenox7/PINTBALL) is in `\GAMES\PINTBALL` too,
+  but its item is in Accessories > Games, where NT 4.0 had it.
 - `\NTRDPS`: the installer of ntrdps (https://github.com/tenox7/ntrdps), the RDP server (above).
 
 A recipe without `REPO` builds its extra with the SDK instead, from its checkout in `extras/` (or a link to it).
