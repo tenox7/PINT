@@ -11,6 +11,11 @@
 +ntrdpc = "ntrdpc"
 +putty = "PuTTY"
 +coolplayer = "CoolPlayer"
++sevenzip = "7-Zip"
++notepadpp = "Notepad++"
++filezilla = "FileZilla"
++np2 = "Neko Project II"
++vintrdp = "vintrdp"
 +inetmgr = "Internet Service Manager"
 +game2048 = "2048"
 +breakout = "Breakout"
@@ -27,4 +32,5 @@
 +sabre = "Sabre"
 +prince = "Prince of Persia"
 +openttd = "OpenTTD"
++scummvm = "ScummVM"
 =1 72 47

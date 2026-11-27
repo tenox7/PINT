@@ -177,10 +177,15 @@ has of it. When GitHub does not answer, the build keeps what it has. GitHub answ
   a VNC viewer), ntfetch (https://github.com/tenox7/ntfetch), ntrdpc (https://github.com/tenox7/ntrdpc, an RDP
   client), PuTTY (https://github.com/tenox7/puttyNT, with Plink, PSCP, PSFTP, Pageant and PuTTYgen) and CoolPlayer
   (https://github.com/tenox7/coolplayer, an MP3 and Ogg Vorbis player). Internet Explorer 1.5 is there too; it is
-  built here, from the source tree's Mosaic.
+  built here, from the source tree's Mosaic. In Programs > Apps only: vintrdp (https://github.com/danifunker/vintrdp,
+  an RDP client for NT 4.0 Terminal Server up to Windows 11, and a VNC viewer), and from
+  https://github.com/danifunker/nt4ports, ports to NT 4.0, 7-Zip 9.20 (with RAR5 extraction), Notepad++ 3.3,
+  FileZilla 2.2.32 (an FTP and SFTP client) and Neko Project II (a PC-9801 emulator).
 - `\GAMES`, in Programs > Games, each in its own folder: the 11 games of https://github.com/tenox7/ntgames, WiNTown
   (https://github.com/tenox7/wintown), Sabre (https://github.com/tenox7/sabreNT), OpenTTD
-  (https://github.com/tenox7/openttdNT) and Prince of Persia (https://github.com/tenox7/popNT). Pinball (3D Pinball
+  (https://github.com/tenox7/openttdNT), Prince of Persia (https://github.com/tenox7/popNT) and ScummVM 2.9.1
+  (https://github.com/danifunker/nt4ports, for classic adventure games from their own data files; no games come with
+  it). Pinball (3D Pinball
   for Windows - Space Cadet, https://github.com/tenox7/PINTBALL) is in `\GAMES\PINTBALL` too, but its item is in
   Accessories > Games, where NT 4.0 had it.
 - `\NTRDPS`: the installer of ntrdps (https://github.com/tenox7/ntrdps), the RDP server (above).
