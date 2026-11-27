@@ -246,7 +246,7 @@
 +                        TZI = REG_BINARY 0x2C 0x0000012C 0x00000000 0xFFFFFFC4 0x000B0000 0x00010000 0x00000002 0x00000000 0x00030000 0x00020000 0x00000002 0x00000000
 +
 +                    Paraguay Standard Time
-+                        Display = (GMT-04:00) Asuncion
++                        Display = (GMT-03:00) Asuncion
 +                        Dlt = Paraguay Daylight Time
 =1 1072 3
 +                    Venezuela Standard Time
@@ -272,7 +272,7 @@
 +                        Dlt = Argentina Daylight Time
 =1 1072 3
 +                    Greenland Standard Time
-+                        Display = (GMT-03:00) Greenland
++                        Display = (GMT-02:00) Greenland
 +                        Dlt = Greenland Daylight Time
 +
 +                        TZI = REG_BINARY 0x2C 0x00000078 0x00000000 0xFFFFFFC4 0x000A0000 0x00050000 0x00000000 0x00000000 0x00030000 0x00050006 0x00000017 0x00000000
@@ -310,7 +310,7 @@
 +                        Dlt = Sao Tome Daylight Time
 =1 1066 3
 +                    Morocco Standard Time
-+                        Display = (GMT+01:00) Casablanca
++                        Display = (GMT) Casablanca
 +                        Dlt = Morocco Daylight Time
 =1 1066 3
 +                    W. Central Africa Standard Time
@@ -320,7 +320,7 @@
 +                        TZI = REG_BINARY 0x2C 0xFFFFFFC4 0x00000000 0xFFFFFFC4 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
 +
 +                    Jordan Standard Time
-+                        Display = (GMT+02:00) Amman
++                        Display = (GMT+03:00) Amman
 +                        Dlt = Jordan Daylight Time
 =1 1036 3
 +                    Middle East Standard Time
@@ -330,7 +330,7 @@
 +                        TZI = REG_BINARY 0x2C 0xFFFFFF88 0x00000000 0xFFFFFFC4 0x000A0000 0x00050000 0x00000000 0x00000000 0x00030000 0x00050000 0x00000000 0x00000000
 +
 +                    Syria Standard Time
-+                        Display = (GMT+02:00) Damascus
++                        Display = (GMT+03:00) Damascus
 +                        Dlt = Syria Daylight Time
 =1 1036 3
 +                    West Bank Standard Time
@@ -406,7 +406,7 @@
 +                        Dlt = Georgian Daylight Time
 =1 1024 3
 +                    Volgograd Standard Time
-+                        Display = (GMT+04:00) Volgograd
++                        Display = (GMT+03:00) Volgograd
 +                        Dlt = Volgograd Daylight Time
 =1 1036 3
 +                    Caucasus Standard Time
