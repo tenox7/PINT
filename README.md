@@ -143,11 +143,19 @@ back at the next logon. It comes from its own release (Apps and games, below).
 ## Time zones
 
 The registry's time zones are the 142 of Windows today (Unicode CLDR `windowsZones.xml`), each one's rule
-computed from the IANA tz database (2026f) by `tools/xptimezones.pl`, which also makes a `.reg` to update
-a system already installed. The system's own zone keys are kept and take today's rules; the zones it lacked
-are added (among them Canada's of 2026: British Columbia, Alberta with the Northwest Territories, Manitoba;
-and Yukon). After importing such a `.reg`, choose the time zone again in Date and Time: the system keeps
-its own copy of the current zone's rule until then.
+computed from the IANA tz database (2026f) by `tools/timezones.pl`. The system's own zone keys are kept and
+take today's rules; the zones it lacked are added (among them Canada's of 2026: British Columbia, Alberta
+with the Northwest Territories, Manitoba; and Yukon). The "(GMT+hh:mm)" of each name is the standard offset
+of its rule: CLDR's own can be older than tz. The default zone is US Pacific (`TimeZone` in `registry.ini`
+is "Pacific Time (US", which no other zone's name contains).
+
+To update a system already installed: NT 3.5 has no importer of `.reg` files, so make a REGINI script with
+the tool (its default `-format regini`, without `-block`) and run it with `\SDKTOOLS\REGINI.EXE`:
+
+    \SDKTOOLS\REGINI timezone.ini
+
+Then choose the time zone again in Date and Time: the system keeps its own copy of the current zone's rule
+until then.
 
 The system keeps one rule a zone for every year: "the n-th (or last) weekday of a month, at a local time"
 (the per-year rules of Windows, "dynamic DST", came with Vista). Three zones change their clocks relative
