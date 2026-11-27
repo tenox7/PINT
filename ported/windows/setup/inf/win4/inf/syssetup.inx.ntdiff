@@ -27,6 +27,7 @@
 +%sabre% = %24%\games\sabre\sabre.exe,%24%\games\sabre\sabre.exe,,0,,%24%\games\sabre
 +%prince% = %24%\games\pop\prince.exe,%24%\games\pop\prince.exe,,0,,%24%\games\pop
 +%openttd% = %24%\games\openttd\ttd.exe,%24%\games\openttd\ttd.exe,,0,,%24%\games\openttd
++%scummvm% = %24%\games\scummvm\scummvm.exe,%24%\games\scummvm\scummvm.exe,,0,,%24%\games\scummvm
 +
 +[Accessories_Games]
 +%freecell% = freecell.exe,freecell.exe,,0
@@ -46,6 +47,11 @@
 +%ntrdpc% = %24%\apps\ntrdpc\ntrdpc.exe,%24%\apps\ntrdpc\ntrdpc.exe,,0
 +%putty% = %24%\apps\putty\putty.exe,%24%\apps\putty\putty.exe,,0
 +%coolplayer% = %24%\apps\coolplayer\coolplayer.exe,%24%\apps\coolplayer\coolplayer.exe,,0
++%sevenzip% = %24%\apps\7zip\7zFM.exe,%24%\apps\7zip\7zFM.exe,,0
++%notepadpp% = %24%\apps\notepadpp\notepad++.exe,%24%\apps\notepadpp\notepad++.exe,,0,,%24%\apps\notepadpp
++%filezilla% = %24%\apps\filezilla\filezilla.exe,%24%\apps\filezilla\filezilla.exe,,0,,%24%\apps\filezilla
++%np2% = %24%\apps\np2\np2.exe,%24%\apps\np2\np2.exe,,0,,%24%\apps\np2
++%vintrdp% = %24%\apps\vintrdp\vintrdp.exe,%24%\apps\vintrdp\vintrdp.exe,,0,,%24%\apps\vintrdp
 +
 +[DesktopItems]
 +%iexplore% = %24%\apps\iexplore.exe,%24%\apps\iexplore.exe,,0
