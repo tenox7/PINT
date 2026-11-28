@@ -193,9 +193,11 @@ downloads what a recipe names from the newest release that has it, and checks ea
 has of it. When GitHub does not answer, the build keeps what it has. GitHub answers 60 requests an hour; set
 `GITHUB_TOKEN` to build more often.
 
-- `\APPS`, in Program Manager's Main group, each in its own folder: TenoxVNC (https://github.com/tenox7/tenoxvnc, a
-  VNC viewer), ntfetch (https://github.com/tenox7/ntfetch), ntrdpc (https://github.com/tenox7/ntrdpc, an RDP client),
-  PuTTY (https://github.com/tenox7/puttyNT, with Plink, PSCP, PSFTP, Pageant and PuTTYgen) and the task manager
+- `\APPS`, in Program Manager's Main group, each in its own folder: TenoxVNC (https://github.com/tenox7/tenoxvnc, a VNC
+  viewer), ntfetch (https://github.com/tenox7/ntfetch), ntrdpc (https://github.com/tenox7/ntrdpc, an RDP client), PuTTY
+  (https://github.com/tenox7/puttyNT, with Plink, PSCP, PSFTP, Pageant and PuTTYgen), Archaic
+  (https://github.com/tenox7/archaic, a web browser through WRP, https://github.com/tenox7/wrp: set the variable WRP to
+  the address of WRP in Control Panel > System; without it, 10.0.2.2:8080, the host in QEMU) and the task manager
   (above). Internet Explorer 1.5 is there too; it is built here (`apps/ie`).
 - `\GAMES`, in the Games group, each in its own folder: the 11 games of https://github.com/tenox7/ntgames, WiNTown
   (https://github.com/tenox7/wintown), Sabre (https://github.com/tenox7/sabreNT) and OpenTTD

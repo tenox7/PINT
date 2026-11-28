@@ -123,6 +123,7 @@ grp MAIN APPS 6 "Internet Explorer=iexplore"
 grp MAIN APPS/NTFETCH 6 ntfetch=ntfetch
 grp MAIN APPS/NTRDPC 6 ntrdpc=ntrdpc
 grp MAIN APPS/PUTTY 6 PuTTY=putty
+grp MAIN APPS/ARCHAIC 6 Archaic=archaic
 # the programs of APPS (build/make-apps.sh), each in its folder of \APPS, in Main
 if [ -f ../obj/apps/list ]; then
   while IFS="|" read -r d items; do
