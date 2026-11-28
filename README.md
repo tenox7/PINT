@@ -174,13 +174,15 @@ has of it. When GitHub does not answer, the build keeps what it has. GitHub answ
 `GITHUB_TOKEN` to build more often.
 
 - `\APPS`, in Programs > Apps and on the desktop, each in its own folder: TenoxVNC (https://github.com/tenox7/tenoxvnc,
-  a VNC viewer), ntfetch (https://github.com/tenox7/ntfetch), ntrdpc (https://github.com/tenox7/ntrdpc, an RDP
-  client), PuTTY (https://github.com/tenox7/puttyNT, with Plink, PSCP, PSFTP, Pageant and PuTTYgen) and CoolPlayer
-  (https://github.com/tenox7/coolplayer, an MP3 and Ogg Vorbis player). Internet Explorer 1.5 is there too; it is
-  built here, from the source tree's Mosaic. In Programs > Apps only: vintrdp (https://github.com/danifunker/vintrdp,
-  an RDP client for NT 4.0 Terminal Server up to Windows 11, and a VNC viewer), and from
-  https://github.com/danifunker/nt4ports, ports to NT 4.0, 7-Zip 9.20 (with RAR5 extraction), Notepad++ 3.3,
-  FileZilla 2.2.32 (an FTP and SFTP client) and Neko Project II (a PC-9801 emulator).
+  a VNC viewer), ntfetch (https://github.com/tenox7/ntfetch), ntrdpc (https://github.com/tenox7/ntrdpc, an RDP client),
+  PuTTY (https://github.com/tenox7/puttyNT, with Plink, PSCP, PSFTP, Pageant and PuTTYgen), CoolPlayer
+  (https://github.com/tenox7/coolplayer, an MP3 and Ogg Vorbis player) and Archaic (https://github.com/tenox7/archaic, a
+  web browser through WRP, https://github.com/tenox7/wrp: set the variable WRP to the address of WRP in
+  Control Panel > System; without it, 10.0.2.2:8080, the host in QEMU). Internet Explorer 1.5 is there too; it is built
+  here, from the source tree's Mosaic. In Programs > Apps only: vintrdp (https://github.com/danifunker/vintrdp, an RDP
+  client for NT 4.0 Terminal Server up to Windows 11, and a VNC viewer), and from
+  https://github.com/danifunker/nt4ports, ports to NT 4.0, 7-Zip 9.20 (with RAR5 extraction), Notepad++ 3.3, FileZilla
+  2.2.32 (an FTP and SFTP client) and Neko Project II (a PC-9801 emulator).
 - `\GAMES`, in Programs > Games, each in its own folder: the 11 games of https://github.com/tenox7/ntgames, WiNTown
   (https://github.com/tenox7/wintown), Sabre (https://github.com/tenox7/sabreNT), OpenTTD
   (https://github.com/tenox7/openttdNT), Prince of Persia (https://github.com/tenox7/popNT) and ScummVM 2.9.1

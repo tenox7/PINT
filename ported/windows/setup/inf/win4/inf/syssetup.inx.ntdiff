@@ -47,6 +47,7 @@
 +%ntrdpc% = %24%\apps\ntrdpc\ntrdpc.exe,%24%\apps\ntrdpc\ntrdpc.exe,,0
 +%putty% = %24%\apps\putty\putty.exe,%24%\apps\putty\putty.exe,,0
 +%coolplayer% = %24%\apps\coolplayer\coolplayer.exe,%24%\apps\coolplayer\coolplayer.exe,,0
++%archaic% = %24%\apps\archaic\archaic.exe,%24%\apps\archaic\archaic.exe,,0
 +%sevenzip% = %24%\apps\7zip\7zFM.exe,%24%\apps\7zip\7zFM.exe,,0
 +%notepadpp% = %24%\apps\notepadpp\notepad++.exe,%24%\apps\notepadpp\notepad++.exe,,0,,%24%\apps\notepadpp
 +%filezilla% = %24%\apps\filezilla\filezilla.exe,%24%\apps\filezilla\filezilla.exe,,0,,%24%\apps\filezilla
@@ -60,6 +61,7 @@
 +%ntrdpc% = %24%\apps\ntrdpc\ntrdpc.exe,%24%\apps\ntrdpc\ntrdpc.exe,,0
 +%putty% = %24%\apps\putty\putty.exe,%24%\apps\putty\putty.exe,,0
 +%coolplayer% = %24%\apps\coolplayer\coolplayer.exe,%24%\apps\coolplayer\coolplayer.exe,,0
++%archaic% = %24%\apps\archaic\archaic.exe,%24%\apps\archaic\archaic.exe,,0
 =1 411 77
 =1 488 1 0 @@:@a:
 =1 488 1 0 @@:@i:
